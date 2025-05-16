@@ -1766,7 +1766,7 @@ class World {
                         if (msg.error) {
                             console.error(msg.error);
 
-                            this.broadcastMes(msg.error.replaceAll('data/src/scripts/', ''));
+                            this.broadcastMes(msg.error.replaceAll(`${Environment.BUILD_SRC_DIR}/scripts/`, ''));
                             this.broadcastMes('Check the console for more information.');
                         }
                     } else if (msg.type === 'dev_progress') {

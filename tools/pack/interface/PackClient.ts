@@ -1,9 +1,10 @@
 import Jagfile from '#/io/Jagfile.js';
+import Environment from '#/util/Environment.js';
 import { shouldBuild } from '#/util/PackFile.js';
 import { packInterface } from '#tools/pack/interface/PackShared.js';
 
 export function packClientInterface() {
-    if (!shouldBuild('data/src/scripts', '.if', 'data/pack/client/interface')) {
+    if (!shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.if', 'data/pack/client/interface')) {
         return;
     }
 
