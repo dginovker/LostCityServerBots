@@ -1,757 +1,843 @@
 import fs from 'fs';
 
+import FileStream from '#/io/FileStream.js';
 import Jagfile from '#/io/Jagfile.js';
+import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
-import { printWarning } from '#/util/Logger.js';
-import { loadPack } from '#/util/NameMap.js';
+import { printFatalError, printWarning } from '#/util/Logger.js';
+import { PackFile } from '#/util/PackFileBase.js';
+import { listFilesExt } from '#/util/Parse.js';
 
-const pack = loadPack(`${Environment.BUILD_SRC_DIR}/pack/interface.pack`);
-const objPack = loadPack(`${Environment.BUILD_SRC_DIR}/pack/obj.pack`);
-const seqPack = loadPack(`${Environment.BUILD_SRC_DIR}/pack/seq.pack`);
-const varpPack = loadPack(`${Environment.BUILD_SRC_DIR}/pack/varp.pack`);
-const modelPack = loadPack(`${Environment.BUILD_SRC_DIR}/pack/model.pack`);
+export const InterfacePack = new PackFile('interface');
+export const ObjPack = new PackFile('obj');
+export const SeqPack = new PackFile('seq');
+export const VarpPack = new PackFile('varp');
+export const ModelPack = new PackFile('model');
 
-const jag = Jagfile.load('data/client/interface');
-const dat = jag.read('data');
-
-if (!dat) {
-    throw new Error('no data in data/client/interface');
-}
-
-type Component = Record<string, any> & {
-    id: number;
-    rootLayer: number;
+const enum ComponentType {
+    TYPE_LAYER = 0,
+    TYPE_UNUSED = 1,
+    TYPE_INV = 2,
+    TYPE_RECT = 3,
+    TYPE_TEXT = 4,
+    TYPE_GRAPHIC = 5,
+    TYPE_MODEL = 6,
+    TYPE_INV_TEXT = 7,
 };
 
-let order = '';
-const count = dat.g2();
-const interfaces: (Component | null)[] = [];
-for (let i = 0; i < count; i++) {
-    interfaces[i] = null;
+const enum ButtonType {
+    BUTTON_OK = 1,
+    BUTTON_TARGET = 2,
+    BUTTON_CLOSE = 3,
+    BUTTON_TOGGLE = 4,
+    BUTTON_SELECT = 5,
+    BUTTON_CONTINUE = 6,
+};
 
-    if (!pack[i]) {
-        pack[i] = 'null:null';
-    }
-}
+const STATS = [
+    'attack',
+    'defence',
+    'strength',
+    'hitpoints',
+    'ranged',
+    'prayer',
+    'magic',
+    'cooking',
+    'woodcutting',
+    'fletching',
+    'fishing',
+    'firemaking',
+    'crafting',
+    'smithing',
+    'mining',
+    'herblore',
+    'agility',
+    'thieving',
+    'stat18',
+    'stat19',
+    'runecraft'
+];
 
-// decode
-let rootLayer = -1;
-while (dat.available > 0) {
-    let id = dat.g2();
-    if (id === 65535) {
-        rootLayer = dat.g2();
-        id = dat.g2();
-        // order += `${rootLayer}\n`; // preserve only the order of root interfaces
-    }
-    order += `${id}\n`;
+class IfType {
+    static count: number = 0;
+    static order: number[] = [];
+    static instances: IfType[] = [];
 
-    const com: Component = {
-        id,
-        rootLayer
-    };
-    com.type = dat.g1();
-    com.buttonType = dat.g1();
-    com.clientCode = dat.g2();
-    com.width = dat.g2();
-    com.height = dat.g2();
-    // com.alpha = dat.g1(); // 317
-
-    com.overLayer = dat.g1();
-    if (com.overLayer == 0) {
-        com.overLayer = -1;
-    } else {
-        com.overLayer = ((com.overLayer - 1) << 8) + dat.g1();
-    }
-
-    const comparatorCount = dat.g1();
-    if (comparatorCount > 0) {
-        com.scriptComparator = [];
-        com.scriptOperand = [];
-
-        for (let i = 0; i < comparatorCount; i++) {
-            com.scriptComparator[i] = dat.g1();
-            com.scriptOperand[i] = dat.g2();
+    static unpack(jag: Jagfile) {
+        const dat: Packet | null = jag.read('data');
+        if (!dat) {
+            return;
         }
-    }
 
-    const scriptCount = dat.g1();
-    if (scriptCount > 0) {
-        com.scripts = [];
+        IfType.count = dat.g2();
+        IfType.order = [];
 
-        for (let i = 0; i < scriptCount; i++) {
-            const opcodeCount = dat.g2();
-            com.scripts[i] = [];
+        let layer: number = -1;
+        while (dat.pos < dat.length) {
+            let id: number = dat.g2();
+            if (id === 65535) {
+                layer = dat.g2();
+                id = dat.g2();
+            }
 
-            for (let j = 0; j < opcodeCount; j++) {
-                com.scripts[i][j] = dat.g2();
+            IfType.order.push(id);
+
+            const com = IfType.instances[id] = new IfType();
+            com.id = id;
+            com.rootLayer = layer;
+            com.comType = dat.g1();
+            com.buttonType = dat.g1();
+            com.clientCode = dat.g2();
+            com.width = dat.g2();
+            com.height = dat.g2();
+            com.alpha = dat.g1();
+
+            com.overLayer = dat.g1();
+            if (com.overLayer === 0) {
+                com.overLayer = -1;
+            } else {
+                com.overLayer = ((com.overLayer - 1) << 8) + dat.g1();
+            }
+
+            const comparatorCount: number = dat.g1();
+            if (comparatorCount > 0) {
+                com.scriptComparator = new Uint8Array(comparatorCount);
+                com.scriptOperand = new Uint16Array(comparatorCount);
+
+                for (let i: number = 0; i < comparatorCount; i++) {
+                    com.scriptComparator[i] = dat.g1();
+                    com.scriptOperand[i] = dat.g2();
+                }
+            }
+
+            const scriptCount: number = dat.g1();
+            if (scriptCount > 0) {
+                com.script = new Array(scriptCount);
+
+                for (let i: number = 0; i < scriptCount; i++) {
+                    const opcodeCount: number = dat.g2();
+
+                    const script: Uint16Array = new Uint16Array(opcodeCount);
+                    com.script[i] = script;
+                    for (let j: number = 0; j < opcodeCount; j++) {
+                        script[j] = dat.g2();
+                    }
+                }
+            }
+
+            if (com.comType === ComponentType.TYPE_LAYER) {
+                com.scroll = dat.g2();
+                com.hide = dat.gbool();
+
+                const childCount: number = dat.g2();
+                com.childId = new Array(childCount);
+                com.childX = new Array(childCount);
+                com.childY = new Array(childCount);
+
+                for (let i: number = 0; i < childCount; i++) {
+                    com.childId[i] = dat.g2();
+                    com.childX[i] = dat.g2s();
+                    com.childY[i] = dat.g2s();
+                }
+            }
+
+            if (com.comType === ComponentType.TYPE_UNUSED) {
+                dat.pos += 3;
+            }
+
+            if (com.comType === ComponentType.TYPE_INV) {
+                com.draggable = dat.gbool();
+                com.interactable = dat.gbool();
+                com.usable = dat.gbool();
+                com.marginX = dat.g1();
+                com.marginY = dat.g1();
+
+                com.invSlotOffsetX = new Int16Array(20);
+                com.invSlotOffsetY = new Int16Array(20);
+                com.invSlotSprite = new Array(20);
+
+                for (let i: number = 0; i < 20; i++) {
+                    if (dat.gbool()) {
+                        com.invSlotOffsetX[i] = dat.g2s();
+                        com.invSlotOffsetY[i] = dat.g2s();
+                        com.invSlotSprite[i] = dat.gjstr();
+                    }
+                }
+
+                com.iops = new Array(5);
+                for (let i: number = 0; i < 5; i++) {
+                    const iop: string = dat.gjstr();
+                    com.iops[i] = iop;
+
+                    if (iop.length === 0) {
+                        com.iops[i] = null;
+                    }
+                }
+            }
+
+            if (com.comType === ComponentType.TYPE_RECT) {
+                com.fill = dat.gbool();
+            }
+
+            if (com.comType === ComponentType.TYPE_TEXT || com.comType === ComponentType.TYPE_UNUSED) {
+                com.center = dat.gbool();
+                com.font = dat.g1();
+                com.shadowed = dat.gbool();
+            }
+
+            if (com.comType === ComponentType.TYPE_TEXT) {
+                com.text = dat.gjstr();
+                com.activeText = dat.gjstr();
+            }
+
+            if (com.comType === ComponentType.TYPE_UNUSED || com.comType === ComponentType.TYPE_RECT || com.comType === ComponentType.TYPE_TEXT) {
+                com.colour = dat.g4();
+            }
+
+            if (com.comType === ComponentType.TYPE_RECT || com.comType === ComponentType.TYPE_TEXT) {
+                com.activeColour = dat.g4();
+                com.overColour = dat.g4();
+            }
+
+            if (com.comType === ComponentType.TYPE_GRAPHIC) {
+                com.graphic = dat.gjstr();
+                com.activeGraphic = dat.gjstr();
+            }
+
+            if (com.comType === ComponentType.TYPE_MODEL) {
+                com.model = dat.g1();
+                if (com.model !== 0) {
+                    com.model = ((com.model - 1) << 8) + dat.g1();
+                }
+
+                com.activeModel = dat.g1();
+                if (com.activeModel !== 0) {
+                    com.activeModel = ((com.activeModel - 1) << 8) + dat.g1();
+                }
+
+                com.anim = dat.g1();
+                if (com.anim === 0) {
+                    com.anim = -1;
+                } else {
+                    com.anim = ((com.anim - 1) << 8) + dat.g1();
+                }
+
+                com.activeAnim = dat.g1();
+                if (com.activeAnim === 0) {
+                    com.activeAnim = -1;
+                } else {
+                    com.activeAnim = ((com.activeAnim - 1) << 8) + dat.g1();
+                }
+
+                com.zoom = dat.g2();
+                com.xan = dat.g2();
+                com.yan = dat.g2();
+            }
+
+            if (com.comType === ComponentType.TYPE_INV_TEXT) {
+                com.center = dat.gbool();
+                com.font = dat.g1();
+
+                com.shadowed = dat.gbool();
+                com.colour = dat.g4();
+                com.marginX = dat.g2s();
+                com.marginY = dat.g2s();
+                com.interactable = dat.gbool();
+
+                com.iops = new Array(5);
+                for (let i: number = 0; i < 5; i++) {
+                    const iop: string = dat.gjstr();
+                    com.iops[i] = iop;
+
+                    if (iop.length === 0) {
+                        com.iops[i] = null;
+                    }
+                }
+            }
+
+            if (com.buttonType === ButtonType.BUTTON_TARGET || com.comType === ComponentType.TYPE_INV) {
+                com.actionVerb = dat.gjstr();
+                com.action = dat.gjstr();
+                com.actionTarget = dat.g2();
+            }
+
+            if (com.buttonType === ButtonType.BUTTON_OK || com.buttonType === ButtonType.BUTTON_TOGGLE || com.buttonType === ButtonType.BUTTON_SELECT || com.buttonType === ButtonType.BUTTON_CONTINUE) {
+                com.option = dat.gjstr();
             }
         }
     }
 
-    if (com.type == 0) {
-        com.scroll = dat.g2();
-        com.hide = dat.gbool();
-
-        const childCount = dat.g1();
-        // let childCount = dat.g2(); // 317
-        com.childId = [];
-        com.childX = [];
-        com.childY = [];
-
-        for (let i = 0; i < childCount; i++) {
-            com.childId[i] = dat.g2();
-            com.childX[i] = dat.g2s();
-            com.childY[i] = dat.g2s();
-        }
+    static exportOrder() {
+        fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/interface.order`, IfType.order.join('\n') + '\n');
     }
 
-    if (com.type == 2) {
-        com.inventorySlotObjId = [];
-        com.inventorySlotObjCount = [];
-
-        com.draggable = dat.gbool();
-        com.interactable = dat.gbool();
-        com.usable = dat.gbool();
-        // com.replaces = dat.gbool(); // 317
-        com.marginX = dat.g1();
-        com.marginY = dat.g1();
-
-        com.inventorySlotOffsetX = [];
-        com.inventorySlotOffsetY = [];
-        com.inventorySlotGraphic = [];
-
-        for (let i = 0; i < 20; i++) {
-            if (dat.gbool()) {
-                com.inventorySlotOffsetX[i] = dat.g2s();
-                com.inventorySlotOffsetY[i] = dat.g2s();
-                com.inventorySlotGraphic[i] = dat.gjstr();
-            }
-        }
-
-        com.inventoryOptions = [];
-        for (let i = 0; i < 5; i++) {
-            com.inventoryOptions[i] = dat.gjstr();
-        }
-    }
-
-    if (com.type == 3) {
-        com.fill = dat.gbool();
-    }
-
-    if (com.type == 4 || com.type == 1) {
-        com.center = dat.gbool();
-        com.font = dat.g1();
-        com.shadowed = dat.gbool();
-    }
-
-    if (com.type == 4) {
-        com.text = dat.gjstr();
-        com.activeText = dat.gjstr();
-    }
-
-    if (com.type == 1 || com.type == 3 || com.type == 4) {
-        com.colour = dat.g4();
-    }
-
-    if (com.type == 3 || com.type == 4) {
-        com.activeColour = dat.g4();
-        com.overColour = dat.g4();
-        // com.activeOverColour = dat.g4(); // 317
-    }
-
-    if (com.type == 5) {
-        com.graphic = dat.gjstr();
-        com.activeGraphic = dat.gjstr();
-    }
-
-    if (com.type == 6) {
-        com.model = dat.g1();
-        if (com.model != 0) {
-            com.model = ((com.model - 1) << 8) + dat.g1();
-        }
-
-        com.activeModel = dat.g1();
-        if (com.activeModel != 0) {
-            com.activeModel = ((com.activeModel - 1) << 8) + dat.g1();
-        }
-
-        com.anim = dat.g1();
-        if (com.anim == 0) {
-            com.anim = -1;
-        } else {
-            com.anim = ((com.anim - 1) << 8) + dat.g1();
-        }
-
-        com.activeAnim = dat.g1();
-        if (com.activeAnim == 0) {
-            com.activeAnim = -1;
-        } else {
-            com.activeAnim = ((com.activeAnim - 1) << 8) + dat.g1();
-        }
-
-        com.zoom = dat.g2();
-        com.xan = dat.g2();
-        com.yan = dat.g2();
-    }
-
-    if (com.type == 7) {
-        com.inventorySlotObjId = [];
-        com.inventorySlotObjCount = [];
-
-        com.center = dat.gbool();
-        com.font = dat.g1();
-        com.shadowed = dat.gbool();
-        com.colour = dat.g4();
-        com.marginX = dat.g2s();
-        com.marginY = dat.g2s();
-        com.interactable = dat.gbool();
-
-        com.inventoryOptions = [];
-        for (let i = 0; i < 5; i++) {
-            com.inventoryOptions[i] = dat.gjstr();
-        }
-    }
-
-    // 377
-    // if (com.type === 8) {
-    //     com.text = dat.gjstr();
-    // }
-
-    if (com.buttonType == 2 || com.type == 2) {
-        com.actionVerb = dat.gjstr();
-        com.action = dat.gjstr();
-        com.actionTarget = dat.g2();
-    }
-
-    if (com.buttonType == 1 || com.buttonType == 4 || com.buttonType == 5 || com.buttonType == 6) {
-        com.option = dat.gjstr();
-    }
-
-    interfaces[id] = com;
-}
-
-fs.writeFileSync('data/pack/interface.order', order);
-
-const packChildren: Record<number, number> = {};
-
-// generate new names first
-function generateNames(com: Component, rootIfName: string) {
-    if (com.id !== com.rootLayer) {
-        if (!pack[com.id] || pack[com.id] === 'null:null') {
-            pack[com.id] = `${rootIfName}:com_${packChildren[com.rootLayer]++}`;
-        }
-    }
-
-    if (com.childId) {
-        for (let i = 0; i < com.childId.length; i++) {
-            const childId = com.childId[i];
-            const child = interfaces[childId];
-            if (!child) {
+    static exportSrc() {
+        // generate names
+        let ifId = 0;
+        const comCount = [];
+        for (let id = 0; id < IfType.count; id++) {
+            const com = IfType.instances[id];
+            if (!com) {
+                InterfacePack.register(id, 'null:null');
                 continue;
             }
 
-            generateNames(child, rootIfName);
-        }
-    }
-}
-
-let ifId = 0;
-for (let i = 0; i < interfaces.length; i++) {
-    const com = interfaces[i];
-    if (!com || com.id !== com.rootLayer) {
-        // only want to iterate over root layers
-        continue;
-    }
-
-    const name = `inter_${ifId++}`;
-    if (!pack[com.id] || pack[com.id] === 'null:null') {
-        pack[com.id] = name;
-    }
-
-    packChildren[com.id] = 0;
-    generateNames(com, name);
-}
-
-let packStr = '';
-for (let i = 0; i < pack.length; i++) {
-    if (!pack[i]) {
-        continue;
-    }
-
-    packStr += `${i}=${pack[i]}\n`;
-}
-fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/interface.pack`, packStr);
-
-function statToName(stat: number) {
-    switch (stat) {
-        case 0:
-            return 'attack';
-        case 1:
-            return 'defence';
-        case 2:
-            return 'strength';
-        case 3:
-            return 'hitpoints';
-        case 4:
-            return 'ranged';
-        case 5:
-            return 'prayer';
-        case 6:
-            return 'magic';
-        case 7:
-            return 'cooking';
-        case 8:
-            return 'woodcutting';
-        case 9:
-            return 'fletching';
-        case 10:
-            return 'fishing';
-        case 11:
-            return 'firemaking';
-        case 12:
-            return 'crafting';
-        case 13:
-            return 'smithing';
-        case 14:
-            return 'mining';
-        case 15:
-            return 'herblore';
-        case 16:
-            return 'agility';
-        case 17:
-            return 'thieving';
-        case 20:
-            return 'runecraft';
-        default:
-            return stat;
-    }
-}
-
-// convert to com format
-function convert(com: Component, x = 0, y = 0, lastCom = -1) {
-    let str = '';
-
-    if (com.id === com.rootLayer) {
-        if (!com.childId) {
-            printWarning('no children for root layer ' + com.id);
-            return '';
-        }
-
-        for (let i = 0; i < com.childId.length; i++) {
-            if (i > 0) {
-                str += '\n';
+            if (com.id !== com.rootLayer) {
+                continue;
             }
 
-            // TODO (jkm) is it safe to use `!` here?
-            str += convert(interfaces[com.childId[i]]!, com.childX[i], com.childY[i]);
+            const name = InterfacePack.getById(com.id);
+            if (!name || name.startsWith('inter_')) {
+                InterfacePack.register(com.id, `inter_${ifId}`);
+            }
+            ifId++;
+            comCount[com.id] = 0;
         }
 
-        return str;
-    }
-
-    str += `[${pack[com.id].split(':')[1]}]\n`;
-
-    if (lastCom !== -1) {
-        str += `layer=${pack[lastCom].split(':')[1]}\n`;
-    }
-
-    switch (com.type) {
-        case 0:
-            str += 'type=layer\n';
-            break;
-        case 1:
-            str += 'type=unused\n';
-            break;
-        case 2:
-            str += 'type=inv\n';
-            break;
-        case 3:
-            str += 'type=rect\n';
-            break;
-        case 4:
-            str += 'type=text\n';
-            break;
-        case 5:
-            str += 'type=graphic\n';
-            break;
-        case 6:
-            str += 'type=model\n';
-            break;
-        case 7:
-            str += 'type=invtext\n';
-            break;
-    }
-
-    str += `x=${x}\n`;
-    str += `y=${y}\n`;
-
-    switch (com.buttonType) {
-        case 1:
-            str += 'buttontype=normal\n';
-            break;
-        case 2:
-            str += 'buttontype=target\n';
-            break;
-        case 3:
-            str += 'buttontype=close\n';
-            break;
-        case 4:
-            str += 'buttontype=toggle\n';
-            break;
-        case 5:
-            str += 'buttontype=select\n';
-            break;
-        case 6:
-            str += 'buttontype=pause\n';
-            break;
-    }
-
-    if (com.clientCode) {
-        str += `clientcode=${com.clientCode}\n`;
-    }
-
-    if (com.width) {
-        str += `width=${com.width}\n`;
-    }
-
-    if (com.height) {
-        str += `height=${com.height}\n`;
-    }
-
-    if (com.overLayer !== -1) {
-        str += `overlayer=${pack[com.overLayer].split(':')[1]}\n`;
-    }
-
-    if (com.scripts) {
-        for (let i = 0; i < com.scripts.length; i++) {
-            let opcount = 1;
-
-            if (com.scripts[i].length === 1) {
-                // empty script
-                str += `script${i + 1}op1=\n`;
+        for (let i = 0; i < IfType.order.length; i++) {
+            const id = IfType.order[i];
+            const com = IfType.instances[id];
+            if (!com || com.id === com.rootLayer) {
+                continue;
             }
 
-            for (let j = 0; j < com.scripts[i].length - 1; j++) {
-                str += `script${i + 1}op${opcount++}=`;
+            const name = InterfacePack.getById(com.id);
+            if (!name || name.split(':')[1].startsWith('com_')) {
+                InterfacePack.register(com.id, `${InterfacePack.getById(com.rootLayer)}:com_${comCount[com.rootLayer]}`);
+            }
+            comCount[com.rootLayer]++;
+        }
 
-                switch (com.scripts[i][j]) {
-                    case 1:
-                        str += `stat_level,${statToName(com.scripts[i][++j])}`;
-                        break;
-                    case 2:
-                        str += `stat_base_level,${statToName(com.scripts[i][++j])}`;
-                        break;
-                    case 3:
-                        str += `stat_xp,${statToName(com.scripts[i][++j])}`;
-                        break;
-                    case 4: {
-                        const obj = com.scripts[i][++j];
-                        str += `inv_count,${pack[com.scripts[i][++j]]},${obj ?? 'obj_' + obj}`;
-                        break;
+        // save names
+        InterfacePack.save();
+
+        // export source files
+        if (!fs.existsSync(`${Environment.BUILD_SRC_DIR}/scripts/interfaces`)) {
+            fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/scripts/interfaces`);
+        }
+        
+        const existingFiles = listFilesExt(`${Environment.BUILD_SRC_DIR}/scripts`, '.if');
+
+        for (let id = 0; id < IfType.count; id++) {
+            const com = IfType.instances[id];
+            if (!com || com.id !== com.rootLayer) {
+                continue;
+            }
+
+            const name = InterfacePack.getById(com.id);
+            const src = com.export();
+
+            const existingFile = existingFiles.find(x => x.endsWith(`/${name}.if`));
+            const destFile = existingFile ?? `${Environment.BUILD_SRC_DIR}/scripts/interfaces/${name}.if`;
+            fs.writeFileSync(destFile, src.join('\n') + '\n');
+        }
+    }
+
+    export(temp: string[] = [], x: number = 0, y: number = 0, parent: string = ''): string[] {
+        const comName = InterfacePack.getById(this.id);
+
+        if (this.id !== this.rootLayer) {
+            temp.push(`[${comName.split(':')[1]}]`);
+
+            if (parent) {
+                temp.push(`layer=${parent}`);
+            }
+
+            switch (this.comType) {
+                case 0:
+                    temp.push('type=layer');
+                    break;
+                case 2:
+                    temp.push('type=inv');
+                    break;
+                case 3:
+                    temp.push('type=rect');
+                    break;
+                case 4:
+                    temp.push('type=text');
+                    break;
+                case 5:
+                    temp.push('type=graphic');
+                    break;
+                case 6:
+                    temp.push('type=model');
+                    break;
+                case 7:
+                    temp.push('type=invtext');
+                    break;
+                default:
+                    printWarning(`Unknown comType: ${this.comType} when packing ${this.id} ${InterfacePack.getById(this.id)}`);
+                    break;
+            }
+
+            temp.push(`x=${x}`);
+            temp.push(`y=${y}`);
+
+            switch (this.buttonType) {
+                case 1:
+                    temp.push('buttontype=normal');
+                    break;
+                case 2:
+                    temp.push('buttontype=target');
+                    break;
+                case 3:
+                    temp.push('buttontype=close');
+                    break;
+                case 4:
+                    temp.push('buttontype=toggle');
+                    break;
+                case 5:
+                    temp.push('buttontype=select');
+                    break;
+                case 6:
+                    temp.push('buttontype=pause');
+                    break;
+            }
+
+            if (this.clientCode) {
+                temp.push(`clientcode=${this.clientCode}`);
+            }
+
+            if (this.width) {
+                temp.push(`width=${this.width}`);
+            }
+
+            if (this.height) {
+                temp.push(`height=${this.height}`);
+            }
+
+            if (this.alpha) {
+                temp.push(`alpha=${this.alpha}`);
+            }
+
+            if (this.overLayer !== -1) {
+                temp.push(`overlayer=${InterfacePack.getById(this.overLayer).split(':')[1]}`);
+            }
+        }
+
+        // todo: scripts
+
+        if (this.script) {
+            for (let i = 0; i < this.script.length; i++) {
+                if (!this.script[i]) {
+                    continue;
+                }
+
+                let opcount = 1;
+
+                if (this.script[i]!.length === 1) {
+                    // empty script
+                    temp.push(`script${i + i}op1=`);
+                }
+
+                for (let j = 0; j < this.script[i]!.length - 1; j++) {
+                    let str = `script${i + 1}op${opcount++}=`;
+
+                    const popStack = (): number => {
+                        if (!this.script || !this.script[i]) {
+                            return 0;
+                        }
+
+                        return this.script[i]![++j];
+                    };
+
+                    const op = this.script[i]![j];
+                    switch (op) {
+                        case 1: {
+                            const stat = popStack();
+                            str += `stat_level,${STATS[stat]}`;
+                            break;
+                        }
+                        case 2: {
+                            const stat = popStack();
+                            str += `stat_base_level,${STATS[stat]}`;
+                            break;
+                        }
+                        case 3: {
+                            const stat = popStack();
+                            str += `stat_xp,${STATS[stat]}`;
+                            break;
+                        }
+                        case 4: {
+                            const inv = popStack();
+                            const obj = popStack();
+                            str += `inv_count,${InterfacePack.getById(inv) || inv},${ObjPack.getById(obj) || 'obj_' + obj}`;
+                            break;
+                        }
+                        case 5: {
+                            const varp = popStack();
+                            str += `pushvar,${VarpPack.getById(varp) || 'varp_' + varp}`;
+                            break;
+                        }
+                        case 6: {
+                            const stat = popStack();
+                            str += `stat_xp_remaining,${STATS[stat]}`;
+                            break;
+                        }
+                        case 7:
+                            str += 'op7';
+                            break;
+                        case 8:
+                            str += 'op8';
+                            break;
+                        case 9:
+                            str += 'op9';
+                            break;
+                        case 10: {
+                            const inv = popStack();
+                            const obj = popStack();
+                            str += `inv_contains,${InterfacePack.getById(inv) || inv},${ObjPack.getById(obj) || 'obj_' + obj}`;
+                            break;
+                        }
+                        case 11:
+                            str += 'runenergy';
+                            break;
+                        case 12:
+                            str += 'runweight';
+                            break;
+                        case 13: {
+                            const varp = popStack();
+                            const bit = popStack();
+                            str += `testbit,${VarpPack.getById(varp) || 'varp_' + varp},${bit}`;
+                            break;
+                        }
                     }
-                    case 5: {
-                        const varp = com.scripts[i][++j];
-                        str += `pushvar,${varpPack[varp] ?? 'varp_' + varp}`;
-                        break;
+
+                    temp.push(str);
+                }
+
+                if (this.scriptComparator && this.scriptComparator[i] && this.scriptOperand) {
+                    let str = `script${i + 1}=`;
+
+                    switch (this.scriptComparator[i]) {
+                        case 1:
+                            str += 'eq';
+                            break;
+                        case 2:
+                            str += 'lt';
+                            break;
+                        case 3:
+                            str += 'gt';
+                            break;
+                        case 4:
+                            str += 'neq';
+                            break;
                     }
-                    case 6:
-                        str += `stat_xp_remaining,${statToName(com.scripts[i][++j])}`;
-                        break;
-                    case 7:
-                        str += 'op7';
-                        break;
-                    case 8:
-                        str += 'op8';
-                        break;
-                    case 9:
-                        str += 'op9';
-                        break;
-                    case 10: {
-                        const obj = com.scripts[i][++j];
-                        str += `inv_contains,${pack[com.scripts[i][++j]]},${objPack[obj] ?? 'obj_' + obj}`;
-                        break;
+
+                    str += `,${this.scriptOperand[i]}`;
+                    temp.push(str);
+                }
+            }
+        }
+
+        if (this.comType === 0) {
+            if (this.scroll) {
+                temp.push(`scroll=${this.scroll}`);
+            }
+
+            if (this.hide) {
+                temp.push('hide=yes');
+            }
+        }
+
+        if (this.comType === 2) {
+            if (this.draggable) {
+                temp.push('draggable=yes');
+            }
+
+            if (this.interactable) {
+                temp.push('interactable=yes');
+            }
+
+            if (this.usable) {
+                temp.push('usable=yes');
+            }
+
+            if (this.marginX || this.marginY) {
+                temp.push(`margin=${this.marginX},${this.marginY}`);
+            }
+
+            if (this.invSlotSprite && this.invSlotOffsetX && this.invSlotOffsetY) {
+                for (let i = 0; i < 20; i++) {
+                    if (this.invSlotSprite[i]) {
+                        if (this.invSlotOffsetX[i] || this.invSlotOffsetY[i]) {
+                            temp.push(`slot${i + 1}=${this.invSlotSprite[i]}:${this.invSlotOffsetX[i]},${this.invSlotOffsetY[i]}`);
+                        } else {
+                            temp.push(`slot${i + 1}=${this.invSlotSprite[i]}`);
+                        }
                     }
-                    case 11:
-                        str += 'runenergy';
-                        break;
-                    case 12:
-                        str += 'runweight';
-                        break;
-                    case 13: {
-                        const varp = com.scripts[i][++j];
-                        str += `testbit,${varpPack[varp] ?? 'varp_' + varp},${com.scripts[i][++j]}`;
-                        break;
+                }
+            }
+
+            if (this.iops) {
+                for (let i = 0; i < this.iops.length; i++) {
+                    if (this.iops[i]) {
+                        temp.push(`option${i + 1}=${this.iops[i]}`);
                     }
                 }
+            }
+        }
 
-                str += '\n';
+        if (this.comType === 3) {
+            if (this.fill) {
+                temp.push('fill=yes');
+            }
+        }
+
+        if (this.comType === 4) {
+            if (this.center) {
+                temp.push('center=yes');
             }
 
-            if (com.scriptComparator && com.scriptComparator[i]) {
-                str += `script${i + 1}=`;
-                switch (com.scriptComparator[i]) {
-                    case 1:
-                        str += 'eq';
-                        break;
-                    case 2:
-                        str += 'lt';
-                        break;
-                    case 3:
-                        str += 'gt';
-                        break;
-                    case 4:
-                        str += 'neq';
-                        break;
+            switch (this.font) {
+                case 0:
+                    temp.push('font=p11');
+                    break;
+                case 1:
+                    temp.push('font=p12');
+                    break;
+                case 2:
+                    temp.push('font=b12');
+                    break;
+                case 3:
+                    temp.push('font=q8');
+                    break;
+            }
+
+            if (this.shadowed) {
+                temp.push('shadowed=yes');
+            }
+        }
+
+        if (this.comType === 4) {
+            if (this.text) {
+                temp.push(`text=${this.text}`);
+            }
+
+            if (this.activeText) {
+                temp.push(`activetext=${this.activeText}`);
+            }
+        }
+
+        if (this.comType === 3 || this.comType === 4) {
+            if (this.colour) {
+                temp.push(`colour=0x${this.colour.toString(16).toUpperCase().padStart(6, '0')}`);
+            }
+        }
+
+        if (this.comType === 3 || this.comType === 4) {
+            if (this.activeColour) {
+                temp.push(`activecolour=0x${this.activeColour.toString(16).toUpperCase().padStart(6, '0')}`);
+            }
+
+            if (this.overColour) {
+                temp.push(`overcolour=0x${this.overColour.toString(16).toUpperCase().padStart(6, '0')}`);
+            }
+        }
+
+        if (this.comType === 5) {
+            if (this.graphic) {
+                temp.push(`graphic=${this.graphic}`);
+            }
+
+            if (this.activeGraphic) {
+                temp.push(`activegraphic=${this.activeGraphic}`);
+            }
+        }
+
+        if (this.comType === 6) {
+            if (this.model) {
+                temp.push(`model=${ModelPack.getById(this.model) || 'model_' + this.model}`);
+            }
+
+            if (this.activeModel) {
+                temp.push(`activemodel=${ModelPack.getById(this.activeModel) || 'model_' + this.activeModel}`);
+            }
+
+            if (this.anim !== -1) {
+                temp.push(`anim=${SeqPack.getById(this.anim) || 'seq_' + this.anim}`);
+            }
+
+            if (this.activeAnim !== -1) {
+                temp.push(`activeanim=${SeqPack.getById(this.activeAnim) || 'seq_' + this.activeAnim}`);
+            }
+
+            if (this.zoom) {
+                temp.push(`zoom=${this.zoom}`);
+            }
+
+            if (this.xan) {
+                temp.push(`xan=${this.xan}`);
+            }
+
+            if (this.yan) {
+                temp.push(`yan=${this.yan}`);
+            }
+        }
+
+        if (this.comType === 7) {
+            if (this.center) {
+                temp.push('center=yes');
+            }
+
+            switch (this.font) {
+                case 0:
+                    temp.push('font=p11');
+                    break;
+                case 1:
+                    temp.push('font=p12');
+                    break;
+                case 2:
+                    temp.push('font=b12');
+                    break;
+                case 3:
+                    temp.push('font=q8');
+                    break;
+            }
+
+            if (this.shadowed) {
+                temp.push('shadowed=yes');
+            }
+
+            if (this.colour) {
+                temp.push(`colour=0x${this.colour.toString(16).toUpperCase().padStart(6, '0')}`);
+            }
+
+            if (this.marginX || this.marginY) {
+                temp.push(`margin=${this.marginX},${this.marginY}`);
+            }
+
+            if (this.invSlotSprite && this.invSlotOffsetX && this.invSlotOffsetY) {
+                for (let i = 0; i < 20; i++) {
+                    if (this.invSlotSprite[i]) {
+                        if (this.invSlotOffsetX[i] || this.invSlotOffsetY[i]) {
+                            temp.push(`slot${i + 1}=${this.invSlotSprite[i]}:${this.invSlotOffsetX[i]},${this.invSlotOffsetY[i]}`);
+                        } else {
+                            temp.push(`slot${i + 1}=${this.invSlotSprite[i]}`);
+                        }
+                    }
                 }
-
-                str += `,${com.scriptOperand[i]}\n`;
             }
-        }
-    }
 
-    if (com.type === 0) {
-        if (com.scroll) {
-            str += `scroll=${com.scroll}\n`;
-        }
-
-        if (com.hide) {
-            str += 'hide=yes\n';
-        }
-    }
-
-    if (com.type === 2) {
-        if (com.draggable) {
-            str += 'draggable=yes\n';
-        }
-
-        if (com.interactable) {
-            str += 'interactable=yes\n';
-        }
-
-        if (com.usable) {
-            str += 'usable=yes\n';
-        }
-
-        if (com.marginX || com.marginY) {
-            str += `margin=${com.marginX},${com.marginY}\n`;
-        }
-
-        for (let i = 0; i < 20; i++) {
-            if (typeof com.inventorySlotGraphic[i] !== 'undefined') {
-                if (com.inventorySlotOffsetX[i] || com.inventorySlotOffsetY[i]) {
-                    str += `slot${i + 1}=${com.inventorySlotGraphic[i]}:${com.inventorySlotOffsetX[i]},${com.inventorySlotOffsetY[i]}\n`;
-                } else {
-                    str += `slot${i + 1}=${com.inventorySlotGraphic[i]}\n`;
-                }
-            }
-        }
-
-        if (com.inventoryOptions) {
-            for (let i = 0; i < com.inventoryOptions.length; i++) {
-                if (com.inventoryOptions[i]) {
-                    str += `option${i + 1}=${com.inventoryOptions[i]}\n`;
-                }
-            }
-        }
-    }
-
-    if (com.type === 3) {
-        if (com.fill) {
-            str += 'fill=yes\n';
-        }
-    }
-
-    if (com.type == 4 || com.type == 1) {
-        if (com.center) {
-            str += 'center=yes\n';
-        }
-
-        switch (com.font) {
-            case 0:
-                str += 'font=p11\n';
-                break;
-            case 1:
-                str += 'font=p12\n';
-                break;
-            case 2:
-                str += 'font=b12\n';
-                break;
-            case 3:
-                str += 'font=q8\n';
-                break;
-        }
-
-        if (com.shadowed) {
-            str += 'shadowed=yes\n';
-        }
-    }
-
-    if (com.type == 4) {
-        if (com.text) {
-            str += `text=${com.text}\n`;
-        }
-
-        if (com.activeText) {
-            str += `activetext=${com.activeText}\n`;
-        }
-    }
-
-    if (com.type == 1 || com.type == 3 || com.type == 4) {
-        if (com.colour) {
-            str += `colour=0x${com.colour.toString(16).toUpperCase().padStart(6, '0')}\n`;
-        }
-    }
-
-    if (com.type == 3 || com.type == 4) {
-        if (com.activeColour) {
-            str += `activecolour=0x${com.activeColour.toString(16).toUpperCase().padStart(6, '0')}\n`;
-        }
-
-        if (com.overColour) {
-            str += `overcolour=0x${com.overColour.toString(16).toUpperCase().padStart(6, '0')}\n`;
-        }
-    }
-
-    if (com.type === 5) {
-        if (com.graphic) {
-            str += `graphic=${com.graphic}\n`;
-        }
-
-        if (com.activeGraphic) {
-            str += `activegraphic=${com.activeGraphic}\n`;
-        }
-    }
-
-    if (com.type === 6) {
-        if (com.model) {
-            str += `model=${modelPack[com.model]}\n`;
-        }
-
-        if (com.activeModel) {
-            str += `activemodel=${modelPack[com.activeModel]}\n`;
-        }
-
-        if (com.anim !== -1) {
-            str += `anim=${seqPack[com.anim]}\n`;
-        }
-
-        if (com.activeAnim !== -1) {
-            str += `activeanim=${seqPack[com.activeAnim]}\n`;
-        }
-
-        if (com.zoom) {
-            str += `zoom=${com.zoom}\n`;
-        }
-
-        if (com.xan) {
-            str += `xan=${com.xan}\n`;
-        }
-
-        if (com.yan) {
-            str += `yan=${com.yan}\n`;
-        }
-    }
-
-    if (com.type === 7) {
-        if (com.center) {
-            str += 'center=yes\n';
-        }
-
-        switch (com.font) {
-            case 0:
-                str += 'font=p11\n';
-                break;
-            case 1:
-                str += 'font=p12\n';
-                break;
-            case 2:
-                str += 'font=b12\n';
-                break;
-            case 3:
-                str += 'font=q8\n';
-                break;
-        }
-
-        if (com.shadowed) {
-            str += 'shadowed=yes\n';
-        }
-
-        str += `colour=0x${com.colour.toString(16).toUpperCase().padStart(6, '0')}\n`;
-
-        if (com.marginX || com.marginY) {
-            str += `margin=${com.marginX},${com.marginY}\n`;
-        }
-
-        if (com.interactable) {
-            str += 'interactable=yes\n';
-        }
-
-        if (com.inventoryOptions) {
-            for (let i = 0; i < com.inventoryOptions.length; i++) {
-                if (com.inventoryOptions[i]) {
-                    str += `option${i + 1}=${com.inventoryOptions[i]}\n`;
+            if (this.iops) {
+                for (let i = 0; i < this.iops.length; i++) {
+                    if (this.iops[i]) {
+                        temp.push(`option${i + 1}=${this.iops[i]}`);
+                    }
                 }
             }
         }
+
+        if (this.buttonType === 2 || this.comType === 2) {
+            if (this.actionVerb) {
+                temp.push(`actionverb=${this.actionVerb}`);
+            }
+
+            if (this.actionTarget) {
+                const target = [];
+                if (this.actionTarget & 0x1) {
+                    target.push('obj');
+                }
+                if (this.actionTarget & 0x2) {
+                    target.push('npc');
+                }
+                if (this.actionTarget & 0x4) {
+                    target.push('loc');
+                }
+                if (this.actionTarget & 0x8) {
+                    target.push('player');
+                }
+                if (this.actionTarget & 0x10) {
+                    target.push('heldobj');
+                }
+
+                temp.push(`actiontarget=${target.join(',')}`);
+            }
+
+            if (this.action) {
+                temp.push(`action=${this.action}`);
+            }
+        }
+
+        if (this.buttonType === 1 || this.buttonType === 4 || this.buttonType === 5 || this.buttonType === 6) {
+            if (this.option) {
+                temp.push(`option=${this.option}`);
+            }
+        }
+
+        if (this.comType === 0 && this.childId && this.childX && this.childY) {
+            for (let i = 0; i < this.childId.length; i++) {
+                if (this.id !== this.rootLayer || i > 0) {
+                    temp.push('');
+                }
+
+                const com = IfType.instances[this.childId[i]];
+                const parentName = this.id !== this.rootLayer ? comName.split(':')[1] : '';
+                com.export(temp, this.childX[i], this.childY[i], parentName);
+            }
+        }
+
+        return temp;
     }
 
-    if (com.buttonType == 2 || com.type == 2) {
-        if (com.actionVerb) {
-            str += `actionverb=${com.actionVerb}\n`;
-        }
-
-        if (com.actionTarget) {
-            const target = [];
-            if (com.actionTarget & 0x1) {
-                target.push('obj');
-            }
-            if (com.actionTarget & 0x2) {
-                target.push('npc');
-            }
-            if (com.actionTarget & 0x4) {
-                target.push('loc');
-            }
-            if (com.actionTarget & 0x8) {
-                target.push('player');
-            }
-            if (com.actionTarget & 0x10) {
-                target.push('heldobj');
-            }
-
-            str += `actiontarget=${target.join(',')}\n`;
-        }
-
-        if (com.action) {
-            str += `action=${com.action}\n`;
-        }
-    }
-
-    if (com.buttonType == 1 || com.buttonType == 4 || com.buttonType == 5 || com.buttonType == 6) {
-        if (com.option) {
-            str += `option=${com.option}\n`;
-        }
-    }
-
-    if (com.type === 0 && com.childId.length) {
-        for (let i = 0; i < com.childId.length; i++) {
-            str += '\n';
-
-            // TODO (jkm) is it safe to use `!` here?
-            str += convert(interfaces[com.childId[i]]!, com.childX[i], com.childY[i], com.id);
-        }
-    }
-
-    return str;
+    id: number = -1;
+    rootLayer: number = -1;
+    comType: number = -1;
+    buttonType: number = -1;
+    clientCode: number = 0;
+    width: number = 0;
+    height: number = 0;
+    alpha: number = 0;
+    overLayer: number = -1;
+    scriptComparator: Uint8Array | null = null;
+    scriptOperand: Uint16Array | null = null;
+    script: (Uint16Array | null)[] | null = null;
+    scroll: number = 0;
+    hide: boolean = false;
+    draggable: boolean = false;
+    interactable: boolean = false;
+    usable: boolean = false;
+    marginX: number = 0;
+    marginY: number = 0;
+    invSlotOffsetX: Int16Array | null = null;
+    invSlotOffsetY: Int16Array | null = null;
+    invSlotSprite: string[] | null = null;
+    iops: (string | null)[] | null = null;
+    fill: boolean = false;
+    center: boolean = false;
+    font: number | null = null;
+    shadowed: boolean = false;
+    text: string | null = null;
+    activeText: string | null = null;
+    colour: number = 0;
+    activeColour: number = 0;
+    overColour: number = 0;
+    graphic: string | null = null;
+    activeGraphic: string | null = null;
+    model: number = -1;
+    activeModel: number | null = null;
+    anim: number = -1;
+    activeAnim: number = -1;
+    zoom: number = 0;
+    xan: number = 0;
+    yan: number = 0;
+    actionVerb: string | null = null;
+    action: string | null = null;
+    actionTarget: number = -1;
+    option: string | null = null;
+    childId: number[] | null = null;
+    childX: number[] | null = null;
+    childY: number[] | null = null;
 }
 
-fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/scripts/interfaces`, { recursive: true });
-for (let i = 0; i < interfaces.length; i++) {
-    const com = interfaces[i];
-    if (!com || com.id !== com.rootLayer) {
-        // only want to iterate over root layers
-        continue;
-    }
+const cache = new FileStream('data/pack/original');
+const interfaceData = cache.read(0, 3);
 
-    const name = pack[com.id];
-    fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/scripts/interfaces/${name}.if`, convert(com));
+if (!interfaceData) {
+    printFatalError('No interface data in cache');
+    process.exit(1);
 }
+
+IfType.unpack(new Jagfile(new Packet(interfaceData)));
+IfType.exportOrder();
+IfType.exportSrc();

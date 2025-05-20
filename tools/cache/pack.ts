@@ -11,7 +11,7 @@ try {
     await packClient();
 } catch (err) {
     if (err instanceof Error) {
-        console.log(err.message);
+        console.log(err);
     }
 
     process.exit(1);
