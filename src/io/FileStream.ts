@@ -1,4 +1,5 @@
 import fs from 'fs';
+import zlib from 'zlib';
 
 import Packet from '#/io/Packet.js';
 import RandomAccessFile from '#/util/RandomAccessFile.js';
@@ -33,7 +34,7 @@ export default class FileStream {
         return this.idx[index].length / 6;
     }
 
-    read(index: number, file: number): Uint8Array | null {
+    read(index: number, file: number, decompress: boolean = false): Uint8Array | null {
         if (!this.dat) {
             return null;
         }
@@ -93,7 +94,15 @@ export default class FileStream {
             sector = nextSector;
         }
 
-        return data.data;
+        if (!decompress) {
+            return data.data;
+        }
+
+        if (index === 0) {
+            return data.data;
+        } else {
+            return zlib.gunzipSync(data.data);
+        }
     }
 
     write(index: number, file: number, data: Uint8Array | Buffer | Packet, overwrite: boolean = false): boolean {
