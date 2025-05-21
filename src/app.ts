@@ -1,6 +1,5 @@
 import fs from 'fs';
 
-
 import { collectDefaultMetrics, register } from 'prom-client';
 
 import { packClient, packServer } from '#/cache/PackAll.js';
@@ -33,9 +32,9 @@ if (!fs.existsSync('data/pack/client/config') || !fs.existsSync('data/pack/serve
 }
 
 if (Environment.EASY_STARTUP) {
-    createWorker('./login.ts');
-    createWorker('./friend.ts');
-    createWorker('./logger.ts');
+    createWorker('./src/login.ts');
+    createWorker('./src/friend.ts');
+    createWorker('./src/logger.ts');
 }
 
 await World.start();
