@@ -38,8 +38,12 @@ export type WebSocketData = {
     remoteAddress: string
 };
 
+export type WebSocketRoutes = {
+    '/': Response
+};
+
 export async function startWeb() {
-    Bun.serve<WebSocketData>({
+    Bun.serve<WebSocketData, WebSocketRoutes>({
         port: Environment.WEB_PORT,
         async fetch(req, server) {
             const url = new URL(req.url ?? `', 'http://${req.headers.get('host')}`);
