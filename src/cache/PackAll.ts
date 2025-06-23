@@ -19,6 +19,8 @@ import { packClientMedia } from '#tools/pack/sprite/media.js';
 import { packClientTexture } from '#tools/pack/sprite/textures.js';
 import { packClientTitle } from '#tools/pack/sprite/title.js';
 import { generateServerSymbols } from '#tools/pack/symbols.js';
+import FileStream from '#/io/FileStream.js';
+import { packClientVersionList } from '#tools/pack/versionlist/pack.js';
 
 export async function packServer() {
     if (!fs.existsSync('RuneScriptCompiler.jar')) {
@@ -66,6 +68,8 @@ export async function packServer() {
 }
 
 export async function packClient() {
+    const cache = new FileStream('data/pack', true);
+
     if (parentPort) {
         parentPort.postMessage({
             type: 'dev_progress',
@@ -73,16 +77,17 @@ export async function packClient() {
         });
     }
 
-    await packClientTitle();
-    packClientInterface();
-    await packClientMedia();
-    packClientModel();
-    await packClientTexture();
-    packClientWordenc();
-    packClientSound();
+    await packClientTitle(cache);
+    packClientInterface(cache);
+    await packClientMedia(cache);
+    packClientVersionList(cache);
+    await packClientTexture(cache);
+    packClientWordenc(cache);
+    packClientSound(cache);
 
-    packClientMap();
-    packClientMusic();
+    packClientModel(cache);
+    packClientMap(cache);
+    packClientMusic(cache);
 
     if (parentPort) {
         parentPort.postMessage({

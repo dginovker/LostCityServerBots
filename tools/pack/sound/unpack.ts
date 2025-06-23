@@ -1,63 +1,105 @@
 import fs from 'fs';
+import path from 'path';
 
 import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
+import FileStream from '#/io/FileStream.js';
+import { SynthPack } from '#/util/PackFile.js';
+import { listFilesExt } from '#/util/Parse.js';
+import { printWarning } from '#/util/Logger.js';
 
 if (!fs.existsSync(`${Environment.BUILD_SRC_DIR}/sounds`)) {
     fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/sounds`, { recursive: true });
 }
 
-// TODO: doesn't -need- to be global from Wave's perspective
-let pack = '';
-let order = '';
+// let pack = '';
 
 class Wave {
     static tracks: Wave[] = [];
+    static order: number[] = [];
 
-    static unpack(dat: Packet) {
-        while (dat.available > 0) {
-            const id = dat.g2();
+    static unpack(buf: Packet) {
+        if (!fs.existsSync(`${Environment.BUILD_SRC_DIR}/scripts/synth`)) {
+            fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/scripts/synth`);
+        }
+
+        // can't trust synth IDs to remain stable
+        const existingFiles = listFilesExt(`${Environment.BUILD_SRC_DIR}/synth`, '.synth');
+        const crcs: Map<number, string> = new Map();
+        
+        for (const file of existingFiles) {
+            const data = fs.readFileSync(file);
+            const crc = Packet.getcrc(data, 0, data.length);
+
+            if (crcs.get(crc)) {
+                printWarning(`${file} has CRC collision with ${crcs.get(crc)}`);
+            }
+        
+            crcs.set(crc, path.basename(file));
+        }
+
+        const processed: string[] = [];
+        while (buf.available > 0) {
+            const id = buf.g2();
             if (id === 65535) {
                 break;
             }
 
-            const start = dat.pos;
+            this.order.push(id);
+
+            const start = buf.pos;
             Wave.tracks[id] = new Wave();
-            Wave.tracks[id].decode(dat);
-            const end = dat.pos;
+            Wave.tracks[id].unpack(buf);
+            const end = buf.pos;
 
-            order += `${id}\n`;
+            const data = new Uint8Array(end - start);
+            buf.pos = start;
+            buf.gdata(data, 0, data.length);
 
-            const data = new Uint8Array(end - start - start);
-            dat.pos = start;
-            dat.gdata(data, 0, data.length);
-            dat.pos = start;
+            const crc = Packet.getcrc(data, 0, data.length);
+            const existing = crcs.get(crc);
 
-            fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/synth/sound_${id}.synth`, data);
+            if (existing && processed.indexOf(existing) === -1) {
+                SynthPack.register(id, path.basename(existing, path.extname(existing)));
+
+                const filePath = existingFiles.find(x => x.endsWith(`/${existing}`));
+                if (!filePath) {
+                    printWarning(`${existing} should exist but does not`);
+
+                    fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/synth/${existing}`, data);
+                } else {
+                    fs.writeFileSync(filePath, data);
+                }
+
+                processed.push(existing);
+            } else {
+                const name = `sound_${id}`;
+                SynthPack.register(id, name);
+                fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/synth/${name}.synth`, data);
+            }
         }
 
-        for (let i = 0; i < Wave.tracks.length; i++) {
-            pack += `${i}=sound_${i}\n`;
-        }
+        SynthPack.save();
+        fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/synth.order`, this.order.join('\n') + '\n');
     }
 
     tones: Tone[] = [];
     loopBegin = 0;
     loopEnd = 0;
 
-    decode(dat: Packet) {
+    unpack(buf: Packet) {
         for (let i = 0; i < 10; i++) {
-            if (dat.g1() != 0) {
-                dat.pos--;
+            if (buf.g1() != 0) {
+                buf.pos--;
 
                 this.tones[i] = new Tone();
-                this.tones[i].decode(dat);
+                this.tones[i].unpack(buf);
             }
         }
 
-        this.loopBegin = dat.g2();
-        this.loopEnd = dat.g2();
+        this.loopBegin = buf.g2();
+        this.loopEnd = buf.g2();
     }
 }
 
@@ -78,58 +120,58 @@ class Tone {
     length = 0;
     start = 0;
 
-    decode(dat: Packet) {
+    unpack(buf: Packet) {
         this.frequencyBase = new Envelope();
-        this.frequencyBase.decode(dat);
+        this.frequencyBase.unpack(buf);
 
         this.amplitudeBase = new Envelope();
-        this.amplitudeBase.decode(dat);
+        this.amplitudeBase.unpack(buf);
 
-        if (dat.g1() != 0) {
-            dat.pos--;
+        if (buf.g1() != 0) {
+            buf.pos--;
 
             this.frequencyModRate = new Envelope();
-            this.frequencyModRate.decode(dat);
+            this.frequencyModRate.unpack(buf);
 
             this.frequencyModRange = new Envelope();
-            this.frequencyModRange.decode(dat);
+            this.frequencyModRange.unpack(buf);
         }
 
-        if (dat.g1() != 0) {
-            dat.pos--;
+        if (buf.g1() != 0) {
+            buf.pos--;
 
             this.amplitudeModRate = new Envelope();
-            this.amplitudeModRate.decode(dat);
+            this.amplitudeModRate.unpack(buf);
 
             this.amplitudeModRange = new Envelope();
-            this.amplitudeModRange.decode(dat);
+            this.amplitudeModRange.unpack(buf);
         }
 
-        if (dat.g1() != 0) {
-            dat.pos--;
+        if (buf.g1() != 0) {
+            buf.pos--;
 
             this.release = new Envelope();
-            this.release.decode(dat);
+            this.release.unpack(buf);
 
             this.attack = new Envelope();
-            this.attack.decode(dat);
+            this.attack.unpack(buf);
         }
 
         for (let i = 0; i < 10; i++) {
-            const volume = dat.gsmart();
+            const volume = buf.gsmart();
             if (volume === 0) {
                 break;
             }
 
             this.harmonicVolume[i] = volume;
-            this.harmonicSemitone[i] = dat.gsmarts();
-            this.harmonicDelay[i] = dat.gsmart();
+            this.harmonicSemitone[i] = buf.gsmarts();
+            this.harmonicDelay[i] = buf.gsmart();
         }
 
-        this.reverbDelay = dat.gsmart();
-        this.reverbVolume = dat.gsmart();
-        this.length = dat.g2();
-        this.start = dat.g2();
+        this.reverbDelay = buf.gsmart();
+        this.reverbVolume = buf.gsmart();
+        this.length = buf.g2();
+        this.start = buf.g2();
     }
 }
 
@@ -141,21 +183,21 @@ class Envelope {
     shapeDelta: number[] = [];
     shapePeak: number[] = [];
 
-    decode(dat: Packet) {
-        this.form = dat.g1();
-        this.start = dat.g4();
-        this.end = dat.g4();
+    unpack(buf: Packet) {
+        this.form = buf.g1();
+        this.start = buf.g4();
+        this.end = buf.g4();
 
-        this.length = dat.g1();
+        this.length = buf.g1();
         for (let i = 0; i < this.length; i++) {
-            this.shapeDelta[i] = dat.g2();
-            this.shapePeak[i] = dat.g2();
+            this.shapeDelta[i] = buf.g2();
+            this.shapePeak[i] = buf.g2();
         }
     }
 }
 
-const sounds = Jagfile.load('data/client/sounds');
-
+const cache = new FileStream('data/unpack');
+const sounds = new Jagfile(new Packet(cache.read(0, 8)!));
 const soundsData = sounds.read('sounds.dat');
 
 if (!soundsData) {
@@ -164,5 +206,5 @@ if (!soundsData) {
 
 Wave.unpack(soundsData);
 
-fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/synth.pack`, pack);
-fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/synth.order`, order);
+// fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/synth.pack`, pack);
+// fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/pack/synth.order`, order);

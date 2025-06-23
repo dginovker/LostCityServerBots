@@ -20,15 +20,16 @@ for (let i = 0; i < modelCount; i++) {
     }
     const name = ModelPack.getById(i);
 
-    const model = cache.read(1, i);
-    if (!model) {
-        printWarning(`Missing model ${name}`);
-        continue;
-    }
-
     const existingFile = existingFiles.find(x => x.endsWith(`/${name}.ob2`));
     const destFile = existingFile ?? `${Environment.BUILD_SRC_DIR}/models/_unpack/${name}.ob2`;
-    fs.writeFileSync(destFile, zlib.gunzipSync(model));
+
+    const model = cache.read(1, i);
+    if (model) {
+        fs.writeFileSync(destFile, zlib.gunzipSync(model));
+    } else {
+        printWarning(`Missing model ${name}`);
+        fs.writeFileSync(destFile, '');
+    }
 }
 
 ModelPack.save();

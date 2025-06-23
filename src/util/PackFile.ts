@@ -189,8 +189,8 @@ function regenScriptPack(pack: PackFile) {
 }
 
 export const AnimSetPack = new PackFile('animset', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.anim');
-export const AnimPack = new PackFile('anim', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.frame');
-export const BasePack = new PackFile('base', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.base');
+export const AnimPack = new PackFile('anim', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.frame', false);
+export const BasePack = new PackFile('base', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.base', false);
 export const CategoryPack = new PackFile('category', validateCategoryPack);
 export const DbRowPack = new PackFile('dbrow', validateConfigPack, '.dbrow', true, false, false, true);
 export const DbTablePack = new PackFile('dbtable', validateConfigPack, '.dbtable', true, false, false, true);

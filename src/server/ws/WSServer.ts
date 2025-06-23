@@ -3,7 +3,6 @@ import http, { IncomingMessage } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 
 import World from '#/engine/World.js';
-import Packet from '#/io/Packet.js';
 import { getPublicPerDeploymentToken } from '#/io/PemUtil.js';
 import { LoggerEventType } from '#/server/logger/LoggerEventType.js';
 import NullClientSocket from '#/server/NullClientSocket.js';
@@ -68,13 +67,6 @@ export default class WSServer {
 
         this.wss.on('connection', (ws: WebSocket, req) => {
             const client = new WSClientSocket(ws, getIp(req) ?? 'unknown');
-
-            if (Environment.ENGINE_REVISION <= 225) {
-                const seed = new Packet(new Uint8Array(8));
-                seed.p4(Math.floor(Math.random() * 0x00ffffff));
-                seed.p4(Math.floor(Math.random() * 0xffffffff));
-                client.send(seed.data);
-            }
 
             ws.on('message', (data: Buffer) => {
                 try {

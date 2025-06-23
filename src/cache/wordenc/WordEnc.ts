@@ -1,6 +1,3 @@
-import fs from 'fs';
-
-
 import WordEncBadWords from '#/cache/wordenc/WordEncBadWords.js';
 import WordEncDomains from '#/cache/wordenc/WordEncDomains.js';
 import WordEncFragments from '#/cache/wordenc/WordEncFragments.js';
@@ -35,22 +32,8 @@ export default class WordEnc {
 
     private static whitelist = ['cook', "cook's", 'cooks', 'seeks', 'sheet'];
 
-    static load(dir: string): void {
-        if (!fs.existsSync(`${dir}/client/wordenc`)) {
-            return;
-        }
-
-        const wordenc = Jagfile.load(`${dir}/client/wordenc`);
-        this.readAll(wordenc);
-    }
-
-    static async loadAsync(dir: string): Promise<void> {
-        const file = await fetch(`${dir}/client/wordenc`);
-        if (!file.ok) {
-            return;
-        }
-
-        const wordenc = new Jagfile(new Packet(new Uint8Array(await file.arrayBuffer())));
+    static load(_dir: string): void {
+        const wordenc = Jagfile.load('data/raw/wordenc');
         this.readAll(wordenc);
     }
 

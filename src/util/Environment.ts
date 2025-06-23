@@ -99,7 +99,7 @@ export default {
     // auto-update compiler on startup
     BUILD_STARTUP_UPDATE: tryParseBoolean(process.env.BUILD_STARTUP_UPDATE, true),
     // used to check if we're producing the original cache without edits
-    BUILD_VERIFY: tryParseBoolean(process.env.BUILD_VERIFY, true),
+    BUILD_VERIFY: tryParseBoolean(process.env.BUILD_VERIFY, false),
     // used to keep some semblance of sanity in our folder structure
     BUILD_VERIFY_FOLDER: tryParseBoolean(process.env.BUILD_VERIFY_FOLDER, true),
     // used for unpacking/custom development

@@ -32,7 +32,6 @@ import VarNpcType from '#/cache/config/VarNpcType.js';
 import VarPlayerType from '#/cache/config/VarPlayerType.js';
 import VarSharedType from '#/cache/config/VarSharedType.js';
 import { CrcBuffer32, makeCrcs } from '#/cache/CrcTable.js';
-import { preloadClient } from '#/cache/PreloadedPacks.js';
 import WordEnc from '#/cache/wordenc/WordEnc.js';
 import { BlockWalk } from '#/engine/entity/BlockWalk.js';
 import { EntityLifeCycle } from '#/engine/entity/EntityLifeCycle.js';
@@ -303,9 +302,6 @@ class World {
 
         // todo: check if any jag files changed (transmitted) then reload crcs, instead of always
         makeCrcs();
-
-        // todo: detect and reload static data (like maps)
-        preloadClient();
     }
 
     async start(skipMaps = false, startCycle = true): Promise<void> {
@@ -922,7 +918,7 @@ class World {
 
                 player.client.state = 1;
 
-                if (Environment.ENGINE_REVISION > 225 && player.staffModLevel >= 2) {
+                if (player.staffModLevel >= 2) {
                     player.client.send(Uint8Array.from([19]));
                 } else if (player.staffModLevel >= 1) {
                     player.client.send(Uint8Array.from([18]));
@@ -2096,7 +2092,7 @@ class World {
             // todo: login encoders/decoders
             client.opcode = World.loginBuf.g1();
 
-            if (Environment.ENGINE_REVISION > 225 && client.opcode === 14) {
+            if (client.opcode === 14) {
                 client.waiting = 1;
             } else if (client.opcode === 16 || client.opcode === 18) {
                 client.waiting = -1;
@@ -2124,7 +2120,7 @@ class World {
         World.loginBuf.pos = 0;
         client.read(World.loginBuf.data, 0, client.waiting);
 
-        if (Environment.ENGINE_REVISION > 225 && client.opcode === 14) {
+        if (client.opcode === 14) {
             client.send(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0]));
 
             const _loginServer = World.loginBuf.g1();

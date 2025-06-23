@@ -9,7 +9,11 @@ export default class FileStream {
     idx: RandomAccessFile[] = [];
 
     constructor(dir: string, createNew: boolean = false, readOnly: boolean = false) {
-        if (createNew) {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        if (createNew || !fs.existsSync(`${dir}/main_file_cache.dat`)) {
             fs.writeFileSync(`${dir}/main_file_cache.dat`, '');
 
             for (let i: number = 0; i <= 4; i++) {

@@ -16,7 +16,9 @@ if (!data) {
 
 const versionlist = new Jagfile(new Packet(data!));
 
-fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/maps`, { recursive: true });
+if (!fs.existsSync(`${Environment.BUILD_SRC_DIR}/maps`)) {
+    fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/maps`, { recursive: true });
+}
 
 function readLand(data: Packet) {
     const heightmap: number[][][] = [];
@@ -157,10 +159,6 @@ for (let i = 0; i < mapIndex.length / 7; i++) {
     MapPack.register(landFile, `m${mapX}_${mapZ}`);
     MapPack.register(locFile, `l${mapX}_${mapZ}`);
 
-    if (fs.existsSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`)) {
-        continue;
-    }
-
     printInfo(`Unpacking map for ${mapX}_${mapZ}`);
     const landData = cache.read(4, landFile, true);
     const locData = cache.read(4, locFile, true);
@@ -169,6 +167,22 @@ for (let i = 0; i < mapIndex.length / 7; i++) {
     }
 
     // todo: preserve npc and obj sections
+    const saved = [];
+    if (fs.existsSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`)) {
+        const existing = fs.readFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, 'utf8').replace(/\r/g, '').split('\n');
+
+        let hasNpcObj = false;
+        for (let i = 0; i < existing.length; i++) {
+            const line = existing[i];
+            if (line.startsWith('==== NPC ====') || line.startsWith('==== OBJ ====')) {
+                hasNpcObj = true;
+            }
+
+            if (hasNpcObj) {
+                saved.push(line);
+            }
+        }
+    }
 
     if (landData) {
         const land = readLand(new Packet(landData));
@@ -178,11 +192,11 @@ for (let i = 0; i < mapIndex.length / 7; i++) {
             for (let x = 0; x < 64; x++) {
                 for (let z = 0; z < 64; z++) {
                     let str = '';
-    
+
                     if (land.heightmap[level][x][z] !== -1) {
                         str += `h${land.heightmap[level][x][z]} `;
                     }
-    
+
                     if (land.overlayIds[level][x][z] !== -1) {
                         if (land.overlayShape[level][x][z] !== -1 && land.overlayShape[level][x][z] !== 0 && land.overlayRotation[level][x][z] !== -1 && land.overlayRotation[level][x][z] !== 0) {
                             str += `o${land.overlayIds[level][x][z]};${land.overlayShape[level][x][z]};${land.overlayRotation[level][x][z]} `;
@@ -192,15 +206,15 @@ for (let i = 0; i < mapIndex.length / 7; i++) {
                             str += `o${land.overlayIds[level][x][z]} `;
                         }
                     }
-    
+
                     if (land.flags[level][x][z] !== -1) {
                         str += `f${land.flags[level][x][z]} `;
                     }
-    
+
                     if (land.underlay[level][x][z] !== -1) {
                         str += `u${land.underlay[level][x][z]} `;
                     }
-    
+
                     if (str.length) {
                         section += `${level} ${x} ${z}: ${str.trimEnd()}\n`;
                     }
@@ -221,7 +235,7 @@ for (let i = 0; i < mapIndex.length / 7; i++) {
                     if (!locs[level][x][z].length) {
                         continue;
                     }
-    
+
                     for (let i = 0; i < locs[level][x][z].length; i++) {
                         const loc = locs[level][x][z][i];
                         if (loc.angle === 0) {
@@ -233,8 +247,12 @@ for (let i = 0; i < mapIndex.length / 7; i++) {
                 }
             }
         }
-    
+
         fs.appendFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, '\n==== LOC ====\n' + section);
+    }
+
+    if (saved.length) {
+        fs.appendFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, '\n' + saved.join('\n'));
     }
 }
 console.timeEnd('maps');

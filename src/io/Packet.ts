@@ -210,12 +210,6 @@ export default class Packet extends DoublyLinkable {
         this.data[this.pos++] = value;
     }
 
-    ip2(value: number): void {
-        this.pos += 2;
-        this.data[this.pos - 1] = value >> 8;
-        this.data[this.pos - 2] = value;
-    }
-
     p3(value: number): void {
         this.data[this.pos++] = value >> 16;
         this.data[this.pos++] = value >> 8;
@@ -227,14 +221,6 @@ export default class Packet extends DoublyLinkable {
         this.data[this.pos++] = value >> 16;
         this.data[this.pos++] = value >> 8;
         this.data[this.pos++] = value;
-    }
-
-    ip4(value: number): void {
-        this.pos += 4;
-        this.data[this.pos - 1] = value >> 24;
-        this.data[this.pos - 2] = value >> 16;
-        this.data[this.pos - 3] = value >> 8;
-        this.data[this.pos - 4] = value;
     }
 
     p8(value: bigint): void {
@@ -304,21 +290,17 @@ export default class Packet extends DoublyLinkable {
     }
 
     g1b(): number {
-        let value = this.data[this.pos++];
-        if (value > 0x7F) {
-            value -= 0xFF;
-        }
-        return value;
+        return this.data[this.pos++] << 24 >> 24;
     }
 
     g2(): number {
-        return (this.data[this.pos++] << 8) | this.data[this.pos++];
+        return ((this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
     }
 
     g2s(): number {
-        let value = (this.data[this.pos++] << 8) | this.data[this.pos++];
+        let value = ((this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
         if (value > 0x7FFF) {
-            value -= 0x8000;
+            value -= 0x10000;
         }
         return value;
     }
@@ -329,30 +311,15 @@ export default class Packet extends DoublyLinkable {
     }
 
     g3(): number {
-        return (
-            (this.data[this.pos++] << 16) |
-            (this.data[this.pos++] << 8) |
-            this.data[this.pos++]
-        );
+        return ((this.data[this.pos++] << 16) | (this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
     }
 
     g4(): number {
-        return (
-            (this.data[this.pos++] << 24) |
-            (this.data[this.pos++] << 16) |
-            (this.data[this.pos++] << 8) |
-            this.data[this.pos++]
-        );
-    }
-
-    ig4(): number {
-        this.pos += 4;
-        return (
-            (this.data[this.pos - 1] << 24) |
-            (this.data[this.pos - 2] << 16) |
-            (this.data[this.pos - 3] << 8) |
-            this.data[this.pos - 4]
-        );
+        let value = ((this.data[this.pos++] << 24) | (this.data[this.pos++] << 16) | (this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
+        if (value > 0x7FFFFFFF) {
+            value -= 0x100000000;
+        }
+        return value;
     }
 
     g8(): bigint {
@@ -381,11 +348,13 @@ export default class Packet extends DoublyLinkable {
     }
 
     gsmarts(): number {
-        return this.data[this.pos] < 0x80 ? this.g1() - 64 : this.g2() - 0xc000;
+        const n = this.data[this.pos] & 0xFF;
+        return n < 128 ? this.g1() - 64 : this.g2() - 49152;
     }
 
     gsmart(): number {
-        return this.data[this.pos] < 0x80 ? this.g1() : this.g2() - 0x8000;
+        const n = this.data[this.pos] & 0xFF;
+        return n < 128 ? this.g1() : this.g2() - 32768;
     }
 
     bits(): void {

@@ -5,7 +5,7 @@ import FileStream from '#/io/FileStream.js';
 // import Packet from '#/io/Packet.js';
 
 // todo
-export function packClientVersionList() {
+export function packClientVersionList(cache: FileStream) {
     // const versionlist = new Jagfile();
 
     // const modelVersion = Packet.alloc(3);
@@ -62,9 +62,14 @@ export function packClientVersionList() {
 
     // versionlist.save('data/pack/client/versionlist');
 
-    const cache = new FileStream('data/pack');
-    cache.write(0, 5, fs.readFileSync('data/versionlist'));
+    cache.write(0, 5, fs.readFileSync('data/raw/versionlist'));
 }
 
-// const cache = new FileStream('data/pack');
-// fs.writeFileSync('data/versionlist', cache.read(0, 5)!);
+// const cache = new FileStream('data/unpack');
+// fs.writeFileSync('data/raw/title', cache.read(0, 1)!);
+// fs.writeFileSync('data/raw/config', cache.read(0, 2)!);
+// fs.writeFileSync('data/raw/media', cache.read(0, 4)!);
+// fs.writeFileSync('data/raw/versionlist', cache.read(0, 5)!);
+// fs.writeFileSync('data/raw/textures', cache.read(0, 6)!);
+// fs.writeFileSync('data/raw/wordenc', cache.read(0, 7)!);
+// fs.writeFileSync('data/raw/sounds', cache.read(0, 8)!);

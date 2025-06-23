@@ -1,19 +1,17 @@
 import fs from 'fs';
+import path from 'path';
 
 import GZip from '#/io/GZip.js';
 import Environment from '#/util/Environment.js';
 import FileStream from '#/io/FileStream.js';
 import { MidiPack } from '#/util/PackFile.js';
+import { listFilesExt } from '#/util/Parse.js';
 
-export function packClientMusic() {
-    const cache = new FileStream('data/pack');
-
-    fs.readdirSync(`${Environment.BUILD_SRC_DIR}/midi`).forEach(f => {
-        if (!f.endsWith('.mid')) {
-            return;
-        }
-
-        const id = MidiPack.getByName(f.substring(0, f.lastIndexOf('.')));
-        cache.write(3, id, GZip.compress(fs.readFileSync(`${Environment.BUILD_SRC_DIR}/midi/${f}`)), true);
-    });
+export function packClientMusic(cache: FileStream) {
+    const midis = listFilesExt(`${Environment.BUILD_SRC_DIR}/midi`, '.mid');
+    for (const file of midis) {
+        const basename = path.basename(file);
+        const id = MidiPack.getByName(basename.substring(0, basename.lastIndexOf('.')));
+        cache.write(3, id, GZip.compress(fs.readFileSync(file)));
+    }
 }

@@ -4,14 +4,9 @@ import FileStream from '#/io/FileStream.js';
 import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
-import { shouldBuild } from '#/util/PackFile.js';
 import { packInterface } from '#tools/pack/interface/PackShared.js';
 
-export function packClientInterface() {
-    if (!shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.if', 'data/pack/client/interface')) {
-        return;
-    }
-
+export function packClientInterface(cache: FileStream) {
     const jag = new Jagfile();
     const data = packInterface(false);
 
@@ -25,6 +20,5 @@ export function packClientInterface() {
     jag.save('data/pack/client/interface');
     data.release();
 
-    const cache = new FileStream('data/pack');
     cache.write(0, 3, fs.readFileSync('data/pack/client/interface'));
 }

@@ -14,7 +14,6 @@ import ParamType from '#/cache/config/ParamType.js';
 import ScriptVarType from '#/cache/config/ScriptVarType.js';
 import SeqType from '#/cache/config/SeqType.js';
 import VarPlayerType from '#/cache/config/VarPlayerType.js';
-import { PRELOADED, PRELOADED_CRC } from '#/cache/PreloadedPacks.js';
 import { CoordGrid } from '#/engine/CoordGrid.js';
 import { BlockWalk } from '#/engine/entity/BlockWalk.js';
 import BuildArea from '#/engine/entity/BuildArea.js';
@@ -54,8 +53,8 @@ import IfClose from '#/network/game/server/model/IfClose.js';
 import IfSetTab from '#/network/game/server/model/IfSetTab.js';
 import LastLoginInfo from '#/network/game/server/model/LastLoginInfo.js';
 import MessageGame from '#/network/game/server/model/MessageGame.js';
-import MidiJingle from '#/network/game/server/model/MidiJingle.js';
-import MidiSong from '#/network/game/server/model/MidiSong.js';
+// import MidiJingle from '#/network/game/server/model/MidiJingle.js';
+// import MidiSong from '#/network/game/server/model/MidiSong.js';
 import ResetAnims from '#/network/game/server/model/ResetAnims.js';
 import ResetClientVarCache from '#/network/game/server/model/ResetClientVarCache.js';
 import TutOpen from '#/network/game/server/model/TutOpen.js';
@@ -535,7 +534,7 @@ export default class Player extends PathingEntity {
         this.closeModal();
         // tabs could have been updated while reconnecting, make sure we sync them now
         for (let i = 0; i < this.tabs.length; i++) {
-            this.write(new IfSetTab(i, this.tabs[i]));
+            this.write(new IfSetTab(this.tabs[i], i));
         }
         this.refreshInvs();
         for (let i = 0; i < this.stats.length; i++) {
@@ -1850,23 +1849,24 @@ export default class Player extends PathingEntity {
             return;
         }
 
-        const song = PRELOADED.get(name + '.mid');
-        const crc = PRELOADED_CRC.get(name + '.mid');
-        if (song && crc) {
-            const length = song.length;
-            this.write(new MidiSong(name, crc, length));
-        }
+        // const song = PRELOADED.get(name + '.mid');
+        // const crc = PRELOADED_CRC.get(name + '.mid');
+        // if (song && crc) {
+        //     const length = song.length;
+        //     this.write(new MidiSong(name, crc, length));
+        // }
     }
 
-    playJingle(delay: number, name: string): void {
+    playJingle(_delay: number, name: string): void {
         name = name.toLowerCase().replaceAll('_', ' ');
         if (!name) {
             return;
         }
-        const jingle = PRELOADED.get(name + '.mid');
-        if (jingle) {
-            this.write(new MidiJingle(delay, jingle));
-        }
+
+        // const jingle = PRELOADED.get(name + '.mid');
+        // if (jingle) {
+        //     this.write(new MidiJingle(delay, jingle));
+        // }
     }
 
     openMainModal(com: number) {

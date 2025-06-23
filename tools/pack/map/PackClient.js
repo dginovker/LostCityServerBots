@@ -4,7 +4,8 @@ import GZip from '#/io/GZip.js';
 import Packet2 from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { MapPack } from '#/util/PackFile.js';
-import FileStream from '#/io/FileStream.js';
+import { listFilesExt } from '#/util/Parse.js';
+import path from 'path';
 
 function readMap(map) {
     let land = [];
@@ -57,29 +58,19 @@ function readMap(map) {
     return { land, loc };
 }
 
-export function packClientMap() {
-    const cache = new FileStream('data/pack');
+export function packClientMap(cache) {
+    const maps = listFilesExt(`${Environment.BUILD_SRC_DIR}/maps`, '.jm2');
 
-    let queue = [];
+    for (const file of maps) {
+        const basename = path.basename(file, path.extname(file));
+        const [mapX, mapZ] = basename.slice(1).split('_');
 
-    fs.readdirSync(`${Environment.BUILD_SRC_DIR}/maps`)
-        .filter(f => f.endsWith('.jm2'))
-        .forEach(file => {
-            let [x, z] = file.slice(1).split('.').shift().split('_');
-            queue.push({ file, x, z });
-        });
-
-    if (!queue.length) {
-        return;
-    }
-
-    queue.forEach(({ file, x, z }) => {
-        let data = fs
-            .readFileSync(`${Environment.BUILD_SRC_DIR}/maps/${file}`, 'ascii')
+        const data = fs
+            .readFileSync(file, 'utf8')
             .replace(/\r/g, '')
             .split('\n')
             .filter(x => x.length);
-        let map = readMap(data);
+        const map = readMap(data);
 
         // encode land data
         {
@@ -235,7 +226,7 @@ export function packClientMap() {
                 }
             }
 
-            cache.write(4, MapPack.getByName(`m${x}_${z}`), GZip.compress(out.data));
+            cache.write(4, MapPack.getByName(`m${mapX}_${mapZ}`), GZip.compress(out.data));
             out.release();
         }
 
@@ -314,8 +305,8 @@ export function packClientMap() {
             }
 
             out.psmart(0); // end of map
-            cache.write(4, MapPack.getByName(`l${x}_${z}`), GZip.compress(out.data));
+            cache.write(4, MapPack.getByName(`l${mapX}_${mapZ}`), GZip.compress(out.data));
             out.release();
         }
-    });
+    }
 }

@@ -1,8 +1,8 @@
 import Packet from '#/io/Packet.js';
-import ClientProt225 from '#/network/game/client/codec/rs225/ClientProt225.js';
+import ClientProtBase from '#/network/game/client/codec/ClientProtBase.js';
 import IncomingMessage from '#/network/game/client/IncomingMessage.js';
 
 export default abstract class MessageDecoder<T extends IncomingMessage> {
-    abstract prot: ClientProt225;
+    abstract prot: ClientProtBase;
     abstract decode(buf: Packet, len: number): T;
 }

@@ -7,9 +7,7 @@ import FileStream from '#/io/FileStream.js';
 import { listFilesExt } from '#/util/Parse.js';
 import { AnimSetPack, ModelPack } from '#/util/PackFile.js';
 
-export function packClientModel() {
-    const cache = new FileStream('data/pack');
-
+export function packClientModel(cache: FileStream) {
     const models = listFilesExt(`${Environment.BUILD_SRC_DIR}/models`, '.ob2');
     for (const file of models) {
         const basename = path.basename(file);
@@ -24,5 +22,3 @@ export function packClientModel() {
         cache.write(2, id, GZip.compress(fs.readFileSync(file)));
     }
 }
-
-packClientModel();

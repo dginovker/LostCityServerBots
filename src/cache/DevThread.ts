@@ -37,6 +37,8 @@ async function processChangedFiles() {
                 error: err instanceof Error ? err.message : undefined
             });
         }
+
+        console.log(err);
     }
 
     processNextTimeout = null;
@@ -93,7 +95,7 @@ if (parentPort) {
 }
 
 trackDir(`${Environment.BUILD_SRC_DIR}/maps`);
-trackDir(`${Environment.BUILD_SRC_DIR}/songs`);
+trackDir(`${Environment.BUILD_SRC_DIR}/midi`);
 
 // title.jag
 trackDir(`${Environment.BUILD_SRC_DIR}/binary`);
