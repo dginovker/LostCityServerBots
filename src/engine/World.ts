@@ -31,7 +31,7 @@ import StructType from '#/cache/config/StructType.js';
 import VarNpcType from '#/cache/config/VarNpcType.js';
 import VarPlayerType from '#/cache/config/VarPlayerType.js';
 import VarSharedType from '#/cache/config/VarSharedType.js';
-import { CrcBuffer32, makeCrcs } from '#/cache/CrcTable.js';
+import { makeCrcs } from '#/cache/CrcTable.js';
 import { preloadClient } from '#/cache/PreloadedPacks.js';
 import WordEnc from '#/cache/wordenc/WordEnc.js';
 import { BlockWalk } from '#/engine/entity/BlockWalk.js';
@@ -98,6 +98,7 @@ import { WalkTriggerSetting } from '#/util/WalkTriggerSetting.js';
 import { createWorker } from '#/util/WorkerFactory.js';
 
 import InputTrackingBlob from './entity/tracking/InputEvent.js';
+import OnDemand from './OnDemand.js';
 
 const priv = forge.pki.privateKeyFromPem(Environment.STANDALONE_BUNDLE ? await (await fetch('data/config/private.pem')).text() : fs.readFileSync('data/config/private.pem', 'ascii'));
 
@@ -348,6 +349,8 @@ class World {
         }
 
         if (startCycle) {
+            OnDemand.cycle();
+
             this.nextTick = Date.now() + World.TICKRATE;
             this.cycle();
         }
@@ -2145,11 +2148,11 @@ class World {
             const crcs = new Uint8Array(9 * 4);
             World.loginBuf.gdata(crcs, 0, crcs.length);
 
-            if (CrcBuffer32 !== Packet.getcrc(crcs, 0, crcs.length)) {
-                client.send(Uint8Array.from([6]));
-                client.close();
-                return;
-            }
+            // if (CrcBuffer32 !== Packet.getcrc(crcs, 0, crcs.length)) {
+            //     client.send(Uint8Array.from([6]));
+            //     client.close();
+            //     return;
+            // }
 
             World.loginBuf.rsadec(priv);
 
@@ -2215,6 +2218,9 @@ class World {
                 reconnecting: client.opcode === 18,
                 hasSave: client.opcode === 18 ? typeof this.getPlayerByUsername(username) !== 'undefined' : false
             });
+        } else if (client.opcode === 15) {
+            client.state = 2;
+            client.send(new Uint8Array(8));
         } else {
             client.terminate();
         }

@@ -131,7 +131,6 @@ export default class Packet extends DoublyLinkable {
     private static readonly cacheUnimaginable: LinkList<Packet> = new LinkList();
 
     data: Uint8Array;
-    #view: DataView;
     pos: number;
     bitPos: number;
 
@@ -139,7 +138,6 @@ export default class Packet extends DoublyLinkable {
         super();
 
         this.data = src;
-        this.#view = new DataView(src.buffer, src.byteOffset, src.byteLength);
         this.pos = 0;
         this.bitPos = 0;
     }
@@ -204,38 +202,46 @@ export default class Packet extends DoublyLinkable {
     }
 
     p1(value: number): void {
-        this.#view.setUint8(this.pos++, value);
+        this.data[this.pos++] = value;
     }
 
     p2(value: number): void {
-        this.#view.setUint16(this.pos, value);
-        this.pos += 2;
+        this.data[this.pos++] = value >> 8;
+        this.data[this.pos++] = value;
     }
 
     ip2(value: number): void {
-        this.#view.setUint16(this.pos, value, true);
         this.pos += 2;
+        this.data[this.pos - 1] = value >> 8;
+        this.data[this.pos - 2] = value;
     }
 
     p3(value: number): void {
-        this.#view.setUint8(this.pos++, value >> 16);
-        this.#view.setUint16(this.pos, value);
-        this.pos += 2;
+        this.data[this.pos++] = value >> 16;
+        this.data[this.pos++] = value >> 8;
+        this.data[this.pos++] = value;
     }
 
     p4(value: number): void {
-        this.#view.setInt32(this.pos, value);
-        this.pos += 4;
+        this.data[this.pos++] = value >> 24;
+        this.data[this.pos++] = value >> 16;
+        this.data[this.pos++] = value >> 8;
+        this.data[this.pos++] = value;
     }
 
     ip4(value: number): void {
-        this.#view.setInt32(this.pos, value, true);
         this.pos += 4;
+        this.data[this.pos - 1] = value >> 24;
+        this.data[this.pos - 2] = value >> 16;
+        this.data[this.pos - 3] = value >> 8;
+        this.data[this.pos - 4] = value;
     }
 
     p8(value: bigint): void {
-        this.#view.setBigInt64(this.pos, value);
-        this.pos += 8;
+        const low = Number(value >> 32n);
+        const high = Number(value & 0xFFFFFFFFn);
+        this.p4(low);
+        this.p4(high);
     }
 
     pbool(value: boolean): void {
@@ -245,9 +251,9 @@ export default class Packet extends DoublyLinkable {
     pjstr(str: string, terminator: number = 10): void {
         const length: number = str.length;
         for (let i: number = 0; i < length; i++) {
-            this.#view.setUint8(this.pos++, str.charCodeAt(i));
+            this.p1(str.charCodeAt(i));
         }
-        this.#view.setUint8(this.pos++, terminator);
+        this.p1(terminator);
     }
 
     pdata(src: Uint8Array, offset: number, length: number): void {
@@ -256,15 +262,19 @@ export default class Packet extends DoublyLinkable {
     }
 
     psize4(size: number): void {
-        this.#view.setUint32(this.pos - size - 4, size);
+        this.data[this.pos - size - 4] = size >> 24;
+        this.data[this.pos - size - 3] = size >> 16;
+        this.data[this.pos - size - 2] = size >> 8;
+        this.data[this.pos - size - 1] = size;
     }
 
     psize2(size: number): void {
-        this.#view.setUint16(this.pos - size - 2, size);
+        this.data[this.pos - size - 2] = size >> 8;
+        this.data[this.pos - size - 1] = size;
     }
 
     psize1(size: number): void {
-        this.#view.setUint8(this.pos - size - 1, size);
+        this.data[this.pos - size - 1] = size;
     }
 
     psmarts(value: number): void {
@@ -290,47 +300,65 @@ export default class Packet extends DoublyLinkable {
     // ----
 
     g1(): number {
-        return this.#view.getUint8(this.pos++);
+        return this.data[this.pos++];
     }
 
     g1b(): number {
-        return this.#view.getInt8(this.pos++);
+        let value = this.data[this.pos++];
+        if (value > 0x7F) {
+            value -= 0xFF;
+        }
+        return value;
     }
 
     g2(): number {
-        this.pos += 2;
-        return this.#view.getUint16(this.pos - 2);
+        return (this.data[this.pos++] << 8) | this.data[this.pos++];
     }
 
     g2s(): number {
-        this.pos += 2;
-        return this.#view.getInt16(this.pos - 2);
+        let value = (this.data[this.pos++] << 8) | this.data[this.pos++];
+        if (value > 0x7FFF) {
+            value -= 0x8000;
+        }
+        return value;
     }
 
     ig2(): number {
         this.pos += 2;
-        return this.#view.getUint16(this.pos - 2, true);
+        return (this.data[this.pos - 1] << 8) | this.data[this.pos - 2];
     }
 
     g3(): number {
-        const result: number = (this.#view.getUint8(this.pos++) << 16) | this.#view.getUint16(this.pos);
-        this.pos += 2;
-        return result;
+        return (
+            (this.data[this.pos++] << 16) |
+            (this.data[this.pos++] << 8) |
+            this.data[this.pos++]
+        );
     }
 
     g4(): number {
-        this.pos += 4;
-        return this.#view.getInt32(this.pos - 4);
+        return (
+            (this.data[this.pos++] << 24) |
+            (this.data[this.pos++] << 16) |
+            (this.data[this.pos++] << 8) |
+            this.data[this.pos++]
+        );
     }
 
     ig4(): number {
         this.pos += 4;
-        return this.#view.getInt32(this.pos - 4, true);
+        return (
+            (this.data[this.pos - 1] << 24) |
+            (this.data[this.pos - 2] << 16) |
+            (this.data[this.pos - 3] << 8) |
+            this.data[this.pos - 4]
+        );
     }
 
     g8(): bigint {
-        this.pos += 8;
-        return this.#view.getBigInt64(this.pos - 8);
+        const low = this.g4();
+        const high = this.g4();
+        return (BigInt(low) << 32n) | BigInt(high);
     }
 
     gbool(): boolean {
@@ -341,7 +369,7 @@ export default class Packet extends DoublyLinkable {
         const length: number = this.data.length;
         let str: string = '';
         let b: number;
-        while ((b = this.#view.getUint8(this.pos++)) !== terminator && this.pos < length) {
+        while ((b = this.data[this.pos++]) !== terminator && this.pos < length) {
             str += String.fromCharCode(b);
         }
         return str;
@@ -353,11 +381,11 @@ export default class Packet extends DoublyLinkable {
     }
 
     gsmarts(): number {
-        return this.#view.getUint8(this.pos) < 0x80 ? this.g1() - 64 : this.g2() - 0xc000;
+        return this.data[this.pos] < 0x80 ? this.g1() - 64 : this.g2() - 0xc000;
     }
 
     gsmart(): number {
-        return this.#view.getUint8(this.pos) < 0x80 ? this.g1() : this.g2() - 0x8000;
+        return this.data[this.pos] < 0x80 ? this.g1() : this.g2() - 0x8000;
     }
 
     bits(): void {
@@ -375,14 +403,14 @@ export default class Packet extends DoublyLinkable {
         this.bitPos += n;
 
         for (; n > remaining; remaining = 8) {
-            value += (this.#view.getUint8(bytePos++) & Packet.bitmask[remaining]) << (n - remaining);
+            value += (this.data[bytePos++] & Packet.bitmask[remaining]) << (n - remaining);
             n -= remaining;
         }
 
         if (n == remaining) {
-            value += this.#view.getUint8(bytePos) & Packet.bitmask[remaining];
+            value += this.data[bytePos] & Packet.bitmask[remaining];
         } else {
-            value += (this.#view.getUint8(bytePos) >>> (remaining - n)) & Packet.bitmask[n];
+            value += (this.data[bytePos] >>> (remaining - n)) & Packet.bitmask[n];
         }
 
         return value;
@@ -393,19 +421,18 @@ export default class Packet extends DoublyLinkable {
         this.bitPos += n;
         let bytePos: number = pos >>> 3;
         let remaining: number = 8 - (pos & 7);
-        const view: DataView = this.#view;
 
         for (; n > remaining; remaining = 8) {
             const shift: number = (1 << remaining) - 1;
-            const byte: number = view.getUint8(bytePos);
-            view.setUint8(bytePos++, (byte & ~shift) | ((value >>> (n - remaining)) & shift));
+            const byte: number = this.data[bytePos];
+            this.data[bytePos++] = (byte & ~shift) | ((value >>> (n - remaining)) & shift);
             n -= remaining;
         }
 
         const r: number = remaining - n;
         const shift: number = (1 << n) - 1;
-        const byte: number = view.getUint8(bytePos);
-        view.setUint8(bytePos, (byte & (~shift << r)) | ((value & shift) << r));
+        const byte: number = this.data[bytePos];
+        this.data[bytePos] = (byte & (~shift << r)) | ((value & shift) << r);
     }
 
     rsaenc(pem: PrivateKey): void {

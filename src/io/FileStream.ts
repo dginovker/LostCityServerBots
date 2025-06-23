@@ -101,7 +101,7 @@ export default class FileStream {
         if (index === 0) {
             return data.data;
         } else {
-            return zlib.gunzipSync(data.data);
+            return new Uint8Array(zlib.gunzipSync(data.data));
         }
     }
 
