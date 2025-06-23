@@ -5,7 +5,7 @@ import Environment from '#/util/Environment.js';
 import { PackFile } from '#/util/PackFileBase.js';
 import { listFilesExt, loadDirExtFull } from '#/util/Parse.js';
 
-function validateFilesPack(pack: PackFile, path: string, ext: string): void {
+function validateFilesPack(pack: PackFile, path: string, ext: string, verify: boolean = true): void {
     pack.load(`${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
 
     const files = listFilesExt(path, ext);
@@ -17,18 +17,20 @@ function validateFilesPack(pack: PackFile, path: string, ext: string): void {
         fileNames.add(files[i]);
     }
 
-    for (let i = 0; i < files.length; i++) {
-        const name = files[i];
+    if (verify) {
+        for (let i = 0; i < files.length; i++) {
+            const name = files[i];
 
-        if (!pack.names.has(name)) {
-            throw new Error(`${pack.type}: ${name} is missing an ID line, you may need to edit ${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
+            if (!pack.names.has(name)) {
+                throw new Error(`${pack.type}: ${name} is missing an ID line, you may need to edit ${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
+            }
         }
-    }
 
-    if (Environment.BUILD_VERIFY_PACK) {
-        for (const name of pack.names) {
-            if (!fileNames.has(name)) {
-                throw new Error(`${pack.type}: ${name} was not found on your disk, you may need to edit ${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
+        if (Environment.BUILD_VERIFY_PACK) {
+            for (const name of pack.names) {
+                if (!fileNames.has(name)) {
+                    throw new Error(`${pack.type}: ${name} was not found on your disk, you may need to edit ${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
+                }
             }
         }
     }
@@ -186,6 +188,7 @@ function regenScriptPack(pack: PackFile) {
     pack.save();
 }
 
+export const AnimSetPack = new PackFile('animset', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.anim');
 export const AnimPack = new PackFile('anim', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.frame');
 export const BasePack = new PackFile('base', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.base');
 export const CategoryPack = new PackFile('category', validateCategoryPack);
@@ -199,6 +202,8 @@ export const InterfacePack = new PackFile('interface', validateInterfacePack);
 export const InvPack = new PackFile('inv', validateConfigPack, '.inv', true);
 export const LocPack = new PackFile('loc', validateConfigPack, '.loc');
 export const MesAnimPack = new PackFile('mesanim', validateConfigPack, '.mesanim', true, false, false, true);
+export const MapPack = new PackFile('map', validateFilesPack, `${Environment.BUILD_SRC_DIR}/maps`, '.jm2', false);
+export const MidiPack = new PackFile('midi', validateFilesPack, `${Environment.BUILD_SRC_DIR}/midi`, '.mid');
 export const ModelPack = new PackFile('model', validateFilesPack, `${Environment.BUILD_SRC_DIR}/models`, '.ob2');
 export const NpcPack = new PackFile('npc', validateConfigPack, '.npc');
 export const ObjPack = new PackFile('obj', validateConfigPack, '.obj');

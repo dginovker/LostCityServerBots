@@ -1,11 +1,22 @@
 import fs from 'fs';
 
-import BZip2 from '#/io/BZip2.js';
-import Packet from '#/io/Packet.js';
+import FileStream from '#/io/FileStream.js';
 import Environment from '#/util/Environment.js';
-import { printInfo } from '#/util/Logger.js';
+import { printFatalError, printInfo, printWarning } from '#/util/Logger.js';
+import Packet from '#/io/Packet.js';
+import Jagfile from '#/io/Jagfile.js';
+import { MapPack } from '#/util/PackFile.js';
 
-const maps = fs.readdirSync('dump/maps');
+const cache = new FileStream('data/unpack', false, true);
+
+const data = cache.read(0, 5);
+if (!data) {
+    printFatalError('No versionlist in cache');
+}
+
+const versionlist = new Jagfile(new Packet(data!));
+
+fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/maps`, { recursive: true });
 
 function readLand(data: Packet) {
     const heightmap: number[][][] = [];
@@ -132,100 +143,100 @@ function readLocs(data: Packet) {
     return locs;
 }
 
-maps.forEach(file => {
-    if (!file.startsWith('m')) {
-        return;
+console.time('maps');
+const mapIndex = versionlist.read('map_index')!;
+for (let i = 0; i < mapIndex.length / 7; i++) {
+    const region = mapIndex.g2();
+    const landFile = mapIndex.g2();
+    const locFile = mapIndex.g2();
+    const _members = mapIndex.gbool();
+
+    const mapX = (region >> 8) & 0xFF;
+    const mapZ = region & 0xFF;
+
+    MapPack.register(landFile, `m${mapX}_${mapZ}`);
+    MapPack.register(locFile, `l${mapX}_${mapZ}`);
+
+    if (fs.existsSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`)) {
+        continue;
     }
 
-    const parts = file.split('_');
-    const mapX = parts[0].slice(1);
-    const mapZ = parts[1];
     printInfo(`Unpacking map for ${mapX}_${mapZ}`);
-
-    let data: Buffer | Uint8Array = fs.readFileSync(`dump/maps/${file}`);
-    try {
-        data = BZip2.decompress(data, 0, false, true);
-    } catch (err) {
-        console.error(err);
-        return;
+    const landData = cache.read(4, landFile, true);
+    const locData = cache.read(4, locFile, true);
+    if (!landData || !locData) {
+        printWarning('Missing map data');
     }
-    const land = readLand(new Packet(data));
 
-    let section = '';
-    for (let level = 0; level < 4; level++) {
-        for (let x = 0; x < 64; x++) {
-            for (let z = 0; z < 64; z++) {
-                let str = '';
+    // todo: preserve npc and obj sections
 
-                if (land.heightmap[level][x][z] !== -1) {
-                    str += `h${land.heightmap[level][x][z]} `;
-                }
+    if (landData) {
+        const land = readLand(new Packet(landData));
 
-                if (land.overlayIds[level][x][z] !== -1) {
-                    if (land.overlayShape[level][x][z] !== -1 && land.overlayShape[level][x][z] !== 0 && land.overlayRotation[level][x][z] !== -1 && land.overlayRotation[level][x][z] !== 0) {
-                        str += `o${land.overlayIds[level][x][z]};${land.overlayShape[level][x][z]};${land.overlayRotation[level][x][z]} `;
-                    } else if (land.overlayShape[level][x][z] !== -1 && land.overlayShape[level][x][z] !== 0) {
-                        str += `o${land.overlayIds[level][x][z]};${land.overlayShape[level][x][z]} `;
-                    } else {
-                        str += `o${land.overlayIds[level][x][z]} `;
+        let section = '';
+        for (let level = 0; level < 4; level++) {
+            for (let x = 0; x < 64; x++) {
+                for (let z = 0; z < 64; z++) {
+                    let str = '';
+    
+                    if (land.heightmap[level][x][z] !== -1) {
+                        str += `h${land.heightmap[level][x][z]} `;
                     }
-                }
-
-                if (land.flags[level][x][z] !== -1) {
-                    str += `f${land.flags[level][x][z]} `;
-                }
-
-                if (land.underlay[level][x][z] !== -1) {
-                    str += `u${land.underlay[level][x][z]} `;
-                }
-
-                if (str.length) {
-                    section += `${level} ${x} ${z}: ${str.trimEnd()}\n`;
-                }
-            }
-        }
-    }
-    fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, '==== MAP ====\n' + section);
-});
-
-maps.forEach(file => {
-    if (!file.startsWith('l')) {
-        return;
-    }
-
-    const parts = file.split('_');
-    const mapX = parts[0].slice(1);
-    const mapZ = parts[1];
-    printInfo(`Unpacking loc map for ${mapX}_${mapZ}`);
-
-    let data: Buffer | Uint8Array = fs.readFileSync(`dump/maps/${file}`);
-    try {
-        data = BZip2.decompress(data, 0, false, true);
-    } catch (err) {
-        console.error(err);
-        return;
-    }
-    const locs = readLocs(new Packet(data));
-
-    let section = '';
-    for (let level = 0; level < 4; level++) {
-        for (let x = 0; x < 64; x++) {
-            for (let z = 0; z < 64; z++) {
-                if (!locs[level][x][z].length) {
-                    continue;
-                }
-
-                for (let i = 0; i < locs[level][x][z].length; i++) {
-                    const loc = locs[level][x][z][i];
-                    if (loc.angle === 0) {
-                        section += `${level} ${x} ${z}: ${loc.id} ${loc.shape}\n`;
-                    } else {
-                        section += `${level} ${x} ${z}: ${loc.id} ${loc.shape} ${loc.angle}\n`;
+    
+                    if (land.overlayIds[level][x][z] !== -1) {
+                        if (land.overlayShape[level][x][z] !== -1 && land.overlayShape[level][x][z] !== 0 && land.overlayRotation[level][x][z] !== -1 && land.overlayRotation[level][x][z] !== 0) {
+                            str += `o${land.overlayIds[level][x][z]};${land.overlayShape[level][x][z]};${land.overlayRotation[level][x][z]} `;
+                        } else if (land.overlayShape[level][x][z] !== -1 && land.overlayShape[level][x][z] !== 0) {
+                            str += `o${land.overlayIds[level][x][z]};${land.overlayShape[level][x][z]} `;
+                        } else {
+                            str += `o${land.overlayIds[level][x][z]} `;
+                        }
+                    }
+    
+                    if (land.flags[level][x][z] !== -1) {
+                        str += `f${land.flags[level][x][z]} `;
+                    }
+    
+                    if (land.underlay[level][x][z] !== -1) {
+                        str += `u${land.underlay[level][x][z]} `;
+                    }
+    
+                    if (str.length) {
+                        section += `${level} ${x} ${z}: ${str.trimEnd()}\n`;
                     }
                 }
             }
         }
+
+        fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, '==== MAP ====\n' + section);
     }
 
-    fs.appendFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, '\n==== LOC ====\n' + section);
-});
+    if (locData) {
+        const locs = readLocs(new Packet(locData));
+
+        let section = '';
+        for (let level = 0; level < 4; level++) {
+            for (let x = 0; x < 64; x++) {
+                for (let z = 0; z < 64; z++) {
+                    if (!locs[level][x][z].length) {
+                        continue;
+                    }
+    
+                    for (let i = 0; i < locs[level][x][z].length; i++) {
+                        const loc = locs[level][x][z][i];
+                        if (loc.angle === 0) {
+                            section += `${level} ${x} ${z}: ${loc.id} ${loc.shape}\n`;
+                        } else {
+                            section += `${level} ${x} ${z}: ${loc.id} ${loc.shape} ${loc.angle}\n`;
+                        }
+                    }
+                }
+            }
+        }
+    
+        fs.appendFileSync(`${Environment.BUILD_SRC_DIR}/maps/m${mapX}_${mapZ}.jm2`, '\n==== LOC ====\n' + section);
+    }
+}
+console.timeEnd('maps');
+
+MapPack.save();

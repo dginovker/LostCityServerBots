@@ -1,35 +1,19 @@
 import fs from 'fs';
 
-import BZip2 from '#/io/BZip2.js';
+import GZip from '#/io/GZip.js';
 import Environment from '#/util/Environment.js';
-import { shouldBuild } from '#/util/PackFile.js';
+import FileStream from '#/io/FileStream.js';
+import { MidiPack } from '#/util/PackFile.js';
 
 export function packClientMusic() {
-    if (!shouldBuild(`${Environment.BUILD_SRC_DIR}/jingles`, '', 'data/pack/client/jingles')) {
-        return;
-    }
+    const cache = new FileStream('data/pack');
 
-    fs.mkdirSync('data/pack/client/jingles', { recursive: true });
-    fs.readdirSync(`${Environment.BUILD_SRC_DIR}/jingles`).forEach(f => {
-        // TODO: mtime-based check
-        if (fs.existsSync(`data/pack/client/jingles/${f}`)) {
+    fs.readdirSync(`${Environment.BUILD_SRC_DIR}/midi`).forEach(f => {
+        if (!f.endsWith('.mid')) {
             return;
         }
 
-        const data = fs.readFileSync(`${Environment.BUILD_SRC_DIR}/jingles/${f}`);
-        fs.writeFileSync(`data/pack/client/jingles/${f}`, BZip2.compress(data, true));
-    });
-
-    // ----
-
-    fs.mkdirSync('data/pack/client/songs', { recursive: true });
-    fs.readdirSync(`${Environment.BUILD_SRC_DIR}/songs`).forEach(f => {
-        // TODO: mtime-based check
-        if (fs.existsSync(`data/pack/client/songs/${f}`)) {
-            return;
-        }
-
-        const data = fs.readFileSync(`${Environment.BUILD_SRC_DIR}/songs/${f}`);
-        fs.writeFileSync(`data/pack/client/songs/${f}`, BZip2.compress(data, true));
+        const id = MidiPack.getByName(f.substring(0, f.lastIndexOf('.')));
+        cache.write(3, id, GZip.compress(fs.readFileSync(`${Environment.BUILD_SRC_DIR}/midi/${f}`)), true);
     });
 }

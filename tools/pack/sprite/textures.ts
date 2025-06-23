@@ -5,6 +5,7 @@ import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { shouldBuildFile, shouldBuildFileAny } from '#/util/PackFile.js';
 import { convertImage } from '#/util/PixPack.js';
+import FileStream from '#/io/FileStream.js';
 
 export async function packClientTexture() {
     if (!shouldBuildFileAny(`${Environment.BUILD_SRC_DIR}/textures`, 'data/pack/client/textures') && !shouldBuildFile('tools/pack/sprite/textures.ts', 'data/pack/client/textures')) {
@@ -106,4 +107,7 @@ export async function packClientTexture() {
     for (const packet of Object.values(files)) {
         packet.release();
     }
+
+    const cache = new FileStream('data/pack');
+    cache.write(0, 6, fs.readFileSync('data/pack/client/textures'));
 }

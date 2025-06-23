@@ -830,7 +830,7 @@ class IfType {
     childY: number[] | null = null;
 }
 
-const cache = new FileStream('data/pack/original');
+const cache = new FileStream('data/unpack');
 const interfaceData = cache.read(0, 3);
 
 if (!interfaceData) {

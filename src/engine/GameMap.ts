@@ -231,6 +231,11 @@ export default class GameMap {
                 }
 
                 const type: LocType = LocType.get(locId);
+                if (!type) {
+                    printWarning(`Missing loc config ${locId}`);
+                    continue;
+                }
+
                 const width: number = type.width;
                 const length: number = type.length;
                 const shape: number = info >> 2;

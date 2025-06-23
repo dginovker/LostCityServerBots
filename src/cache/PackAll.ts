@@ -12,7 +12,7 @@ import { packClientInterface } from '#tools/pack/interface/PackClient.js';
 import { packServerInterface } from '#tools/pack/interface/PackServer.js';
 import { packClientMap } from '#tools/pack/map/PackClient.js';
 import { packServerMap } from '#tools/pack/map/PackServer.js';
-import { packWorldmap } from '#tools/pack/map/Worldmap.js';
+// import { packWorldmap } from '#tools/pack/map/Worldmap.js';
 import { packClientMusic } from '#tools/pack/midi/pack.js';
 import { packClientSound } from '#tools/pack/sound/pack.js';
 import { packClientMedia } from '#tools/pack/sprite/media.js';
@@ -37,7 +37,7 @@ export async function packServer() {
     packServerInterface();
 
     packServerMap();
-    await packWorldmap();
+    // await packWorldmap();
 
     generateServerSymbols();
 

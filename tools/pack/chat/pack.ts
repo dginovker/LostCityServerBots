@@ -4,6 +4,7 @@ import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { shouldBuildFileAny } from '#/util/PackFile.js';
+import FileStream from '#/io/FileStream.js';
 
 export function packClientWordenc() {
     if (!shouldBuildFileAny(`${Environment.BUILD_SRC_DIR}/wordenc`, 'data/pack/client/wordenc')) {
@@ -103,4 +104,7 @@ export function packClientWordenc() {
     fragmentsencout.release();
     tldlistout.release();
     domainencout.release();
+
+    const cache = new FileStream('data/pack');
+    cache.write(0, 7, fs.readFileSync('data/pack/client/wordenc'));
 }

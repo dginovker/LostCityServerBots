@@ -7,6 +7,7 @@ import Environment from '#/util/Environment.js';
 import { printError } from '#/util/Logger.js';
 import { listFiles, loadOrder } from '#/util/NameMap.js';
 import { SynthPack, shouldBuildFileAny } from '#/util/PackFile.js';
+import FileStream from '#/io/FileStream.js';
 
 export function packClientSound() {
     if (!shouldBuildFileAny(`${Environment.BUILD_SRC_DIR}/synth`, 'data/pack/client/sounds')) {
@@ -38,4 +39,7 @@ export function packClientSound() {
     jag.write('sounds.dat', out);
     jag.save('data/pack/client/sounds', true);
     out.release();
+
+    const cache = new FileStream('data/pack');
+    cache.write(0, 8, fs.readFileSync('data/pack/client/sounds'));
 }

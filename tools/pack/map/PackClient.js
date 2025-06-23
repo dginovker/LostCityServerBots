@@ -1,9 +1,10 @@
 import fs from 'fs';
 
-import BZip2 from '#/io/BZip2.js';
+import GZip from '#/io/GZip.js';
 import Packet2 from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
-import { shouldBuildFile } from '#/util/PackFile.js';
+import { MapPack } from '#/util/PackFile.js';
+import FileStream from '#/io/FileStream.js';
 
 function readMap(map) {
     let land = [];
@@ -57,9 +58,7 @@ function readMap(map) {
 }
 
 export function packClientMap() {
-    if (!fs.existsSync(`${Environment.BUILD_SRC_DIR}/maps`)) {
-        return;
-    }
+    const cache = new FileStream('data/pack');
 
     let queue = [];
 
@@ -67,18 +66,12 @@ export function packClientMap() {
         .filter(f => f.endsWith('.jm2'))
         .forEach(file => {
             let [x, z] = file.slice(1).split('.').shift().split('_');
-            if (!shouldBuildFile(`${Environment.BUILD_SRC_DIR}/maps/${file}`, `data/pack/client/maps/m${x}_${z}`) && !shouldBuildFile(`${Environment.BUILD_SRC_DIR}/maps/${file}`, `data/pack/client/maps/l${x}_${z}`)) {
-                return;
-            }
-
             queue.push({ file, x, z });
         });
 
     if (!queue.length) {
         return;
     }
-
-    fs.mkdirSync('data/pack/client/maps', { recursive: true });
 
     queue.forEach(({ file, x, z }) => {
         let data = fs
@@ -242,8 +235,7 @@ export function packClientMap() {
                 }
             }
 
-            // out.save(`data/pack/server/maps/m${x}_${z}`);
-            fs.writeFileSync(`data/pack/client/maps/m${x}_${z}`, BZip2.compress(out.data, true));
+            cache.write(4, MapPack.getByName(`m${x}_${z}`), GZip.compress(out.data));
             out.release();
         }
 
@@ -322,8 +314,7 @@ export function packClientMap() {
             }
 
             out.psmart(0); // end of map
-            // out.save(`data/pack/server/maps/l${x}_${z}`);
-            fs.writeFileSync(`data/pack/client/maps/l${x}_${z}`, BZip2.compress(out.data, true));
+            cache.write(4, MapPack.getByName(`l${x}_${z}`), GZip.compress(out.data));
             out.release();
         }
     });

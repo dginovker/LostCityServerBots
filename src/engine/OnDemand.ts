@@ -2,8 +2,6 @@ import FileStream from '#/io/FileStream.js';
 import Packet from '#/io/Packet.js';
 import ClientSocket from '#/server/ClientSocket.js';
 
-const cache = new FileStream('data/unpack');
-
 type OnDemandRequest = {
     client: ClientSocket;
     archive: number;
@@ -11,6 +9,8 @@ type OnDemandRequest = {
 }
 
 class OnDemand {
+    cache = new FileStream('data/unpack');
+
     urgentRequests: OnDemandRequest[] = []; // needed ASAP
     extraRequests: OnDemandRequest[] = []; // not logged in preloading extras
     ingameRequests: OnDemandRequest[] = []; // logged in preloading extras
@@ -82,7 +82,7 @@ class OnDemand {
     }
 
     private send(client: ClientSocket, archive: number, file: number) {
-        const req = cache.read(archive + 1, file);
+        const req = this.cache.read(archive + 1, file);
 
         if (req) {
             let pos = 0;

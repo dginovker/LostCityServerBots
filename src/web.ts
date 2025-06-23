@@ -6,9 +6,8 @@ import { extname } from 'path';
 import { register } from 'prom-client';
 
 import Environment from '#/util/Environment.js';
-
-import FileStream from './io/FileStream.js';
-import Packet from './io/Packet.js';
+import { CrcBuffer } from './cache/CrcTable.js';
+import OnDemand from './engine/OnDemand.js';
 
 const MIME_TYPES = new Map<string, string>();
 MIME_TYPES.set('.js', 'application/javascript');
@@ -17,20 +16,6 @@ MIME_TYPES.set('.css', 'text/css');
 MIME_TYPES.set('.html', 'text/html');
 MIME_TYPES.set('.wasm', 'application/wasm');
 MIME_TYPES.set('.sf2', 'application/octet-stream');
-
-const cache = new FileStream('data/unpack');
-
-const count = cache.count(0);
-const crc = new Packet(new Uint8Array(4 * count));
-
-for (let i = 0; i < count; i++) {
-    const jag = cache.read(0, i);
-    if (jag) {
-        crc.p4(Packet.getcrc(jag, 0, jag.length));
-    } else {
-        crc.p4(0);
-    }
-}
 
 // we don't need/want a full blown website or API on the game server
 export const web = http.createServer(async (req, res) => {
@@ -46,39 +31,39 @@ export const web = http.createServer(async (req, res) => {
         if (url.pathname.startsWith('/crc')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(crc.data);
+            res.end(CrcBuffer.data);
         } else if (url.pathname.startsWith('/title')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 1));
+            res.end(OnDemand.cache.read(0, 1));
         } else if (url.pathname.startsWith('/config')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 2));
+            res.end(OnDemand.cache.read(0, 2));
         } else if (url.pathname.startsWith('/interface')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 3));
+            res.end(OnDemand.cache.read(0, 3));
         } else if (url.pathname.startsWith('/media')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 4));
+            res.end(OnDemand.cache.read(0, 4));
         } else if (url.pathname.startsWith('/versionlist')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 5));
+            res.end(OnDemand.cache.read(0, 5));
         } else if (url.pathname.startsWith('/textures')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 6));
+            res.end(OnDemand.cache.read(0, 6));
         } else if (url.pathname.startsWith('/wordenc')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 7));
+            res.end(OnDemand.cache.read(0, 7));
         } else if (url.pathname.startsWith('/sounds')) {
             res.setHeader('Content-Type', 'application/octet-stream');
             res.writeHead(200);
-            res.end(cache.read(0, 8));
+            res.end(OnDemand.cache.read(0, 8));
         } else if (url.pathname === '/') {
             if (Environment.WEBSITE_REGISTRATION) {
                 res.writeHead(404);

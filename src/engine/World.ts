@@ -31,7 +31,7 @@ import StructType from '#/cache/config/StructType.js';
 import VarNpcType from '#/cache/config/VarNpcType.js';
 import VarPlayerType from '#/cache/config/VarPlayerType.js';
 import VarSharedType from '#/cache/config/VarSharedType.js';
-import { makeCrcs } from '#/cache/CrcTable.js';
+import { CrcBuffer32, makeCrcs } from '#/cache/CrcTable.js';
 import { preloadClient } from '#/cache/PreloadedPacks.js';
 import WordEnc from '#/cache/wordenc/WordEnc.js';
 import { BlockWalk } from '#/engine/entity/BlockWalk.js';
@@ -2148,11 +2148,11 @@ class World {
             const crcs = new Uint8Array(9 * 4);
             World.loginBuf.gdata(crcs, 0, crcs.length);
 
-            // if (CrcBuffer32 !== Packet.getcrc(crcs, 0, crcs.length)) {
-            //     client.send(Uint8Array.from([6]));
-            //     client.close();
-            //     return;
-            // }
+            if (CrcBuffer32 !== Packet.getcrc(crcs, 0, crcs.length)) {
+                client.send(Uint8Array.from([6]));
+                client.close();
+                return;
+            }
 
             World.loginBuf.rsadec(priv);
 

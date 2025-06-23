@@ -9,13 +9,11 @@ export default class FileStream {
     idx: RandomAccessFile[] = [];
 
     constructor(dir: string, createNew: boolean = false, readOnly: boolean = false) {
-        if (createNew && fs.existsSync(`${dir}/main_file_cache.dat`)) {
-            fs.unlinkSync(`${dir}/main_file_cache.dat`);
+        if (createNew) {
+            fs.writeFileSync(`${dir}/main_file_cache.dat`, '');
 
             for (let i: number = 0; i <= 4; i++) {
-                if (fs.existsSync(`${dir}/main_file_cache.idx${i}`)) {
-                    fs.unlinkSync(`${dir}/main_file_cache.idx${i}`);
-                }
+                fs.writeFileSync(`${dir}/main_file_cache.idx${i}`, '');
             }
         }
 
@@ -119,18 +117,21 @@ export default class FileStream {
         }
 
         const idx: RandomAccessFile = this.idx[index];
-        let sector: number;
+        let sector: number = 0;
 
-        if (overwrite) {
+        if (overwrite && idx.length > file * 6) {
             idx.pos = file * 6;
             const idxHeader: Packet = idx.gPacket(6);
             idxHeader.pos = 3;
             sector = idxHeader.g3();
 
-            if (sector <= 0 || sector > this.dat.length / 520) {
+            if (sector > this.dat.length / 520) {
                 return false;
             }
-        } else {
+        }
+
+        if (sector === 0) {
+            overwrite = false;
             sector = Math.trunc((this.dat.length + 519) / 520);
 
             if (sector === 0) {
