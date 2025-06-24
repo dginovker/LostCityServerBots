@@ -14,7 +14,7 @@ export function packClientModel(cache: FileStream) {
         const id = ModelPack.getByName(basename.substring(0, basename.lastIndexOf('.')));
         const data = fs.readFileSync(file);
         if (data.length) {
-            cache.write(1, id, compressGz(data)!);
+            cache.write(1, id, compressGz(data)!, 1);
         }
     }
 
@@ -24,7 +24,7 @@ export function packClientModel(cache: FileStream) {
         const id = AnimSetPack.getByName(basename.substring(0, basename.lastIndexOf('.')));
         const data = fs.readFileSync(file);
         if (data.length) {
-            cache.write(2, id, compressGz(data)!);
+            cache.write(2, id, compressGz(data)!, 1);
         }
     }
 }

@@ -1,8 +1,6 @@
 import fs from 'fs';
 
-
 import { ConfigType } from '#/cache/config/ConfigType.js';
-import SeqFrame from '#/cache/config/SeqFrame.js';
 import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 
@@ -105,7 +103,7 @@ export default class SeqType extends ConfigType {
 
                 this.delay[i] = dat.g2();
                 if (this.delay[i] === 0) {
-                    this.delay[i] = SeqFrame.instances[this.frames[i]].delay;
+                    this.delay[i] = 0; // SeqFrame.instances[this.frames[i]].delay;
                 }
 
                 if (this.delay[i] === 0) {

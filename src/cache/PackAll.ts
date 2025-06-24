@@ -78,7 +78,6 @@ export async function packClient() {
     cache.write(0, 2, fs.readFileSync('data/raw/config'));
     packClientInterface(cache);
     await packClientMedia(cache);
-    packClientVersionList(cache);
     await packClientTexture(cache);
     packClientWordenc(cache);
     packClientSound(cache);
@@ -86,6 +85,7 @@ export async function packClient() {
     packClientModel(cache);
     packClientMap(cache);
     packClientMusic(cache);
+    packClientVersionList(cache);
 
     if (parentPort) {
         parentPort.postMessage({

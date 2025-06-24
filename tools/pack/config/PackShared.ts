@@ -7,8 +7,7 @@ import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { loadDir } from '#/util/NameMap.js';
-import { VarnPack, VarpPack, VarsPack, shouldBuild, AnimPack, CategoryPack, shouldBuildFile } from '#/util/PackFile.js';
-import { listFilesExt } from '#/util/Parse.js';
+import { VarnPack, VarpPack, VarsPack, shouldBuild, CategoryPack, shouldBuildFile } from '#/util/PackFile.js';
 import { packDbRowConfigs, parseDbRowConfig } from '#tools/pack/config/DbRowConfig.js';
 import { packDbTableConfigs, parseDbTableConfig } from '#tools/pack/config/DbTableConfig.js';
 import { packEnumConfigs, parseEnumConfig } from '#tools/pack/config/EnumConfig.js';
@@ -368,42 +367,6 @@ export async function packConfigs() {
         }
         dat.save('data/pack/server/category.dat');
         dat.release();
-    }
-
-    // want the server to access frame lengths without loading data from models
-    if (shouldBuild(`${Environment.BUILD_SRC_DIR}/models`, '.frame', 'data/pack/server/frame_del.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/frame_del.dat')) {
-        const files = listFilesExt(`${Environment.BUILD_SRC_DIR}/models`, '.frame');
-        const frame_del = Packet.alloc(3);
-        for (let i = 0; i < AnimPack.max; i++) {
-            const name = AnimPack.getById(i);
-            if (!name.length) {
-                frame_del.p1(0);
-                continue;
-            }
-
-            const file = files.find(file => file.endsWith(`${name}.frame`));
-            if (!file) {
-                frame_del.p1(0);
-                continue;
-            }
-
-            const data = Packet.load(file);
-
-            data.pos = data.data.length - 8;
-            const headLength = data.g2();
-            const tran1Length = data.g2();
-            const tran2Length = data.g2();
-            // const delLength = data.g2();
-
-            data.pos = 0;
-            data.pos += headLength;
-            data.pos += tran1Length;
-            data.pos += tran2Length;
-            frame_del.p1(data.g1());
-        }
-
-        frame_del.save('data/pack/server/frame_del.dat');
-        frame_del.release();
     }
 
     // ----

@@ -14,7 +14,7 @@ export function packClientMusic(cache: FileStream) {
         const id = MidiPack.getByName(basename.substring(0, basename.lastIndexOf('.')));
         const data = fs.readFileSync(file);
         if (data.length) {
-            cache.write(3, id, compressGz(data)!);
+            cache.write(3, id, compressGz(data)!, 1);
         }
     }
 }

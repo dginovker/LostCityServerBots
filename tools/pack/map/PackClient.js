@@ -226,7 +226,7 @@ export function packClientMap(cache) {
                 }
             }
 
-            cache.write(4, MapPack.getByName(`m${mapX}_${mapZ}`), compressGz(out.data));
+            cache.write(4, MapPack.getByName(`m${mapX}_${mapZ}`), compressGz(out.data.subarray(0, out.pos)), 1);
             out.release();
         }
 
@@ -305,7 +305,7 @@ export function packClientMap(cache) {
             }
 
             out.psmart(0); // end of map
-            cache.write(4, MapPack.getByName(`l${mapX}_${mapZ}`), compressGz(out.data));
+            cache.write(4, MapPack.getByName(`l${mapX}_${mapZ}`), compressGz(out.data.subarray(0, out.pos)), 1);
             out.release();
         }
     }

@@ -24,7 +24,6 @@ import NpcType from '#/cache/config/NpcType.js';
 import ObjType from '#/cache/config/ObjType.js';
 import ParamType from '#/cache/config/ParamType.js';
 import ScriptVarType from '#/cache/config/ScriptVarType.js';
-import SeqFrame from '#/cache/config/SeqFrame.js';
 import SeqType from '#/cache/config/SeqType.js';
 import SpotanimType from '#/cache/config/SpotanimType.js';
 import StructType from '#/cache/config/StructType.js';
@@ -233,7 +232,6 @@ class World {
         LocType.load('data/pack');
         NpcType.load('data/pack');
         IdkType.load('data/pack');
-        SeqFrame.load('data/pack');
         SeqType.load('data/pack');
         SpotanimType.load('data/pack');
         CategoryType.load('data/pack');

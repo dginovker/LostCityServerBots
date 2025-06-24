@@ -1,75 +1,109 @@
 import fs from 'fs';
 
 import FileStream from '#/io/FileStream.js';
-// import Jagfile from '#/io/Jagfile.js';
-// import Packet from '#/io/Packet.js';
+import Jagfile from '#/io/Jagfile.js';
+import Packet from '#/io/Packet.js';
+import { MapPack } from '#/util/PackFile.js';
+import { FramePack } from '../graphics/UnpackAnims.js';
 
-// todo
 export function packClientVersionList(cache: FileStream) {
-    // const versionlist = new Jagfile();
+    const versionlist = new Jagfile();
 
-    // const modelVersion = Packet.alloc(3);
-    // const modelCrc = Packet.alloc(4);
-    // const modelIndex = Packet.alloc(3);
-    // for (let i = 0; i < 1000; i++) {
-    //     modelVersion.p2(i);
-    //     modelCrc.p2(i);
-    //     modelIndex.p1(i);
-    // }
-    // versionlist.write('model_version', modelVersion);
-    // versionlist.write('model_crc', modelCrc);
-    // versionlist.write('model_index', modelIndex);
+    const modelVersion = Packet.alloc(3);
+    const modelCrc = Packet.alloc(4);
+    const modelIndex = Packet.alloc(3);
+    const modelCount = cache.count(1);
+    for (let id = 0; id < modelCount; id++) {
+        const data = cache.read(1, id);
+        if (data) {
+            modelVersion.p2(1);
+            modelCrc.p4(Packet.getcrc(data, 0, data.length - 2));
+            modelIndex.p1(0); // flags
+        } else {
+            modelVersion.p2(0);
+            modelCrc.p4(0);
+            modelIndex.p1(0);
+        }
+    }
+    versionlist.write('model_version', modelVersion);
+    versionlist.write('model_crc', modelCrc);
+    versionlist.write('model_index', modelIndex);
 
-    // const animVersion = Packet.alloc(3);
-    // const animCrc = Packet.alloc(4);
-    // const animIndex = Packet.alloc(3);
-    // for (let i = 0; i < 1000; i++) {
-    //     animVersion.p2(i);
-    //     animCrc.p4(i);
-    //     animIndex.p2(i);
-    // }
-    // versionlist.write('anim_version', animVersion);
-    // versionlist.write('anim_crc', animCrc);
-    // versionlist.write('anim_index', animIndex);
+    const animVersion = Packet.alloc(3);
+    const animCrc = Packet.alloc(4);
+    const animIndex = Packet.alloc(3);
+    const animCount = cache.count(2);
+    for (let id = 0; id < animCount; id++) {
+        const data = cache.read(2, id);
+        if (data) {
+            animVersion.p2(1);
+            animCrc.p4(Packet.getcrc(data, 0, data.length - 2));
+        } else {
+            animVersion.p2(0);
+            animCrc.p4(0);
+        }
+    }
+    for (let id = 0; id < FramePack.max; id++) {
+        animIndex.p2(0);
+    }
+    versionlist.write('anim_version', animVersion);
+    versionlist.write('anim_crc', animCrc);
+    versionlist.write('anim_index', animIndex);
 
-    // const midiVersion = Packet.alloc(3);
-    // const midiCrc = Packet.alloc(4);
-    // const midiIndex = Packet.alloc(3);
-    // for (let i = 0; i < 1000; i++) {
-    //     midiVersion.p2(i);
-    //     midiCrc.p4(i);
-    //     midiIndex.p1(i);
-    // }
-    // versionlist.write('midi_version', midiVersion);
-    // versionlist.write('midi_crc', midiCrc);
-    // versionlist.write('midi_index', midiIndex);
+    const midiVersion = Packet.alloc(3);
+    const midiCrc = Packet.alloc(4);
+    const midiIndex = Packet.alloc(3);
+    const midiCount = cache.count(3);
+    for (let id = 0; id < midiCount; id++) {
+        const data = cache.read(3, id);
+        if (data) {
+            midiVersion.p2(1);
+            midiCrc.p4(Packet.getcrc(data, 0, data.length - 2));
+            midiIndex.p1(0); // prefetch
+        } else {
+            midiVersion.p2(0);
+            midiCrc.p4(0);
+            midiIndex.p1(0);
+        }
+    }
+    versionlist.write('midi_version', midiVersion);
+    versionlist.write('midi_crc', midiCrc);
+    versionlist.write('midi_index', midiIndex);
 
-    // const mapVersion = Packet.alloc(3);
-    // const mapCrc = Packet.alloc(4);
-    // const mapIndex = Packet.alloc(4);
-    // for (let i = 0; i < 1000; i++) {
-    //     mapVersion.p2(i);
-    //     mapCrc.p4(i);
+    const mapVersion = Packet.alloc(3);
+    const mapCrc = Packet.alloc(4);
+    const mapIndex = Packet.alloc(4);
+    const mapCount = cache.count(4);
+    for (let id = 0; id < mapCount; id++) {
+        const data = cache.read(4, id);
+        if (data) {
+            mapVersion.p2(1);
+            mapCrc.p4(Packet.getcrc(data, 0, data.length - 2));
+        } else {
+            mapVersion.p2(0);
+            mapCrc.p4(0);
+        }
+    }
 
-    //     mapIndex.p2(i);
-    //     mapIndex.p2(i);
-    //     mapIndex.p2(i);
-    //     mapIndex.p1(i);
-    // }
-    // versionlist.write('map_version', mapVersion);
-    // versionlist.write('map_crc', mapCrc);
-    // versionlist.write('map_index', mapIndex);
+    for (let id = 0; id < MapPack.max; id++) {
+        const name = MapPack.getById(id);
+        if (name.startsWith('l')) {
+            continue;
+        }
 
-    // versionlist.save('data/pack/client/versionlist');
+        const locMapId = MapPack.getByName(name.replace('m', 'l'));
+        const [mapX, mapZ] = name.slice(1).split('_');
 
-    cache.write(0, 5, fs.readFileSync('data/raw/versionlist'));
+        mapIndex.p2((parseInt(mapX) << 8) | parseInt(mapZ));
+        mapIndex.p2(id); // land map id
+        mapIndex.p2(locMapId);
+        mapIndex.p1(0); // members
+    }
+    versionlist.write('map_version', mapVersion);
+    versionlist.write('map_crc', mapCrc);
+    versionlist.write('map_index', mapIndex);
+
+    versionlist.save('data/pack/client/versionlist');
+
+    cache.write(0, 5, fs.readFileSync('data/pack/client/versionlist'));
 }
-
-// const cache = new FileStream('data/unpack');
-// fs.writeFileSync('data/raw/title', cache.read(0, 1)!);
-// fs.writeFileSync('data/raw/config', cache.read(0, 2)!);
-// fs.writeFileSync('data/raw/media', cache.read(0, 4)!);
-// fs.writeFileSync('data/raw/versionlist', cache.read(0, 5)!);
-// fs.writeFileSync('data/raw/textures', cache.read(0, 6)!);
-// fs.writeFileSync('data/raw/wordenc', cache.read(0, 7)!);
-// fs.writeFileSync('data/raw/sounds', cache.read(0, 8)!);
