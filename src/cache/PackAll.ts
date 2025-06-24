@@ -2,7 +2,6 @@ import child_process from 'child_process';
 import fs from 'fs';
 import { parentPort } from 'worker_threads';
 
-import { CrcBuffer } from '#/cache/CrcTable.js';
 import Environment from '#/util/Environment.js';
 import { revalidatePack } from '#/util/PackFile.js';
 import { packClientWordenc } from '#tools/pack/chat/pack.js';
@@ -63,13 +62,9 @@ export async function packServer() {
             text: 'Packed server cache (1/2)'
         });
     }
-
-    fs.writeFileSync('data/pack/server/lastbuild.pack', '');
 }
 
 export async function packClient() {
-    const cache = new FileStream('data/pack', true);
-
     if (parentPort) {
         parentPort.postMessage({
             type: 'dev_progress',
@@ -77,7 +72,10 @@ export async function packClient() {
         });
     }
 
+    const cache = new FileStream('data/pack', true);
+
     await packClientTitle(cache);
+    cache.write(0, 2, fs.readFileSync('data/raw/config'));
     packClientInterface(cache);
     await packClientMedia(cache);
     packClientVersionList(cache);
@@ -95,7 +93,4 @@ export async function packClient() {
             text: 'Packed client cache (2/2)'
         });
     }
-
-    fs.writeFileSync('data/pack/client/crc', CrcBuffer.data);
-    fs.writeFileSync('data/pack/client/lastbuild.pack', '');
 }

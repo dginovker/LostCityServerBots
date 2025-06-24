@@ -9,7 +9,7 @@ type OnDemandRequest = {
 }
 
 class OnDemand {
-    cache = new FileStream('data/unpack');
+    cache = new FileStream('data/pack');
 
     urgentRequests: OnDemandRequest[] = []; // needed ASAP
     extraRequests: OnDemandRequest[] = []; // not logged in preloading extras

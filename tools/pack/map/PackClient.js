@@ -1,11 +1,11 @@
 import fs from 'fs';
+import path from 'path';
 
-import GZip from '#/io/GZip.js';
+import { compressGz } from '#/io/GZip.js';
 import Packet2 from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { MapPack } from '#/util/PackFile.js';
 import { listFilesExt } from '#/util/Parse.js';
-import path from 'path';
 
 function readMap(map) {
     let land = [];
@@ -226,7 +226,7 @@ export function packClientMap(cache) {
                 }
             }
 
-            cache.write(4, MapPack.getByName(`m${mapX}_${mapZ}`), GZip.compress(out.data));
+            cache.write(4, MapPack.getByName(`m${mapX}_${mapZ}`), compressGz(out.data));
             out.release();
         }
 
@@ -305,7 +305,7 @@ export function packClientMap(cache) {
             }
 
             out.psmart(0); // end of map
-            cache.write(4, MapPack.getByName(`l${mapX}_${mapZ}`), GZip.compress(out.data));
+            cache.write(4, MapPack.getByName(`l${mapX}_${mapZ}`), compressGz(out.data));
             out.release();
         }
     }

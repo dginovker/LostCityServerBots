@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import GZip from '#/io/GZip.js';
+import { compressGz } from '#/io/GZip.js';
 import Environment from '#/util/Environment.js';
 import FileStream from '#/io/FileStream.js';
 import { MidiPack } from '#/util/PackFile.js';
@@ -12,6 +12,9 @@ export function packClientMusic(cache: FileStream) {
     for (const file of midis) {
         const basename = path.basename(file);
         const id = MidiPack.getByName(basename.substring(0, basename.lastIndexOf('.')));
-        cache.write(3, id, GZip.compress(fs.readFileSync(file)));
+        const data = fs.readFileSync(file);
+        if (data.length) {
+            cache.write(3, id, compressGz(data)!);
+        }
     }
 }

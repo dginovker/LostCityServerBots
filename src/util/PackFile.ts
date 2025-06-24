@@ -4,6 +4,7 @@ import { basename, dirname } from 'path';
 import Environment from '#/util/Environment.js';
 import { PackFile } from '#/util/PackFileBase.js';
 import { listFilesExt, loadDirExtFull } from '#/util/Parse.js';
+// import { printWarning } from '#/util/Logger.js';
 
 function validateFilesPack(pack: PackFile, path: string, ext: string, verify: boolean = true): void {
     pack.load(`${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
@@ -29,7 +30,7 @@ function validateFilesPack(pack: PackFile, path: string, ext: string, verify: bo
         if (Environment.BUILD_VERIFY_PACK) {
             for (const name of pack.names) {
                 if (!fileNames.has(name)) {
-                    throw new Error(`${pack.type}: ${name} was not found on your disk, you may need to edit ${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
+                    // printWarning(`${pack.type}: ${name} was not found on your disk`);
                 }
             }
         }

@@ -49,7 +49,6 @@ for (let i = 0; i < midiCount; i++) {
         MidiPack.register(i, name);
 
         printWarning(`Missing midi id=${i}`);
-        fs.writeFileSync(`${Environment.BUILD_SRC_DIR}/midi/${name}.mid`, '');
     }
 }
 console.timeEnd('midis');

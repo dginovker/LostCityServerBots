@@ -1,11 +1,33 @@
 import zlib from 'zlib';
 
-function compress(src: Uint8Array) {
-    const data = zlib.gzipSync(src);
-    data[9] = 0;
-    return data;
+function compressGz(
+    src: Uint8Array,
+    off: number = 0,
+    len: number = src.length,
+): Uint8Array | null {
+    try {
+        const data = new Uint8Array(
+            zlib.gzipSync(src.subarray(off, off + len)),
+        );
+        data[9] = 0;
+        return data;
+    } catch (err) {
+        console.error(err);
+        return null;
+    }
 }
 
-export default {
-    compress
-};
+function decompressGz(
+    src: Uint8Array,
+    off: number = 0,
+    len: number = src.length,
+): Uint8Array | null {
+    try {
+        return new Uint8Array(zlib.gunzipSync(src.subarray(off, off + len)));
+    } catch (err) {
+        console.error(err);
+        return null;
+    }
+}
+
+export { compressGz, decompressGz };

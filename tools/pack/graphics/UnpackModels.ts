@@ -28,7 +28,6 @@ for (let i = 0; i < modelCount; i++) {
         fs.writeFileSync(destFile, zlib.gunzipSync(model));
     } else {
         printWarning(`Missing model ${name}`);
-        fs.writeFileSync(destFile, '');
     }
 }
 

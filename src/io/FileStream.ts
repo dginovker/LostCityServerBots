@@ -107,7 +107,7 @@ export default class FileStream {
         }
     }
 
-    write(index: number, file: number, data: Uint8Array | Buffer | Packet, overwrite: boolean = false): boolean {
+    write(index: number, file: number, data: Uint8Array, version: number = 0): boolean {
         if (data instanceof Packet) {
             data = data.data;
         }
@@ -120,27 +120,18 @@ export default class FileStream {
             return false;
         }
 
-        const idx: RandomAccessFile = this.idx[index];
-        let sector: number = 0;
-
-        if (overwrite && idx.length > file * 6) {
-            idx.pos = file * 6;
-            const idxHeader: Packet = idx.gPacket(6);
-            idxHeader.pos = 3;
-            sector = idxHeader.g3();
-
-            if (sector > this.dat.length / 520) {
-                return false;
-            }
+        if (version !== 0) {
+            const temp = new Uint8Array(data.length + 2);
+            temp.set(data, 0);
+            temp[temp.length - 2] = version >> 8;
+            temp[temp.length - 1] = version;
+            data = temp;
         }
 
+        const idx: RandomAccessFile = this.idx[index];
+        let sector = Math.trunc((this.dat.length + 519) / 520);
         if (sector === 0) {
-            overwrite = false;
-            sector = Math.trunc((this.dat.length + 519) / 520);
-
-            if (sector === 0) {
-                sector = 1;
-            }
+            sector = 1;
         }
 
         idx.pos = file * 6;
@@ -151,36 +142,13 @@ export default class FileStream {
 
         let written: number = 0;
         for (let part: number = 0; written < data.length; part++) {
-            let nextSector: number = 0;
-
-            if (overwrite) {
-                this.dat.pos = sector * 520;
-                const header: Packet = this.dat.gPacket(8);
-                const sectorFile: number = header.g2();
-                const sectorPart: number = header.g2();
-                nextSector = header.g3();
-                const sectorIndex: number = header.g1();
-
-                if (sectorFile !== file || sectorPart !== part || sectorIndex !== index - 1) {
-                    return false;
-                }
-
-                if (nextSector < 0 || nextSector > this.dat.length / 520) {
-                    return false;
-                }
+            let nextSector = Math.trunc((this.dat.length + 519) / 520);
+            if (nextSector === 0) {
+                nextSector++;
             }
 
-            if (nextSector === 0) {
-                overwrite = false;
-                nextSector = Math.trunc((this.dat.length + 519) / 520);
-
-                if (nextSector === 0) {
-                    nextSector++;
-                }
-
-                if (nextSector === sector) {
-                    nextSector++;
-                }
+            if (nextSector === sector) {
+                nextSector++;
             }
 
             if (data.length - written <= 512) {
