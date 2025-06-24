@@ -38,7 +38,7 @@ async function processChangedFiles() {
             });
         }
 
-        console.log(err);
+        // console.log(err);
     }
 
     processNextTimeout = null;
