@@ -159,7 +159,7 @@ type Component = {
     src: Record<string, string | number>;
 };
 
-export function packInterface(server: boolean) {
+export function packInterface(server: boolean, modelFlags: number[]) {
     const component: Record<number, Component> = {};
 
     const interfaceOrder = loadOrder(`${Environment.BUILD_SRC_DIR}/pack/interface.order`);
@@ -507,6 +507,7 @@ export function packInterface(server: boolean) {
                     throw new Error(`\nError packing interfaces\n${com.root} Invalid model: ${src.model}`);
                 }
                 data.p2(modelId + 0x100);
+                modelFlags[modelId] |= 0x2;
             } else {
                 data.p1(0);
             }
@@ -517,6 +518,7 @@ export function packInterface(server: boolean) {
                     throw new Error(`\nError packing interfaces\n${com.root} Invalid activemodel: ${src.activemodel}`);
                 }
                 data.p2(modelId + 0x100);
+                modelFlags[modelId] |= 0x2;
             } else {
                 data.p1(0);
             }

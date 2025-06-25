@@ -89,7 +89,7 @@ export function parseSpotAnimConfig(key: string, value: string): ConfigValue | n
     }
 }
 
-export function packSpotAnimConfigs(configs: Map<string, ConfigLine[]>): { client: PackedData; server: PackedData } {
+export function packSpotAnimConfigs(configs: Map<string, ConfigLine[]>, modelFlags: number[]): { client: PackedData; server: PackedData } {
     const client: PackedData = new PackedData(SpotAnimPack.size);
     const server: PackedData = new PackedData(SpotAnimPack.size);
 
@@ -103,6 +103,7 @@ export function packSpotAnimConfigs(configs: Map<string, ConfigLine[]>): { clien
             if (key === 'model') {
                 client.p1(1);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x2;
             } else if (key === 'anim') {
                 client.p1(2);
                 client.p2(value as number);

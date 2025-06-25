@@ -6,9 +6,9 @@ import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { packInterface } from '#tools/pack/interface/PackShared.js';
 
-export function packClientInterface(cache: FileStream) {
+export function packClientInterface(cache: FileStream, modelFlags: number[]) {
     const jag = new Jagfile();
-    const data = packInterface(false);
+    const data = packInterface(false, modelFlags);
 
     if (Environment.BUILD_VERIFY && !Packet.checkcrc(data.data, 0, data.pos, -2146838800)) {
         console.error('.if CRC check failed! Custom data detected.');

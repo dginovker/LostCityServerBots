@@ -11,7 +11,6 @@ import { packClientInterface } from '#tools/pack/interface/PackClient.js';
 import { packServerInterface } from '#tools/pack/interface/PackServer.js';
 import { packClientMap } from '#tools/pack/map/PackClient.js';
 import { packServerMap } from '#tools/pack/map/PackServer.js';
-// import { packWorldmap } from '#tools/pack/map/Worldmap.js';
 import { packClientMusic } from '#tools/pack/midi/pack.js';
 import { packClientSound } from '#tools/pack/sound/pack.js';
 import { packClientMedia } from '#tools/pack/sprite/media.js';
@@ -41,7 +40,7 @@ export async function packServer(modelFlags: number[]) {
     }
 
     await packConfigs(modelFlags);
-    packServerInterface();
+    packServerInterface(modelFlags);
 
     packServerMap();
     await packWorldmap();
@@ -84,7 +83,7 @@ export async function packClient(modelFlags: number[]) {
 
     await packClientTitle(cache);
     cache.write(0, 2, fs.readFileSync('data/raw/config'));
-    packClientInterface(cache);
+    packClientInterface(cache, modelFlags);
     await packClientMedia(cache);
     await packClientTexture(cache);
     packClientWordenc(cache);

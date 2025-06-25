@@ -243,6 +243,11 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
         let name: string | null = null;
         const params: ParamValue[] = [];
 
+        // used for model_index
+        const model: number[] = [];
+        const worn: number[] = [];
+        let members: boolean = false;
+
         for (let j = 0; j < config.length; j++) {
             const { key, value } = config[j];
 
@@ -260,7 +265,7 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
             } else if (key === 'model') {
                 client.p1(1);
                 client.p2(value as number);
-                modelFlags[value as number] |= 0x40;
+                model.push(value as number);
             } else if (key === 'desc') {
                 client.p1(3);
                 client.pjstr(value as string);
@@ -306,27 +311,28 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
             } else if (key === 'members') {
                 if (value === true) {
                     client.p1(16);
+                    members = true;
                 }
             } else if (key === 'manwear') {
                 const values = value as number[];
                 client.p1(23);
                 client.p2(values[0]);
                 client.p1(values[1]);
-                modelFlags[values[0]] |= 0x10;
+                worn.push(values[0]);
             } else if (key === 'manwear2') {
                 client.p1(24);
                 client.p2(value as number);
-                modelFlags[value as number] |= 0x10;
+                worn.push(value as number);
             } else if (key === 'womanwear') {
                 const values = value as number[];
                 client.p1(25);
                 client.p2(values[0]);
                 client.p1(values[1]);
-                modelFlags[values[0]] |= 0x10;
+                worn.push(values[0]);
             } else if (key === 'womanwear2') {
                 client.p1(26);
                 client.p2(value as number);
-                modelFlags[value as number] |= 0x10;
+                worn.push(value as number);
             } else if (key === 'wearpos3') {
                 server.p1(27);
                 server.p1(value as number);
@@ -344,11 +350,11 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
             } else if (key === 'manwear3') {
                 client.p1(78);
                 client.p2(value as number);
-                modelFlags[value as number] |= 0x10;
+                worn.push(value as number);
             } else if (key === 'womanwear3') {
                 client.p1(79);
                 client.p2(value as number);
-                modelFlags[value as number] |= 0x10;
+                worn.push(value as number);
             } else if (key === 'manhead') {
                 client.p1(90);
                 client.p2(value as number);
@@ -390,6 +396,24 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
             } else if (key === 'respawnrate') {
                 server.p1(201);
                 server.p2(value as number);
+            }
+        }
+
+        if (members) {
+            for (let i = 0; i < model.length; i++) {
+                modelFlags[model[i]] |= 0x40;
+            }
+
+            for (let i = 0; i < worn.length; i++) {
+                modelFlags[worn[i]] |= 0x10;
+            }
+        } else {
+            for (let i = 0; i < model.length; i++) {
+                modelFlags[model[i]] |= 0x20;
+            }
+
+            for (let i = 0; i < worn.length; i++) {
+                modelFlags[worn[i]] |= 0x08;
             }
         }
 
