@@ -123,7 +123,7 @@ export function parseIdkConfig(key: string, value: string): ConfigValue | null |
     }
 }
 
-export function packIdkConfigs(configs: Map<string, ConfigLine[]>) {
+export function packIdkConfigs(configs: Map<string, ConfigLine[]>, modelFlags: number[]) {
     const client: PackedData = new PackedData(IdkPack.size);
     const server: PackedData = new PackedData(IdkPack.size);
 
@@ -142,9 +142,11 @@ export function packIdkConfigs(configs: Map<string, ConfigLine[]>) {
             if (key.startsWith('model')) {
                 const index = parseInt(key.substring('model'.length)) - 1;
                 models[index] = value as number;
+                modelFlags[value as number] |= 0x80;
             } else if (key.startsWith('head')) {
                 const index = parseInt(key.substring('head'.length)) - 1;
                 heads[index] = value as number;
+                modelFlags[value as number] |= 0x80;
             } else if (key.startsWith('recol') && key.endsWith('s')) {
                 const index = parseInt(key.substring('recol'.length, key.length - 1)) - 1;
                 recol_s[index] = value as number;

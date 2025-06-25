@@ -7,8 +7,9 @@ if (Environment.BUILD_STARTUP_UPDATE) {
 }
 
 try {
-    await packServer();
-    await packClient();
+    const modelFlags: number[] = [];
+    await packServer(modelFlags);
+    await packClient(modelFlags);
 } catch (err) {
     if (err instanceof Error) {
         console.log(err);

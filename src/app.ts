@@ -20,8 +20,9 @@ if (!fs.existsSync('data/pack/client/config') || !fs.existsSync('data/pack/serve
     printInfo('Packing cache, please wait until you see the world is ready.');
 
     try {
-        await packServer();
-        await packClient();
+        const modelFlags: number[] = [];
+        await packServer(modelFlags);
+        await packClient(modelFlags);
     } catch (err) {
         if (err instanceof Error) {
             printError(err.message);

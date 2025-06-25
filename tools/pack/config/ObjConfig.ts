@@ -192,7 +192,7 @@ export function parseObjConfig(key: string, value: string): ConfigValue | null |
     }
 }
 
-export function packObjConfigs(configs: Map<string, ConfigLine[]>): { client: PackedData; server: PackedData } {
+export function packObjConfigs(configs: Map<string, ConfigLine[]>, modelFlags: number[]): { client: PackedData; server: PackedData } {
     const client: PackedData = new PackedData(ObjPack.size);
     const server: PackedData = new PackedData(ObjPack.size);
 
@@ -260,6 +260,7 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>): { client: Pa
             } else if (key === 'model') {
                 client.p1(1);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x40;
             } else if (key === 'desc') {
                 client.p1(3);
                 client.pjstr(value as string);
@@ -311,17 +312,21 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>): { client: Pa
                 client.p1(23);
                 client.p2(values[0]);
                 client.p1(values[1]);
+                modelFlags[values[0]] |= 0x10;
             } else if (key === 'manwear2') {
                 client.p1(24);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x10;
             } else if (key === 'womanwear') {
                 const values = value as number[];
                 client.p1(25);
                 client.p2(values[0]);
                 client.p1(values[1]);
+                modelFlags[values[0]] |= 0x10;
             } else if (key === 'womanwear2') {
                 client.p1(26);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x10;
             } else if (key === 'wearpos3') {
                 server.p1(27);
                 server.p1(value as number);
@@ -339,21 +344,27 @@ export function packObjConfigs(configs: Map<string, ConfigLine[]>): { client: Pa
             } else if (key === 'manwear3') {
                 client.p1(78);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x10;
             } else if (key === 'womanwear3') {
                 client.p1(79);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x10;
             } else if (key === 'manhead') {
                 client.p1(90);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x80;
             } else if (key === 'womanhead') {
                 client.p1(91);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x80;
             } else if (key === 'manhead2') {
                 client.p1(92);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x80;
             } else if (key === 'womanhead2') {
                 client.p1(93);
                 client.p2(value as number);
+                modelFlags[value as number] |= 0x80;
             } else if (key === 'category') {
                 server.p1(94);
                 server.p2(value as number);

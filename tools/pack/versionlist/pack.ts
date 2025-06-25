@@ -6,7 +6,7 @@ import Packet from '#/io/Packet.js';
 import { MapPack } from '#/util/PackFile.js';
 import { FramePack } from '../graphics/UnpackAnims.js';
 
-export function packClientVersionList(cache: FileStream) {
+export function packClientVersionList(cache: FileStream, modelFlags: number[]) {
     const versionlist = new Jagfile();
 
     const modelVersion = Packet.alloc(3);
@@ -18,7 +18,18 @@ export function packClientVersionList(cache: FileStream) {
         if (data) {
             modelVersion.p2(1);
             modelCrc.p4(Packet.getcrc(data, 0, data.length - 2));
-            modelIndex.p1(0); // flags
+            modelIndex.p1(modelFlags[id] ?? 0);
+
+            /*
+            0x80 - player chatheads
+            0x40 - item inventory models
+            0x20 - item inventory models (f2p)
+            0x10 - item worn models
+            0x8 - item worn models (f2p)
+            0x4 - npc models/chatheads + scenery of anything that is mapped down
+            0x2 - anything that spawns dynamically (non mapped down npcs/scenery, spotanims, interfaces)
+            0x1 - used on tutorial island
+            */
         } else {
             modelVersion.p2(0);
             modelCrc.p4(0);

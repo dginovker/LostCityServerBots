@@ -3,7 +3,7 @@ import fs from 'fs';
 import { parentPort } from 'worker_threads';
 
 import Environment from '#/util/Environment.js';
-import { revalidatePack } from '#/util/PackFile.js';
+import { ModelPack, revalidatePack } from '#/util/PackFile.js';
 import { packClientWordenc } from '#tools/pack/chat/pack.js';
 import { packConfigs } from '#tools/pack/config/PackShared.js';
 import { packClientModel } from '#tools/pack/graphics/pack.js';
@@ -20,8 +20,9 @@ import { packClientTitle } from '#tools/pack/sprite/title.js';
 import { generateServerSymbols } from '#tools/pack/symbols.js';
 import FileStream from '#/io/FileStream.js';
 import { packClientVersionList } from '#tools/pack/versionlist/pack.js';
+import { packWorldmap } from '#tools/pack/map/Worldmap.js';
 
-export async function packServer() {
+export async function packServer(modelFlags: number[]) {
     if (!fs.existsSync('RuneScriptCompiler.jar')) {
         throw new Error('The RuneScript compiler is missing and the build process cannot continue.');
     }
@@ -34,11 +35,16 @@ export async function packServer() {
     }
 
     revalidatePack();
-    await packConfigs();
+
+    for (let i = 0; i < ModelPack.max; i++) {
+        modelFlags[i] = 0;
+    }
+
+    await packConfigs(modelFlags);
     packServerInterface();
 
     packServerMap();
-    // await packWorldmap();
+    await packWorldmap();
 
     generateServerSymbols();
 
@@ -66,7 +72,7 @@ export async function packServer() {
     }
 }
 
-export async function packClient() {
+export async function packClient(modelFlags: number[]) {
     if (parentPort) {
         parentPort.postMessage({
             type: 'dev_progress',
@@ -87,7 +93,7 @@ export async function packClient() {
     packClientModel(cache);
     packClientMap(cache);
     packClientMusic(cache);
-    packClientVersionList(cache);
+    packClientVersionList(cache, modelFlags);
 
     if (parentPort) {
         parentPort.postMessage({

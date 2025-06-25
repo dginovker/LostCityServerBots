@@ -131,11 +131,11 @@ export type ConfigLine = { key: string; value: ConfigValue };
 // we're using null for invalid values, undefined for invalid keys
 export type ConfigParseCallback = (key: string, value: string) => ConfigValue | null | undefined;
 export type ConfigDatIdx = { client: PackedData; server: PackedData };
-export type ConfigPackCallback = (configs: Map<string, ConfigLine[]>) => ConfigDatIdx;
+export type ConfigPackCallback = (configs: Map<string, ConfigLine[]>, modelFlags: number[]) => ConfigDatIdx;
 export type ConfigSaveCallback = (dat: Packet, idx: Packet) => void;
 export type ConfigValidateCallback = (server: Packet, client: Packet) => boolean;
 
-export async function readConfigs(dirTree: Set<string>, extension: string, requiredProperties: string[], parse: ConfigParseCallback, pack: ConfigPackCallback, saveClient: ConfigSaveCallback, saveServer: ConfigSaveCallback, validate?: ConfigValidateCallback) {
+export async function readConfigs(dirTree: Set<string>, extension: string, requiredProperties: string[], modelFlags: number[], parse: ConfigParseCallback, pack: ConfigPackCallback, saveClient: ConfigSaveCallback, saveServer: ConfigSaveCallback, validate?: ConfigValidateCallback) {
     const files = findFiles(dirTree, extension);
 
     const configs = new Map<string, ConfigLine[]>();
@@ -243,7 +243,7 @@ export async function readConfigs(dirTree: Set<string>, extension: string, requi
         }
     }
 
-    const { client, server } = pack(configs);
+    const { client, server } = pack(configs, modelFlags);
 
     if (Environment.BUILD_VERIFY && validate && !validate(client.dat, server.dat)) {
         throw new Error(`${extension} verification failed! Custom data detected.\nSet BUILD_VERIFY=false in your .env file if this is intended.`);
@@ -255,7 +255,7 @@ export async function readConfigs(dirTree: Set<string>, extension: string, requi
 
 function noOp() {}
 
-export async function packConfigs() {
+export async function packConfigs(modelFlags: number[]) {
     CONSTANTS.clear();
 
     loadDir(`${Environment.BUILD_SRC_DIR}/scripts`, '.constant', src => {
@@ -316,6 +316,7 @@ export async function packConfigs() {
             dirTree,
             '.param',
             ['type'],
+            modelFlags,
             parseParamConfig,
             packParamConfigs,
             () => {},
@@ -344,16 +345,16 @@ export async function packConfigs() {
     'varp.dat',     'varp.idx'
     */
 
-    const rebuildClient =
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.seq', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.loc', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.flo', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.spotanim', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.npc', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.obj', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.idk', 'data/pack/client/config') ||
-        shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.varp', 'data/pack/client/config') ||
-        shouldBuild('src/cache/packconfig', '.ts', 'data/pack/client/config');
+    const rebuildClient = true;
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.seq', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.loc', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.flo', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.spotanim', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.npc', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.obj', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.idk', 'data/pack/client/config') ||
+    // shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.varp', 'data/pack/client/config') ||
+    // shouldBuild('tools/pack/config', '.ts', 'data/pack/client/config');
 
     // not a config but we want the server to know all the possible categories
     if (shouldBuildFile(`${Environment.BUILD_SRC_DIR}/pack/category.pack`, 'data/pack/server/category.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/category.dat')) {
@@ -372,7 +373,7 @@ export async function packConfigs() {
     // ----
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.dbtable', 'data/pack/server/dbtable.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/dbtable.dat')) {
-        await readConfigs(dirTree, '.dbtable', [], parseDbTableConfig, packDbTableConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.dbtable', [], modelFlags, parseDbTableConfig, packDbTableConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/dbtable.dat');
             idx.save('data/pack/server/dbtable.idx');
             dat.release();
@@ -389,7 +390,7 @@ export async function packConfigs() {
         shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.dbtable', 'data/pack/server/dbtable.dat') ||
         shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/dbtable.dat')
     ) {
-        await readConfigs(dirTree, '.dbrow', [], parseDbRowConfig, packDbRowConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.dbrow', [], modelFlags, parseDbRowConfig, packDbRowConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/dbrow.dat');
             idx.save('data/pack/server/dbrow.idx');
             dat.release();
@@ -398,7 +399,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.enum', 'data/pack/server/enum.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/enum.dat')) {
-        await readConfigs(dirTree, '.enum', [], parseEnumConfig, packEnumConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.enum', [], modelFlags, parseEnumConfig, packEnumConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/enum.dat');
             idx.save('data/pack/server/enum.idx');
             dat.release();
@@ -407,7 +408,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.inv', 'data/pack/server/inv.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/inv.dat')) {
-        await readConfigs(dirTree, '.inv', [], parseInvConfig, packInvConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.inv', [], modelFlags, parseInvConfig, packInvConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/inv.dat');
             idx.save('data/pack/server/inv.idx');
             dat.release();
@@ -416,7 +417,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.mesanim', 'data/pack/server/mesanim.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/mesanim.dat')) {
-        await readConfigs(dirTree, '.mesanim', [], parseMesAnimConfig, packMesAnimConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.mesanim', [], modelFlags, parseMesAnimConfig, packMesAnimConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/mesanim.dat');
             idx.save('data/pack/server/mesanim.idx');
             dat.release();
@@ -425,7 +426,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.struct', 'data/pack/server/struct.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/struct.dat')) {
-        await readConfigs(dirTree, '.struct', [], parseStructConfig, packStructConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.struct', [], modelFlags, parseStructConfig, packStructConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/struct.dat');
             idx.save('data/pack/server/struct.idx');
             dat.release();
@@ -440,6 +441,7 @@ export async function packConfigs() {
             dirTree,
             '.seq',
             [],
+            modelFlags,
             parseSeqConfig,
             packSeqConfigs,
             (dat: Packet, idx: Packet) => {
@@ -463,6 +465,7 @@ export async function packConfigs() {
             dirTree,
             '.loc',
             [],
+            modelFlags,
             parseLocConfig,
             packLocConfigs,
             (dat: Packet, idx: Packet) => {
@@ -486,6 +489,7 @@ export async function packConfigs() {
             dirTree,
             '.flo',
             [],
+            modelFlags,
             parseFloConfig,
             packFloConfigs,
             (dat: Packet, idx: Packet) => {
@@ -509,6 +513,7 @@ export async function packConfigs() {
             dirTree,
             '.spotanim',
             [],
+            modelFlags,
             parseSpotAnimConfig,
             packSpotAnimConfigs,
             (dat: Packet, idx: Packet) => {
@@ -532,6 +537,7 @@ export async function packConfigs() {
             dirTree,
             '.npc',
             [],
+            modelFlags,
             parseNpcConfig,
             packNpcConfigs,
             (dat: Packet, idx: Packet) => {
@@ -555,6 +561,7 @@ export async function packConfigs() {
             dirTree,
             '.obj',
             [],
+            modelFlags,
             parseObjConfig,
             packObjConfigs,
             (dat: Packet, idx: Packet) => {
@@ -598,6 +605,7 @@ export async function packConfigs() {
             dirTree,
             '.idk',
             [],
+            modelFlags,
             parseIdkConfig,
             packIdkConfigs,
             (dat: Packet, idx: Packet) => {
@@ -621,6 +629,7 @@ export async function packConfigs() {
             dirTree,
             '.varp',
             [],
+            modelFlags,
             parseVarpConfig,
             packVarpConfigs,
             (dat: Packet, idx: Packet) => {
@@ -640,7 +649,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.hunt', 'data/pack/server/hunt.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/hunt.dat')) {
-        await readConfigs(dirTree, '.hunt', [], parseHuntConfig, packHuntConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.hunt', [], modelFlags, parseHuntConfig, packHuntConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/hunt.dat');
             idx.save('data/pack/server/hunt.idx');
             dat.release();
@@ -649,7 +658,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.varn', 'data/pack/server/varn.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/varn.dat')) {
-        await readConfigs(dirTree, '.varn', [], parseVarnConfig, packVarnConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.varn', [], modelFlags, parseVarnConfig, packVarnConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/varn.dat');
             idx.save('data/pack/server/varn.idx');
             dat.release();
@@ -658,7 +667,7 @@ export async function packConfigs() {
     }
 
     if (shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.vars', 'data/pack/server/vars.dat') || shouldBuild('src/cache/packconfig', '.ts', 'data/pack/server/vars.dat')) {
-        await readConfigs(dirTree, '.vars', [], parseVarsConfig, packVarsConfigs, noOp, (dat: Packet, idx: Packet) => {
+        await readConfigs(dirTree, '.vars', [], modelFlags, parseVarsConfig, packVarsConfigs, noOp, (dat: Packet, idx: Packet) => {
             dat.save('data/pack/server/vars.dat');
             idx.save('data/pack/server/vars.idx');
             dat.release();

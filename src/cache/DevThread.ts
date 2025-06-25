@@ -21,8 +21,9 @@ async function processChangedFiles() {
     processNextQueue = new Set();
 
     try {
-        await packServer();
-        await packClient();
+        const modelFlags: number[] = [];
+        await packServer(modelFlags);
+        await packClient(modelFlags);
 
         if (parentPort) {
             parentPort.postMessage({

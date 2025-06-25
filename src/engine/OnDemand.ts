@@ -18,20 +18,23 @@ class OnDemand {
     cycle() {
         // todo: limit requests per client per cycle
 
-        for (const req of this.urgentRequests) {
+        for (let i = 0; i < this.urgentRequests.length; i++) {
+            const req = this.urgentRequests[i];
             this.send(req.client, req.archive, req.file);
+            this.urgentRequests.splice(i--, 1);
         }
-        this.urgentRequests = [];
 
-        for (const req of this.extraRequests) {
+        for (let i = 0; i < this.extraRequests.length; i++) {
+            const req = this.extraRequests[i];
             this.send(req.client, req.archive, req.file);
+            this.extraRequests.splice(i--, 1);
         }
-        this.extraRequests = [];
 
-        for (const req of this.ingameRequests) {
+        for (let i = 0; i < this.ingameRequests.length; i++) {
+            const req = this.ingameRequests[i];
             this.send(req.client, req.archive, req.file);
+            this.ingameRequests.splice(i--, 1);
         }
-        this.ingameRequests = [];
 
         setTimeout(this.cycle.bind(this), 50);
     }

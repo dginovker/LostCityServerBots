@@ -202,7 +202,7 @@ export function parseLocConfig(key: string, value: string): ConfigValue | null |
     }
 }
 
-export function packLocConfigs(configs: Map<string, ConfigLine[]>): { client: PackedData; server: PackedData } {
+export function packLocConfigs(configs: Map<string, ConfigLine[]>, modelFlags: number[]): { client: PackedData; server: PackedData } {
     const client: PackedData = new PackedData(LocPack.size);
     const server: PackedData = new PackedData(LocPack.size);
 
@@ -359,6 +359,7 @@ export function packLocConfigs(configs: Map<string, ConfigLine[]>): { client: Pa
 
             client.p1(models.length);
             for (let k = 0; k < models.length; k++) {
+                modelFlags[models[k].model] |= 0x4;
                 client.p2(models[k].model);
                 client.p1(models[k].shape);
             }

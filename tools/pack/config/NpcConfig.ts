@@ -263,7 +263,7 @@ export function parseNpcConfig(key: string, value: string): ConfigValue | null |
     }
 }
 
-export function packNpcConfigs(configs: Map<string, ConfigLine[]>): { client: PackedData; server: PackedData } {
+export function packNpcConfigs(configs: Map<string, ConfigLine[]>, modelFlags: number[]): { client: PackedData; server: PackedData } {
     const client: PackedData = new PackedData(NpcPack.size);
     const server: PackedData = new PackedData(NpcPack.size);
 
@@ -289,9 +289,11 @@ export function packNpcConfigs(configs: Map<string, ConfigLine[]>): { client: Pa
             } else if (key.startsWith('model')) {
                 const index = parseInt(key.substring('model'.length)) - 1;
                 models[index] = value as number;
+                modelFlags[value as number] |= 0x4;
             } else if (key.startsWith('head')) {
                 const index = parseInt(key.substring('head'.length)) - 1;
                 heads[index] = value as number;
+                modelFlags[value as number] |= 0x4;
             } else if (key.startsWith('recol')) {
                 const index = parseInt(key.substring('recol'.length, key.length - 1)) - 1;
                 if (key.endsWith('s')) {
