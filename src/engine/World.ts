@@ -2182,7 +2182,7 @@ class World {
 
             const seed = [];
             for (let i = 0; i < 4; i++) {
-                seed[i] = World.loginBuf.g4();
+                seed[i] = World.loginBuf.g4s();
             }
             client.decryptor = new Isaac(seed);
 
@@ -2191,7 +2191,7 @@ class World {
             }
             client.encryptor = new Isaac(seed);
 
-            const uid = World.loginBuf.g4();
+            const uid = World.loginBuf.g4s();
             const username = World.loginBuf.gjstr();
             const password = World.loginBuf.gjstr();
 

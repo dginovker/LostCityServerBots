@@ -146,9 +146,6 @@ export function unpackNpcConfig(config: ConfigIdx, id: number): string[] {
         } else if (code === 102) {
             const headicon = dat.g2();
             def.push(`headicon=${headicon}`);
-        } else if (code === 103) {
-            const turnspeed = dat.g2();
-            def.push(`turnspeed=${turnspeed}`);
         } else {
             printWarning(`unknown npc code ${code}`);
         }

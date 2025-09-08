@@ -29,7 +29,6 @@ export function unpackLocModels(config: ConfigIdx, id: number): LocModels {
     const models: LocModelShape[] = [];
     const ldModels: LocModelShape[] = [];
 
-    let decodedModels = false;
     while (true) {
         const code = dat.g1();
         if (code === 0) {
@@ -37,53 +36,21 @@ export function unpackLocModels(config: ConfigIdx, id: number): LocModels {
         }
 
         if (code === 1) {
-            // 1 model per shape
             const count = dat.g1();
 
             for (let i = 0; i < count; i++) {
                 const model = dat.g2();
                 const shape = dat.g1();
 
-                if (!decodedModels) {
-                    models.push({
-                        model,
-                        shape
-                    });
-                } else {
-                    ldModels.push({
-                        model,
-                        shape
-                    });
-                }
+                models.push({
+                    model,
+                    shape
+                });
             }
-
-            decodedModels = true;
         } else if (code === 2) {
             dat.gjstr();
         } else if (code === 3) {
             dat.gjstr();
-        } else if (code === 5) {
-            // multiple models for the default shape
-            const count = dat.g1();
-
-            for (let i = 0; i < count; i++) {
-                const model = dat.g2();
-                const shape = LocShapeSuffix._8;
-
-                if (!decodedModels) {
-                    models.push({
-                        model,
-                        shape
-                    });
-                } else {
-                    ldModels.push({
-                        model,
-                        shape
-                    });
-                }
-            }
-
-            decodedModels = true;
         } else if (code === 14) {
             dat.g1();
         } else if (code === 15) {
@@ -323,8 +290,6 @@ export function unpackLocConfig(config: ConfigIdx, id: number): string[] {
             def.push(`offsetz=${offsetz}`);
         } else if (code === 73) {
             def.push('forcedecor=yes');
-        } else if (code === 74) {
-            def.push('breakroutefinding=yes');
         } else {
             printFatalError(`unknown loc code ${code}, last code ${lastCode}`);
         }

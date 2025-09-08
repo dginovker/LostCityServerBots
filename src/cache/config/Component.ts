@@ -150,9 +150,9 @@ export default class Component {
                 }
                 case Component.TYPE_RECT:
                     com.fill = dat.gbool();
-                    com.colour = dat.g4();
-                    com.activeColour = dat.g4();
-                    com.overColour = dat.g4();
+                    com.colour = dat.g4s();
+                    com.activeColour = dat.g4s();
+                    com.overColour = dat.g4s();
                     break;
                 case Component.TYPE_TEXT:
                     com.center = dat.gbool();
@@ -160,9 +160,9 @@ export default class Component {
                     com.shadowed = dat.gbool();
                     com.text = dat.gjstr();
                     com.activeText = dat.gjstr();
-                    com.colour = dat.g4();
-                    com.activeColour = dat.g4();
-                    com.overColour = dat.g4();
+                    com.colour = dat.g4s();
+                    com.activeColour = dat.g4s();
+                    com.overColour = dat.g4s();
                     break;
                 case Component.TYPE_SPRITE:
                     com.graphic = dat.gjstr();
@@ -202,7 +202,7 @@ export default class Component {
                     com.center = dat.gbool();
                     com.font = dat.g1();
                     com.shadowed = dat.gbool();
-                    com.colour = dat.g4();
+                    com.colour = dat.g4s();
                     com.marginX = dat.g2s();
                     com.marginY = dat.g2s();
                     com.interactable = dat.gbool();

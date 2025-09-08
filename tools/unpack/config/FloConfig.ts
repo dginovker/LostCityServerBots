@@ -30,14 +30,10 @@ export function unpackFloConfig(config: ConfigIdx, id: number): string[] {
         } else if (code === 5) {
             def.push('occlude=no');
         } else if (code === 6) {
-            const _debugname = dat.gjstr();
+            const debugname = dat.gjstr();
 
             // console.log(id + '=' + debugname);
-            // def.push(`debugname=${debugname}`);
-        } else if (code === 7) {
-            const mapcolour = dat.g3();
-
-            def.push(`mapcolour=0x${mapcolour.toString(16).toUpperCase().padStart(6, '0')}`);
+            def.push(`debugname=${debugname}`);
         } else {
             printWarning(`unknown flo code ${code}`);
         }

@@ -99,7 +99,7 @@ function reorderUnpacked(config: string[], settings: { moveName: boolean, moveDe
             model.push(line);
         } else if (settings.moveRecol && (line.startsWith('recol') || line.startsWith('retex'))) {
             recol.push(line);
-        } else if (!line.startsWith('hasalpha=')) {
+        } else {
             others.push(line);
         }
     }
@@ -351,4 +351,4 @@ function unpackConfigs(revision: string) {
     printInfo('Done! Manual post processing may be required.');
 }
 
-unpackConfigs('377');
+unpackConfigs('244');
