@@ -9,7 +9,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import OpNpcT from '#/network/game/client/model/OpNpcT.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 
-
 export default class OpNpcTHandler extends MessageHandler<OpNpcT> {
     handle(message: OpNpcT, player: NetworkPlayer): boolean {
         const { nid, spellComponent: spellComId } = message;

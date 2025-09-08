@@ -9,7 +9,6 @@ import OpHeldT from '#/network/game/client/model/OpHeldT.js';
 import { LoggerEventType } from '#/server/logger/LoggerEventType.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class OpHeldTHandler extends MessageHandler<OpHeldT> {
     handle(message: OpHeldT, player: Player): boolean {
         const { obj: item, slot, component: comId, spellComponent: spellComId } = message;

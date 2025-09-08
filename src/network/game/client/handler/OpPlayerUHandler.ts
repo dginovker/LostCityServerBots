@@ -11,7 +11,6 @@ import OpPlayerU from '#/network/game/client/model/OpPlayerU.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class OpPlayerUHandler extends MessageHandler<OpPlayerU> {
     handle(message: OpPlayerU, player: NetworkPlayer): boolean {
         const { pid, useObj: item, useSlot: slot, useComponent: comId } = message;

@@ -3,7 +3,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import EventTracking from '#/network/game/client/model/EventTracking.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class EventTrackingHandler extends MessageHandler<EventTracking> {
     handle(message: EventTracking, player: Player): boolean {
         const bytes: Uint8Array = message.bytes;

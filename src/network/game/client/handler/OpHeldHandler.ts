@@ -9,7 +9,6 @@ import OpHeld from '#/network/game/client/model/OpHeld.js';
 import { LoggerEventType } from '#/server/logger/LoggerEventType.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class OpHeldHandler extends MessageHandler<OpHeld> {
     handle(message: OpHeld, player: Player): boolean {
         const { obj: item, slot, component: comId } = message;

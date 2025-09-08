@@ -8,7 +8,6 @@ import InvButtonD from '#/network/game/client/model/InvButtonD.js';
 import UpdateInvPartial from '#/network/game/server/model/UpdateInvPartial.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class InvButtonDHandler extends MessageHandler<InvButtonD> {
     handle(message: InvButtonD, player: Player): boolean {
         const { component: comId, slot, targetSlot } = message;

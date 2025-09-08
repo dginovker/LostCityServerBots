@@ -9,7 +9,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import OpNpc from '#/network/game/client/model/OpNpc.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 
-
 export default class OpNpcHandler extends MessageHandler<OpNpc> {
     handle(message: OpNpc, player: NetworkPlayer): boolean {
         const { nid } = message;

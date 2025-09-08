@@ -8,7 +8,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import IfButton from '#/network/game/client/model/IfButton.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class IfButtonHandler extends MessageHandler<IfButton> {
     handle(message: IfButton, player: Player): boolean {
         const { component: comId } = message;

@@ -7,7 +7,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import MessagePublic from '#/network/game/client/model/MessagePublic.js';
 import WordPack from '#/wordenc/WordPack.js';
 
-
 export default class MessagePublicHandler extends MessageHandler<MessagePublic> {
     handle(message: MessagePublic, player: Player): boolean {
         const { color, effect, input } = message;

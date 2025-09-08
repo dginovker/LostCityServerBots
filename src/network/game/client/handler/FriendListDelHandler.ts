@@ -4,7 +4,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import FriendListDel from '#/network/game/client/model/FriendListDel.js';
 import { fromBase37 } from '#/util/JString.js';
 
-
 export default class FriendListDelHandler extends MessageHandler<FriendListDel> {
     handle(message: FriendListDel, player: Player): boolean {
         if (player.socialProtect || fromBase37(message.username) === 'invalid_name') {

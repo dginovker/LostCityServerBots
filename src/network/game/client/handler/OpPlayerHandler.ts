@@ -8,7 +8,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import OpPlayer from '#/network/game/client/model/OpPlayer.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 
-
 export default class OpPlayerHandler extends MessageHandler<OpPlayer> {
     handle(message: OpPlayer, player: NetworkPlayer): boolean {
         const { pid } = message;

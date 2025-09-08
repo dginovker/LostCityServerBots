@@ -6,7 +6,6 @@ import MessagePrivate from '#/network/game/client/model/MessagePrivate.js';
 import { fromBase37 } from '#/util/JString.js';
 import WordPack from '#/wordenc/WordPack.js';
 
-
 export default class MessagePrivateHandler extends MessageHandler<MessagePrivate> {
     handle(message: MessagePrivate, player: Player): boolean {
         const { username, input } = message;

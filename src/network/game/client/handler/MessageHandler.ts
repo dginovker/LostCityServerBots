@@ -1,6 +1,6 @@
 import Player from '#/engine/entity/Player.js';
-import IncomingMessage from '#/network/game/client/IncomingMessage.js';
+import ClientGameMessage from '#/network/game/client/ClientGameMessage.js';
 
-export default abstract class MessageHandler<T extends IncomingMessage> {
+export default abstract class MessageHandler<T extends ClientGameMessage> {
     abstract handle(message: T, player: Player): boolean;
 }

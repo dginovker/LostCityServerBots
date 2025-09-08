@@ -9,7 +9,6 @@ import OpObjU from '#/network/game/client/model/OpObjU.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class OpObjUHandler extends MessageHandler<OpObjU> {
     handle(message: OpObjU, player: NetworkPlayer): boolean {
         const { x, z, obj: objId, useObj: item, useSlot: slot, useComponent: comId } = message;

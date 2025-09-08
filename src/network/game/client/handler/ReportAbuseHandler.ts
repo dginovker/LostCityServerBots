@@ -5,7 +5,6 @@ import ReportAbuse, { ReportAbuseReason } from '#/network/game/client/model/Repo
 import Environment from '#/util/Environment.js';
 import { fromBase37 } from '#/util/JString.js';
 
-
 export default class ReportAbuseHandler extends MessageHandler<ReportAbuse> {
     handle(message: ReportAbuse, player: Player): boolean {
         if (player.reportAbuseProtect) {

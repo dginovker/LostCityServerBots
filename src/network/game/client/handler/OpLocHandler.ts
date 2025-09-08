@@ -7,7 +7,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import OpLoc from '#/network/game/client/model/OpLoc.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 
-
 export default class OpLocHandler extends MessageHandler<OpLoc> {
     handle(message: OpLoc, player: NetworkPlayer): boolean {
         const { x, z, loc: locId } = message;

@@ -6,7 +6,6 @@ import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 import Environment from '#/util/Environment.js';
 import { WalkTriggerSetting } from '#/engine/entity/WalkTriggerSetting.js';
 
-
 export default class MoveClickHandler extends MessageHandler<MoveClick> {
     handle(message: MoveClick, player: NetworkPlayer): boolean {
         if (player.delayed) {

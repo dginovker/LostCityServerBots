@@ -9,7 +9,6 @@ import OpLocU from '#/network/game/client/model/OpLocU.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class OpLocUHandler extends MessageHandler<OpLocU> {
     handle(message: OpLocU, player: NetworkPlayer): boolean {
         const { x, z, loc: locId, useObj: item, useSlot: slot, useComponent: comId } = message;

@@ -7,7 +7,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import InvButton from '#/network/game/client/model/InvButton.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class InvButtonHandler extends MessageHandler<InvButton> {
     handle(message: InvButton, player: Player): boolean {
         // jagex has if_button1-5

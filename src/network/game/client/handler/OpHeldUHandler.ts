@@ -9,7 +9,6 @@ import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
 import OpHeldU from '#/network/game/client/model/OpHeldU.js';
 import Environment from '#/util/Environment.js';
 
-
 export default class OpHeldUHandler extends MessageHandler<OpHeldU> {
     handle(message: OpHeldU, player: Player): boolean {
         const { obj: item, slot, component: comId, useObj: useItem, useSlot, useComponent: useComId } = message;
