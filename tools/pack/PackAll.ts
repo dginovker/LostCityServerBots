@@ -5,24 +5,75 @@ import { parentPort } from 'worker_threads';
 import * as fflate from 'fflate';
 
 import Environment from '#/util/Environment.js';
-import { ModelPack, revalidatePack } from '#/util/PackFile.js';
+import { ModelPack, revalidatePack } from '#tools/pack/PackFile.js';
 import { packClientWordenc } from '#tools/pack/chat/pack.js';
 import { packConfigs } from '#tools/pack/config/PackShared.js';
 import { packClientModel } from '#tools/pack/graphics/pack.js';
 import { packClientInterface } from '#tools/pack/interface/PackClient.js';
-import { packServerInterface } from '#tools/pack/interface/PackServer.js';
-import { packClientMap } from '#tools/pack/map/PackClient.js';
-import { packServerMap } from '#tools/pack/map/PackServer.js';
+import { packMaps } from '#tools/pack/map/Pack.js';
 import { packClientMusic } from '#tools/pack/midi/pack.js';
 import { packClientSound } from '#tools/pack/sound/pack.js';
 import { packClientMedia } from '#tools/pack/sprite/media.js';
 import { packClientTexture } from '#tools/pack/sprite/textures.js';
 import { packClientTitle } from '#tools/pack/sprite/title.js';
-import { generateServerSymbols } from '#tools/pack/symbols.js';
+import { generateServerSymbols } from '#tools/pack/CompilerSymbols.js';
 import FileStream from '#/io/FileStream.js';
 import { packClientVersionList } from '#tools/pack/versionlist/pack.js';
+import { clearFsCache } from '#tools/pack/FsCache.js';
 
-export async function packServer(modelFlags: number[]) {
+export async function packClient(modelFlags: number[]) {
+    if (parentPort) {
+        parentPort.postMessage({
+            type: 'dev_progress',
+            broadcast: 'Packing client cache (0%)'
+        });
+    }
+
+    clearFsCache();
+    revalidatePack();
+
+    for (let i = 0; i < ModelPack.max; i++) {
+        modelFlags[i] = 0;
+    }
+
+    const cache = new FileStream('data/pack', true);
+
+    await packClientTitle(cache);
+    await packConfigs(cache, modelFlags);
+    packClientInterface(cache, modelFlags);
+    await packClientMedia(cache);
+    await packClientTexture(cache);
+
+    packClientWordenc(cache);
+    packClientSound(cache);
+    packClientModel(cache);
+    packMaps(cache);
+    packClientMusic(cache);
+    packClientVersionList(cache, modelFlags);
+
+    const zipPack: Record<string, Uint8Array> = {};
+    for (let archive = 1; archive <= 4; archive++) {
+        const count = cache.count(archive);
+        for (let file = 0; file < count; file++) {
+            const data = cache.read(archive, file);
+            if (!data) {
+                continue;
+            }
+
+            zipPack[`${archive}.${file}`] = data;
+        }
+    }
+    const zip = fflate.zipSync(zipPack, { level: 0 });
+    fs.writeFileSync('data/pack/ondemand.zip', zip);
+
+    if (parentPort) {
+        parentPort.postMessage({
+            type: 'dev_progress',
+            text: 'Packed client cache'
+        });
+    }
+}
+export async function packServer() {
     if (!fs.existsSync('RuneScriptCompiler.jar')) {
         throw new Error('The RuneScript compiler is missing and the build process cannot continue.');
     }
@@ -30,20 +81,9 @@ export async function packServer(modelFlags: number[]) {
     if (parentPort) {
         parentPort.postMessage({
             type: 'dev_progress',
-            broadcast: 'Packing server cache (1/2)'
+            broadcast: 'Packing server cache (50%)'
         });
     }
-
-    revalidatePack();
-
-    for (let i = 0; i < ModelPack.max; i++) {
-        modelFlags[i] = 0;
-    }
-
-    await packConfigs(modelFlags);
-    packServerInterface(modelFlags);
-
-    packServerMap();
 
     generateServerSymbols();
 
@@ -66,53 +106,7 @@ export async function packServer(modelFlags: number[]) {
     if (parentPort) {
         parentPort.postMessage({
             type: 'dev_progress',
-            text: 'Packed server cache (1/2)'
-        });
-    }
-}
-
-export async function packClient(modelFlags: number[]) {
-    if (parentPort) {
-        parentPort.postMessage({
-            type: 'dev_progress',
-            broadcast: 'Packing client cache (2/2)'
-        });
-    }
-
-    const cache = new FileStream('data/pack', true);
-
-    await packClientTitle(cache);
-    cache.write(0, 2, fs.readFileSync('data/pack/client/config'));
-    packClientInterface(cache, modelFlags);
-    await packClientMedia(cache);
-    await packClientTexture(cache);
-    packClientWordenc(cache);
-    packClientSound(cache);
-
-    packClientModel(cache);
-    packClientMap(cache);
-    packClientMusic(cache);
-    packClientVersionList(cache, modelFlags);
-
-    const zipPack: Record<string, Uint8Array> = {};
-    for (let archive = 1; archive <= 4; archive++) {
-        const count = cache.count(archive);
-        for (let file = 0; file < count; file++) {
-            const data = cache.read(archive, file);
-            if (!data) {
-                continue;
-            }
-
-            zipPack[`${archive}.${file}`] = data;
-        }
-    }
-    const zip = fflate.zipSync(zipPack, { level: 0 });
-    fs.writeFileSync('data/pack/ondemand.zip', zip);
-
-    if (parentPort) {
-        parentPort.postMessage({
-            type: 'dev_progress',
-            text: 'Packed client cache (2/2)'
+            text: 'Packed server cache'
         });
     }
 }

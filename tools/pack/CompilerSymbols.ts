@@ -14,7 +14,7 @@ import { PlayerStatMap } from '#/engine/entity/PlayerStat.js';
 import { ScriptOpcodeMap } from '#/engine/script/ScriptOpcode.js';
 import ScriptOpcodePointers from '#/engine/script/ScriptOpcodePointers.js';
 import Environment from '#/util/Environment.js';
-import { loadDir, loadPack } from '#/util/NameMap.js';
+import { loadDir, loadPack } from '#tools/pack/NameMap.js';
 
 export function generateServerSymbols() {
     fs.mkdirSync('data/symbols', { recursive: true });
@@ -345,7 +345,7 @@ export function generateServerSymbols() {
 
             if (types.length > 1) {
                 for (let tuple = 0; tuple < types.length; tuple++) {
-                    const tupleIndex = ((table.id & 0xffff) << 12) | ((column & 0x7f) << 4) | (tuple & 0xf);
+                    const tupleIndex = ((table.id & 0xffff) << 12) | ((column & 0x7f) << 4) | ((tuple + 1) & 0xf);
                     dbColumnSymbols += `${tupleIndex}\t${table.debugname}:${table.columnNames[column]}:${tuple}\t${types[tuple]}\n`;
                 }
             }
@@ -410,12 +410,4 @@ export function generateServerSymbols() {
         .sort((a, b) => a[1] - b[1])
         .map(([name, opcode]) => `${opcode}\t${name.toLowerCase()}`);
     fs.writeFileSync('data/symbols/npc_mode.sym', npcmodes.join('\n') + '\n');
-
-    // ----
-
-    if (fs.existsSync('data/pack/server/scripts')) {
-        fs.readdirSync('data/pack/server/scripts').forEach(file => {
-            fs.unlinkSync(`data/pack/server/scripts/${file}`);
-        });
-    }
 }

@@ -2,8 +2,9 @@ import fs from 'fs';
 import { basename, dirname } from 'path';
 
 import Environment from '#/util/Environment.js';
-import { PackFile } from '#/util/PackFileBase.js';
-import { listFilesExt, loadDirExtFull } from '#/util/Parse.js';
+import { PackFile } from '#tools/pack/PackFileBase.js';
+import { listFilesExt, loadDirExtFull } from '#tools/pack/Parse.js';
+import { fileExists, fileStats } from '#tools/pack/FsCache.js';
 // import { printWarning } from '#/util/Logger.js';
 
 function validateFilesPack(pack: PackFile, paths: string[], ext: string, verify: boolean = true): void {
@@ -109,7 +110,7 @@ function validateConfigPack(pack: PackFile, ext: string, regen: boolean = false,
         }
     }
 
-    if (missing.length > 0) {
+    if (Environment.BUILD_VERIFY && missing.length > 0) {
         for (const name of missing) {
             console.log(name);
         }
@@ -118,7 +119,7 @@ function validateConfigPack(pack: PackFile, ext: string, regen: boolean = false,
     }
 
     for (const name of pack.names) {
-        if (!configNames.has(name) && !name.startsWith('cert_')) {
+        if (Environment.BUILD_VERIFY && !configNames.has(name) && !name.startsWith('cert_')) {
             throw new Error(`${pack.type}: ${name} was not found in any ${ext} files, you may need to edit ${Environment.BUILD_SRC_DIR}/pack/${pack.type}.pack`);
         }
     }
@@ -269,9 +270,10 @@ export function crawlConfigNames(ext: string, includeBrackets = false) {
                 }
 
                 if (Environment.BUILD_VERIFY_FOLDER) {
+                    const parentParent = basename(dirname(dirname(dirname(file))));
                     const parent = basename(dirname(dirname(file)));
                     const dir = basename(dirname(file));
-                    if (dir !== '_unpack' && ext !== '.flo') {
+                    if ((dir !== '_unpack' && parent !== '_unpack' && parentParent !== '_unpack') && ext !== '.flo') {
                         if (ext === '.rs2' && dir !== 'scripts' && parent !== 'scripts') {
                             throw new Error(`Script file ${file} must be located inside a "scripts" directory.`);
                         } else if (ext !== '.rs2' && dir !== 'configs' && parent !== 'configs') {
@@ -339,11 +341,11 @@ function crawlConfigCategories() {
 }
 
 export function getModified(path: string) {
-    if (!fs.existsSync(path)) {
+    if (!fileExists(path)) {
         return 0;
     }
 
-    const stats = fs.statSync(path);
+    const stats = fileStats(path);
     return stats.mtimeMs;
 }
 
@@ -353,7 +355,7 @@ export function getLatestModified(path: string, ext: string) {
     let latest = 0;
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const stats = fs.statSync(file);
+        const stats = fileStats(file);
 
         if (stats.mtimeMs > latest) {
             latest = stats.mtimeMs;
@@ -364,43 +366,44 @@ export function getLatestModified(path: string, ext: string) {
 }
 
 export function shouldBuild(path: string, ext: string, out: string) {
-    if (!fs.existsSync(out)) {
+    if (!fileExists(out)) {
         return true;
     }
 
-    const stats = fs.statSync(out);
+    const stats = fileStats(out);
     const latest = getLatestModified(path, ext);
 
     return stats.mtimeMs < latest;
 }
 
 export function shouldBuildFile(src: string, dest: string) {
-    if (!fs.existsSync(dest)) {
+    if (!fileExists(dest)) {
         return true;
     }
 
-    const stats = fs.statSync(dest);
-    const srcStats = fs.statSync(src);
+    const stats = fileStats(dest);
+    const srcStats = fileStats(src);
 
     return stats.mtimeMs < srcStats.mtimeMs;
 }
 
 export function shouldBuildFileAny(path: string, dest: string) {
-    if (!fs.existsSync(dest)) {
+    if (!fileExists(dest)) {
         return true;
     }
 
-    const names = fs.readdirSync(path);
-    for (let i = 0; i < names.length; i++) {
-        const stat = fs.statSync(`${path}/${names[i]}`);
+    const entries = fs.readdirSync(path, { withFileTypes: true });
 
-        if (stat.isDirectory()) {
-            const subdir = shouldBuildFileAny(`${path}/${names[i]}`, dest);
+    for (const entry of entries) {
+        const target = `${entry.parentPath}/${entry.name}`;
+
+        if (entry.isDirectory()) {
+            const subdir = shouldBuildFileAny(target, dest);
             if (subdir) {
                 return true;
             }
         } else {
-            if (shouldBuildFile(`${path}/${names[i]}`, dest)) {
+            if (shouldBuildFile(target, dest)) {
                 return true;
             }
         }

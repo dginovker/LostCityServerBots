@@ -1,4 +1,4 @@
-import { packClient, packServer } from '#/cache/PackAll.js';
+import { packClient, packServer } from '#tools/pack/PackAll.js';
 import Environment from '#/util/Environment.js';
 import { updateCompiler } from '#/util/RuneScriptCompiler.js';
 
@@ -9,8 +9,8 @@ if (Environment.BUILD_STARTUP_UPDATE) {
 try {
     const modelFlags: number[] = [];
     console.time('pack');
-    await packServer(modelFlags);
     await packClient(modelFlags);
+    await packServer();
     console.timeEnd('pack');
 } catch (err) {
     if (err instanceof Error) {

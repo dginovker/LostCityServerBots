@@ -8,6 +8,8 @@ import { NpcMode } from '#/engine/entity/NpcMode.js';
 import { NpcStat } from '#/engine/entity/NpcStat.js';
 import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
+import { printFatalError } from '#/util/Logger.js';
+import kleur from 'kleur';
 
 export default class NpcType extends ConfigType {
     static configNames = new Map();
@@ -245,7 +247,7 @@ export default class NpcType extends ConfigType {
         } else if (code === 250) {
             this.debugname = dat.gjstr();
         } else {
-            throw new Error(`Unrecognized npc config code: ${code}`);
+            printFatalError(`Unrecognized npc config code: ${code}\nThis error comes from the packed data being out of sync, try running ` + kleur.green().bold('npm run build') + ', then restarting this.');
         }
     }
 }
