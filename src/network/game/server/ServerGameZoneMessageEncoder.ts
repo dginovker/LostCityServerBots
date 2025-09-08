@@ -3,7 +3,7 @@ import ServerGameMessageEncoder from '#/network/game/server/ServerGameMessageEnc
 import ServerGameZoneProt from '#/network/game/server/ServerGameZoneProt.js';
 import ServerGameZoneMessage from '#/network/game/server/ServerGameZoneMessage.js';
 
-export default abstract class ServerGameServerGameZoneMessageEncoder<T extends ServerGameZoneMessage> extends ServerGameMessageEncoder<T> {
+export default abstract class ServerGameZoneMessageEncoder<T extends ServerGameZoneMessage> extends ServerGameMessageEncoder<T> {
     abstract prot: ServerGameZoneProt;
 
     enclose(buf: Packet, message: T): void {

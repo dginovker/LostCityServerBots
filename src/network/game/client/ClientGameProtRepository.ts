@@ -1,6 +1,6 @@
 import ClientGameProt from '#/network/game/client/ClientGameProt.js';
 import ClientGameMessageDecoder from '#/network/game/client/ClientGameMessageDecoder.js';
-import MessageHandler from '#/network/game/client/handler/MessageHandler.js';
+import ClientGameMessageHandler from '#/network/game/client/ClientGameMessageHandler.js';
 import ClientGameMessage from '#/network/game/client/ClientGameMessage.js';
 
 import ChatSetModeDecoder from '#/network/game/client/codec/ChatSetModeDecoder.js';
@@ -76,9 +76,9 @@ import TutorialClickSideHandler from '#/network/game/client/handler/TutorialClic
 
 class ClientGameProtRepository {
     decoders: Map<number, ClientGameMessageDecoder<ClientGameMessage>> = new Map();
-    handlers: Map<number, MessageHandler<ClientGameMessage>> = new Map();
+    handlers: Map<number, ClientGameMessageHandler<ClientGameMessage>> = new Map();
 
-    protected bind(decoder: ClientGameMessageDecoder<ClientGameMessage>, handler?: MessageHandler<ClientGameMessage>) {
+    protected bind(decoder: ClientGameMessageDecoder<ClientGameMessage>, handler?: ClientGameMessageHandler<ClientGameMessage>) {
         if (this.decoders.has(decoder.prot.id)) {
             throw new Error(`[ClientProtRepository] Already defines a ${decoder.prot.id}.`);
         }
