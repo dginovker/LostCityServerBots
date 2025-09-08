@@ -201,24 +201,6 @@ export function unpackObjConfig(config: ConfigIdx, id: number): string[] {
 
             const objName = ObjPack.getById(objId) || 'obj_' + objId;
             def.push(`count${index}=${objName},${count}`);
-        } else if (code === 110) {
-            const resizex = dat.g2();
-            def.push(`resizex=${resizex}`);
-        } else if (code === 111) {
-            const resizey = dat.g2();
-            def.push(`resizey=${resizey}`);
-        } else if (code === 112) {
-            const resizez = dat.g2();
-            def.push(`resizez=${resizez}`);
-        } else if (code === 113) {
-            const ambient = dat.g1b();
-            def.push(`ambient=${ambient}`);
-        } else if (code === 114) {
-            const contrast = dat.g1b();
-            def.push(`contrast=${contrast}`);
-        } else if (code === 115) {
-            const team = dat.g1();
-            def.push(`team=${team}`);
         } else {
             printWarning(`unknown obj code ${code}`);
         }
