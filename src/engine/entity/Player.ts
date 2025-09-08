@@ -1411,10 +1411,14 @@ export default class Player extends PathingEntity {
             return;
         }
 
-        const index = this.invListeners.findIndex(l => l.type === inv && l.com === com);
-        if (index !== -1) {
-            // already listening
+        const sameTypeCom = this.invListeners.findIndex(l => l.type === inv && l.com === com);
+        if (sameTypeCom !== -1) {
             return;
+        }
+
+        const sameCom = this.invListeners.findIndex(l => l.com === com);
+        if (sameCom !== -1) {
+            this.invListeners.splice(sameCom, 1);
         }
 
         const invType = InvType.get(inv);
