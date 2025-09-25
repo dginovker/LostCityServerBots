@@ -9,23 +9,26 @@ import { listFilesExt } from '#tools/pack/Parse.js';
 import { InterfacePack, ModelPack, ObjPack, SeqPack, VarpPack } from '#tools/pack/PackFile.js';
 
 function renameModel(id: number) {
+    const existingFiles = listFilesExt(`${Environment.BUILD_SRC_DIR}/models`, '.ob2');
+
     let model = ModelPack.getById(id);
     if (model.startsWith('model_')) {
-        if (fs.existsSync(`${Environment.BUILD_SRC_DIR}/models/_unpack/${model}.ob2`)) {
-            let name = 'com_i1';
-            let i = 2;
-            while (ModelPack.getByName(name) !== -1) {
-                name = `com_i${i}`;
-                i++;
-            }
-
-            fs.renameSync(`${Environment.BUILD_SRC_DIR}/models/_unpack/${model}.ob2`, `${Environment.BUILD_SRC_DIR}/models/com/${name}.ob2`);
-
-            model = name;
-            ModelPack.register(id, model);
-        } else {
-            console.error('Model does not exist');
+        let name = 'com_i1';
+        let i = 2;
+        while (ModelPack.getByName(name) !== -1) {
+            name = `com_i${i}`;
+            i++;
         }
+
+        const filePath = existingFiles.find(x => x.endsWith(`/${model}.ob2`));
+        if (filePath) {
+            fs.renameSync(filePath, `${Environment.BUILD_SRC_DIR}/models/com/${name}.ob2`);
+        } else {
+            console.error('Model not found on filesystem', 'com', model);
+        }
+
+        model = name;
+        ModelPack.register(id, model);
     }
 
     return model;
@@ -166,6 +169,7 @@ class IfType {
                 com.draggable = dat.gbool();
                 com.interactable = dat.gbool();
                 com.usable = dat.gbool();
+                com.swappable = dat.gbool();
                 com.marginX = dat.g1();
                 com.marginY = dat.g1();
 
@@ -214,6 +218,7 @@ class IfType {
             if (com.comType === ComponentType.TYPE_RECT || com.comType === ComponentType.TYPE_TEXT) {
                 com.activeColour = dat.g4s();
                 com.overColour = dat.g4s();
+                com.activeOverColour = dat.g4s();
             }
 
             if (com.comType === ComponentType.TYPE_GRAPHIC) {
@@ -573,6 +578,10 @@ class IfType {
                 temp.push('usable=yes');
             }
 
+            if (this.swappable) {
+                temp.push('swappable=yes');
+            }
+
             if (this.marginX || this.marginY) {
                 temp.push(`margin=${this.marginX},${this.marginY}`);
             }
@@ -652,6 +661,10 @@ class IfType {
 
             if (this.overColour) {
                 temp.push(`overcolour=0x${this.overColour.toString(16).toUpperCase().padStart(6, '0')}`);
+            }
+
+            if (this.activeOverColour) {
+                temp.push(`activeovercolour=0x${this.activeOverColour.toString(16).toUpperCase().padStart(6, '0')}`);
             }
         }
 
@@ -817,6 +830,7 @@ class IfType {
     draggable: boolean = false;
     interactable: boolean = false;
     usable: boolean = false;
+    swappable: boolean = false;
     marginX: number = 0;
     marginY: number = 0;
     invSlotOffsetX: Int16Array | null = null;
@@ -832,6 +846,7 @@ class IfType {
     colour: number = 0;
     activeColour: number = 0;
     overColour: number = 0;
+    activeOverColour: number = 0;
     graphic: string | null = null;
     activeGraphic: string | null = null;
     model: number = -1;

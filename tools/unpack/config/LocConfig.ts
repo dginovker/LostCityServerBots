@@ -290,6 +290,8 @@ export function unpackLocConfig(config: ConfigIdx, id: number): string[] {
             def.push(`offsetz=${offsetz}`);
         } else if (code === 73) {
             def.push('forcedecor=yes');
+        } else if (code === 74) {
+            def.push('breakroutefinding=yes');
         } else {
             printFatalError(`unknown loc code ${code}, last code ${lastCode}`);
         }
