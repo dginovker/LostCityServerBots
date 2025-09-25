@@ -630,10 +630,6 @@ const PlayerOps: CommandHandlers = {
         state.activePlayer.write(new IfSetModel(com, model));
     }),
 
-    [ScriptOpcode.IF_SETRECOL]: checkedHandler(ActivePlayer, () => {
-        throw new Error();
-    }),
-
     [ScriptOpcode.TUT_FLASH]: checkedHandler(ActivePlayer, state => {
         state.activePlayer.write(new TutFlash(check(state.popInt(), NumberNotNull)));
     }),
