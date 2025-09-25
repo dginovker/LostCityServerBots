@@ -56,7 +56,7 @@ export function parseLocConfig(key: string, value: string): ConfigValue | null |
         'active', 'hillskew', 'sharelight', 'occlude',
         'hasalpha',
         'mirror', 'shadow',
-        'forcedecor'
+        'forcedecor', 'breakroutefinding'
     ];
 
     if (stringKeys.includes(key)) {
@@ -301,6 +301,10 @@ export function packLocConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
             } else if (key === 'forcedecor') {
                 if (value === true) {
                     client.p1(73);
+                }
+            } else if (key === 'breakroutefinding') {
+                if (value === true) {
+                    client.p1(74);
                 }
             }
         }

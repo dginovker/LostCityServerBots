@@ -441,6 +441,7 @@ export function packInterface(modelFlags: number[]) {
             client.pbool(src.draggable === 'yes');
             client.pbool(src.interactable === 'yes');
             client.pbool(src.usable === 'yes');
+            client.pbool(src.swappable === 'yes');
 
             if (src.margin) {
                 client.p1(parseInt((src.margin as string).split(',')[0]));
@@ -494,6 +495,7 @@ export function packInterface(modelFlags: number[]) {
             client.p4(parseInt(src.colour as string));
             client.p4(parseInt(src.activecolour as string));
             client.p4(parseInt(src.overcolour as string));
+            client.p4(parseInt(src.activeovercolour as string));
         }
 
         if (comType === 5) {

@@ -123,6 +123,7 @@ export default class Component {
                     com.draggable = dat.gbool();
                     com.interactable = dat.gbool();
                     com.usable = dat.gbool();
+                    com.swappable = dat.gbool();
                     com.marginX = dat.g1();
                     com.marginY = dat.g1();
 
@@ -153,6 +154,7 @@ export default class Component {
                     com.colour = dat.g4s();
                     com.activeColour = dat.g4s();
                     com.overColour = dat.g4s();
+                    com.activeOverColour = dat.g4s();
                     break;
                 case Component.TYPE_TEXT:
                     com.center = dat.gbool();
@@ -163,6 +165,7 @@ export default class Component {
                     com.colour = dat.g4s();
                     com.activeColour = dat.g4s();
                     com.overColour = dat.g4s();
+                    com.activeOverColour = dat.g4s();
                     break;
                 case Component.TYPE_SPRITE:
                     com.graphic = dat.gjstr();
@@ -291,6 +294,7 @@ export default class Component {
     draggable = false;
     interactable = false;
     usable = false;
+    swappable = false;
     marginX: number = 0;
     marginY: number = 0;
     inventorySlotOffsetX: Uint16Array | null = null;
@@ -306,6 +310,7 @@ export default class Component {
     colour: number = 0;
     activeColour: number = 0;
     overColour: number = 0;
+    activeOverColour: number = 0;
     graphic: string | null = null;
     activeGraphic: string | null = null;
     model: number = -1;
