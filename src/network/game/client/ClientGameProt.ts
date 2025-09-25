@@ -59,7 +59,7 @@ export default class ClientGameProt {
     static readonly OPPLAYERU = new ClientGameProt(149, 210, 8); // NXT naming
 
     static readonly OPHELD1 = new ClientGameProt(160, 104, 6); // name based on runescript trigger
-    static readonly OPHELD2 = new ClientGameProt(161, 38, 6); // name based on runescript trigger
+    static readonly OPHELD2 = new ClientGameProt(161, 193, 6); // name based on runescript trigger
     static readonly OPHELD3 = new ClientGameProt(162, 115, 6); // name based on runescript trigger
     static readonly OPHELD4 = new ClientGameProt(163, 194, 6); // name based on runescript trigger
     static readonly OPHELD5 = new ClientGameProt(164, 9, 6); // name based on runescript trigger
@@ -68,7 +68,7 @@ export default class ClientGameProt {
 
     static readonly INV_BUTTON1 = new ClientGameProt(190, 13, 6); // NXT has "IF_BUTTON1" but for our interface system, this makes more sense
     static readonly INV_BUTTON2 = new ClientGameProt(191, 58, 6); // NXT has "IF_BUTTON2" but for our interface system, this makes more sense
-    static readonly INV_BUTTON3 = new ClientGameProt(192, 22, 6); // NXT has "IF_BUTTON3" but for our interface system, this makes more sense
+    static readonly INV_BUTTON3 = new ClientGameProt(192, 48, 6); // NXT has "IF_BUTTON3" but for our interface system, this makes more sense
     static readonly INV_BUTTON4 = new ClientGameProt(193, 183, 6); // NXT has "IF_BUTTON4" but for our interface system, this makes more sense
     static readonly INV_BUTTON5 = new ClientGameProt(194, 242, 6); // NXT has "IF_BUTTON5" but for our interface system, this makes more sense
     static readonly IF_BUTTON = new ClientGameProt(200, 177, 2); // NXT naming
