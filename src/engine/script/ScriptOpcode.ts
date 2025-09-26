@@ -205,6 +205,7 @@ export const enum ScriptOpcode {
     WEALTH_EVENT, // custom
     P_RUN, // todo: real command name?
     PLAYERMEMBER, // official
+    IF_SETSCROLLPOS, // official
 
     // Npc ops (2500-2999)
     NPC_ADD = 2500, // official
@@ -574,6 +575,7 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['IF_SETPLAYERHEAD', ScriptOpcode.IF_SETPLAYERHEAD],
     ['IF_SETPOSITION', ScriptOpcode.IF_SETPOSITION],
     ['IF_SETRESUMEBUTTONS', ScriptOpcode.IF_SETRESUMEBUTTONS],
+    ['IF_SETSCROLLPOS', ScriptOpcode.IF_SETSCROLLPOS],
     ['IF_SETTAB', ScriptOpcode.IF_SETTAB],
     ['IF_SETTABACTIVE', ScriptOpcode.IF_SETTABACTIVE],
     ['TUT_FLASH', ScriptOpcode.TUT_FLASH],

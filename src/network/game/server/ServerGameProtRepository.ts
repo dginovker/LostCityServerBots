@@ -135,6 +135,8 @@ import UpdateZonePartialEnclosed from '#/network/game/server/model/UpdateZonePar
 import UpdateZonePartialFollows from '#/network/game/server/model/UpdateZonePartialFollows.js';
 import VarpLarge from '#/network/game/server/model/VarpLarge.js';
 import VarpSmall from '#/network/game/server/model/VarpSmall.js';
+import IfSetScrollPos from '#/network/game/server/model/IfSetScrollPos.js';
+import IfSetScrollPosEncoder from '#/network/game/server/codec/IfSetScrollPosEncoder.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type GenericOutgoingMessage<T extends ServerGameMessage> = new (...args: any[]) => T;
@@ -180,6 +182,7 @@ class ServerGameProtRepository {
         this.bind(IfSetObject, new IfSetObjectEncoder());
         this.bind(IfSetPlayerHead, new IfSetPlayerHeadEncoder());
         this.bind(IfSetPosition, new IfSetPositionEncoder());
+        this.bind(IfSetScrollPos, new IfSetScrollPosEncoder());
         this.bind(IfSetText, new IfSetTextEncoder());
         this.bind(IfSetTabActive, new IfSetTabActiveEncoder());
         this.bind(LastLoginInfo, new LastLoginInfoEncoder());

@@ -33,7 +33,7 @@ export default class ServerGameProt {
     // camera control
     static readonly CAM_LOOKAT = new ServerGameProt(123, 6); // NXT naming
     static readonly CAM_SHAKE = new ServerGameProt(103, 4); // NXT naming
-    static readonly CAM_MOVETO = new ServerGameProt(153, 6); // NXT naming
+    static readonly CAM_MOVETO = new ServerGameProt(86, 6); // NXT naming
     static readonly CAM_RESET = new ServerGameProt(134, 0); // NXT naming
 
     // entity updates
