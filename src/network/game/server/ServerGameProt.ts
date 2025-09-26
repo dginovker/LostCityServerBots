@@ -32,7 +32,7 @@ export default class ServerGameProt {
 
     // camera control
     static readonly CAM_LOOKAT = new ServerGameProt(123, 6); // NXT naming
-    static readonly CAM_SHAKE = new ServerGameProt(108, 4); // NXT naming
+    static readonly CAM_SHAKE = new ServerGameProt(103, 4); // NXT naming
     static readonly CAM_MOVETO = new ServerGameProt(153, 6); // NXT naming
     static readonly CAM_RESET = new ServerGameProt(134, 0); // NXT naming
 
@@ -41,7 +41,7 @@ export default class ServerGameProt {
     static readonly PLAYER_INFO = new ServerGameProt(161, -2); // NXT naming
 
     // input tracking
-    static readonly FINISH_TRACKING = new ServerGameProt(105, 0);
+    static readonly FINISH_TRACKING = new ServerGameProt(165, 0);
     static readonly ENABLE_TRACKING = new ServerGameProt(28, 0);
 
     // social
