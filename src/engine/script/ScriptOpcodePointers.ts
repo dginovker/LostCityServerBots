@@ -189,6 +189,10 @@ const ScriptOpcodePointers: {
         require: ['active_player'],
         require2: ['active_player2']
     },
+    [ScriptOpcode.IF_OPENOVERLAY]: {
+        require: ['active_player'],
+        require2: ['active_player2']
+    },
     [ScriptOpcode.IF_OPENSIDE]: {
         require: ['active_player']
     },
@@ -218,9 +222,6 @@ const ScriptOpcodePointers: {
         require: ['active_player']
     },
     [ScriptOpcode.IF_SETRESUMEBUTTONS]: {
-        require: ['active_player']
-    },
-    [ScriptOpcode.IF_SETSCROLLPOS]: {
         require: ['active_player']
     },
     [ScriptOpcode.IF_SETTAB]: {
@@ -519,6 +520,9 @@ const ScriptOpcodePointers: {
     [ScriptOpcode.P_RUN]: {
         require: ['p_active_player'],
         require2: ['p_active_player2']
+    },
+    [ScriptOpcode.IF_SETSCROLLPOS]: {
+        require: ['active_player']
     },
 
     // Npc ops

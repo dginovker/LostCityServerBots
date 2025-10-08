@@ -115,7 +115,7 @@ export const enum ScriptOpcode {
     IF_OPENCHAT,
     TUT_OPEN,
     IF_OPENMAIN,
-    // IF_OPENOVERLAY comes later
+    IF_OPENOVERLAY,
     IF_OPENMAIN_SIDE,
     IF_OPENSIDE,
     IF_SETANIM, // official
@@ -295,6 +295,7 @@ export const enum ScriptOpcode {
     NC_OP,
     NC_PARAM,
     NC_SIZE,
+    NC_VISLEVEL,
 
     // Loc config ops (4100-4199)
     LC_CATEGORY = 4100,
@@ -565,6 +566,7 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['TUT_OPEN', ScriptOpcode.TUT_OPEN],
     ['IF_OPENMAIN', ScriptOpcode.IF_OPENMAIN],
     ['IF_OPENMAIN_SIDE', ScriptOpcode.IF_OPENMAIN_SIDE],
+    ['IF_OPENOVERLAY', ScriptOpcode.IF_OPENOVERLAY],
     ['IF_OPENSIDE', ScriptOpcode.IF_OPENSIDE],
     ['IF_SETANIM', ScriptOpcode.IF_SETANIM],
     ['IF_SETCOLOUR', ScriptOpcode.IF_SETCOLOUR],
@@ -575,7 +577,6 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['IF_SETPLAYERHEAD', ScriptOpcode.IF_SETPLAYERHEAD],
     ['IF_SETPOSITION', ScriptOpcode.IF_SETPOSITION],
     ['IF_SETRESUMEBUTTONS', ScriptOpcode.IF_SETRESUMEBUTTONS],
-    ['IF_SETSCROLLPOS', ScriptOpcode.IF_SETSCROLLPOS],
     ['IF_SETTAB', ScriptOpcode.IF_SETTAB],
     ['IF_SETTABACTIVE', ScriptOpcode.IF_SETTABACTIVE],
     ['TUT_FLASH', ScriptOpcode.TUT_FLASH],
@@ -654,6 +655,7 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['WEALTH_EVENT', ScriptOpcode.WEALTH_EVENT],
     ['P_RUN', ScriptOpcode.P_RUN],
     ['PLAYERMEMBER', ScriptOpcode.PLAYERMEMBER],
+    ['IF_SETSCROLLPOS', ScriptOpcode.IF_SETSCROLLPOS],
     ['NPC_ADD', ScriptOpcode.NPC_ADD],
     ['NPC_ANIM', ScriptOpcode.NPC_ANIM],
     ['NPC_BASESTAT', ScriptOpcode.NPC_BASESTAT],
@@ -735,6 +737,7 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['NC_OP', ScriptOpcode.NC_OP],
     ['NC_PARAM', ScriptOpcode.NC_PARAM],
     ['NC_SIZE', ScriptOpcode.NC_SIZE],
+    ['NC_VISLEVEL', ScriptOpcode.NC_VISLEVEL],
     ['LC_CATEGORY', ScriptOpcode.LC_CATEGORY],
     ['LC_DEBUGNAME', ScriptOpcode.LC_DEBUGNAME],
     ['LC_DESC', ScriptOpcode.LC_DESC],

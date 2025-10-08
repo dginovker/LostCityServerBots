@@ -431,6 +431,10 @@ class IfType {
                 temp.push(`height=${this.height}`);
             }
 
+            if (this.trans) {
+                temp.push(`trans=${this.trans}`);
+            }
+
             if (this.overLayer !== -1) {
                 temp.push(`overlayer=${InterfacePack.getById(this.overLayer).split(':')[1]}`);
             }

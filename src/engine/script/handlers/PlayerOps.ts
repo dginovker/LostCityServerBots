@@ -660,6 +660,11 @@ const PlayerOps: CommandHandlers = {
         state.activePlayer.openMainModal(check(state.popInt(), NumberNotNull));
     }),
 
+    [ScriptOpcode.IF_OPENOVERLAY]: checkedHandler(ActivePlayer, state => {
+        const com = state.popInt();
+        state.activePlayer.openOverlay(com);
+    }),
+
     [ScriptOpcode.TUT_OPEN]: checkedHandler(ActivePlayer, state => {
         state.activePlayer.openTutorial(check(state.popInt(), NumberNotNull));
     }),

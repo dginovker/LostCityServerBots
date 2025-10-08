@@ -22,9 +22,9 @@ export function packClientModel(cache: FileStream, modelFlags: number[]) {
     for (let id = 0; id < ModelPack.max; id++) {
         if (!cache.has(1, id)) {
             if (modelFlags[id] > 0) {
-                printWarning('missing model ' + ModelPack.getById(id));
+                printWarning(`missing model ${ModelPack.getById(id)} (${id})`);
             } else {
-                // printDebug('missing model ' + ModelPack.getById(id));
+                // printDebug(`missing model ${ModelPack.getById(id)} (${id})`);
             }
         }
     }
