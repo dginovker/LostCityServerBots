@@ -20,6 +20,7 @@ import { generateServerSymbols } from '#tools/pack/CompilerSymbols.js';
 import FileStream from '#/io/FileStream.js';
 import { packClientVersionList } from '#tools/pack/versionlist/pack.js';
 import { clearFsCache } from '#tools/pack/FsCache.js';
+import Packet from '#/io/Packet.js';
 
 export async function packClient(modelFlags: number[]) {
     if (parentPort) {
@@ -50,6 +51,10 @@ export async function packClient(modelFlags: number[]) {
     packMaps(cache);
     packClientMusic(cache);
     packClientVersionList(cache, modelFlags);
+
+    const build = Packet.alloc(0);
+    build.p4(Date.now() / 1000);
+    build.save('data/pack/server/build');
 
     const zipPack: Record<string, Uint8Array> = {};
     for (let archive = 1; archive <= 4; archive++) {
