@@ -940,13 +940,11 @@ class World {
 
                 player.client.state = 1;
 
-                if (player.staffModLevel >= 2) {
-                    player.client.send(Uint8Array.from([19]));
-                } else if (player.staffModLevel >= 1) {
-                    player.client.send(Uint8Array.from([18]));
-                } else {
-                    player.client.send(Uint8Array.from([2]));
-                }
+                player.client.send(Uint8Array.from([
+                    2,
+                    Math.min(player.staffModLevel, 2),
+                    1
+                ]));
             }
 
             // insert player into first available slot
