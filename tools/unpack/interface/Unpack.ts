@@ -300,7 +300,6 @@ class IfType {
         for (let id = 0; id < IfType.count; id++) {
             const com = IfType.instances[id];
             if (!com) {
-                InterfacePack.register(id, 'null:null');
                 continue;
             }
 
@@ -324,7 +323,11 @@ class IfType {
             }
 
             const name = InterfacePack.getById(com.id);
-            if (!name || name.split(':')[1].startsWith('com_')) {
+            const [_parentName, comName] = name.split(':');
+            if (name && typeof comName === 'undefined') {
+                printFatalError(`Issue with component ${com.id} must be manually resolved`);
+            }
+            if (!name || (typeof comName !== 'undefined' && comName.startsWith('com_'))) {
                 InterfacePack.register(com.id, `${InterfacePack.getById(com.rootLayer)}:com_${comCount[com.rootLayer]}`);
             }
             comCount[com.rootLayer]++;
@@ -522,6 +525,31 @@ class IfType {
                             const varp = popStack();
                             const bit = popStack();
                             str += `testbit,${VarpPack.getById(varp) || 'varp_' + varp},${bit}`;
+                            break;
+                        }
+                        // case 14: {
+                        //     const varbit = popStack();
+                        //     str += `push_varbit,${VarbitPack.getById(varbit) || 'varbit_' + varbit}`;
+                        //     break;
+                        // }
+                        case 15:
+                            str += 'subtract';
+                            break;
+                        case 16:
+                            str += 'divide';
+                            break;
+                        case 17:
+                            str += 'multiply';
+                            break;
+                        case 18:
+                            str += 'coordx';
+                            break;
+                        case 19:
+                            str += 'coordz';
+                            break;
+                        case 20: {
+                            const value = popStack();
+                            str += `push_constant,${value}`;
                             break;
                         }
                         default:

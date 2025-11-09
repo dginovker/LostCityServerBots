@@ -104,6 +104,7 @@ export default class NpcType extends ConfigType {
     ambient = 0;
     contrast = 0;
     headicon = -1;
+    turnspeed = 32;
 
     // server-side
     regenRate = 100;
@@ -208,6 +209,8 @@ export default class NpcType extends ConfigType {
             this.contrast = dat.g1b();
         } else if (code === 102) {
             this.headicon = dat.g2();
+        } else if (code === 103) {
+            this.turnspeed = dat.g2();
         } else if (code === 200) {
             this.wanderrange = dat.g2();
         } else if (code === 201) {

@@ -111,6 +111,7 @@ export default class LocType extends ConfigType {
     offsetz = 0;
     forcedecor = false;
     breakroutefinding = false;
+    raiseobject = false;
 
     // server-side
     category = -1;
@@ -130,6 +131,14 @@ export default class LocType extends ConfigType {
             this.name = dat.gjstr();
         } else if (code === 3) {
             this.desc = dat.gjstr();
+        } else if (code === 5) {
+            const count = dat.g1();
+            this.models = new Uint16Array(count);
+            this.shapes = null;
+
+            for (let i = 0; i < count; i++) {
+                this.models[i] = dat.g2();
+            }
         } else if (code === 14) {
             this.width = dat.g1();
         } else if (code === 15) {
@@ -203,6 +212,8 @@ export default class LocType extends ConfigType {
             this.forcedecor = true;
         } else if (code === 74) {
             this.breakroutefinding = true;
+        } else if (code === 75) {
+            this.raiseobject = dat.gbool();
         } else if (code === 249) {
             this.params = ParamHelper.decodeParams(dat);
         } else if (code === 250) {
