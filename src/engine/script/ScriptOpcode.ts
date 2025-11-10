@@ -206,6 +206,7 @@ export const enum ScriptOpcode {
     P_RUN, // todo: real command name?
     PLAYERMEMBER, // official
     IF_SETSCROLLPOS, // official
+    SET_PLAYER_OP,
 
     // Npc ops (2500-2999)
     NPC_ADD = 2500, // official
@@ -656,6 +657,7 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['P_RUN', ScriptOpcode.P_RUN],
     ['PLAYERMEMBER', ScriptOpcode.PLAYERMEMBER],
     ['IF_SETSCROLLPOS', ScriptOpcode.IF_SETSCROLLPOS],
+    ['SET_PLAYER_OP', ScriptOpcode.SET_PLAYER_OP],
     ['NPC_ADD', ScriptOpcode.NPC_ADD],
     ['NPC_ANIM', ScriptOpcode.NPC_ANIM],
     ['NPC_BASESTAT', ScriptOpcode.NPC_BASESTAT],

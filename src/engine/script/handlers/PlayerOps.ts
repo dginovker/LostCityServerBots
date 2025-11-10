@@ -30,7 +30,9 @@ import {
     SeqTypeValid,
     StringNotNull,
     GenderValid,
-    SkinColourValid
+    SkinColourValid,
+    PlayerOpIndexValid,
+    PlayerOpStateValid
 } from '#/engine/script/ScriptValidators.js';
 import ServerTriggerType from '#/engine/script/ServerTriggerType.js';
 import World from '#/engine/World.js';
@@ -48,6 +50,7 @@ import IfSetScrollPos from '#/network/game/server/model/IfSetScrollPos.js';
 import IfSetTabActive from '#/network/game/server/model/IfSetTabActive.js';
 import IfSetText from '#/network/game/server/model/IfSetText.js';
 import PCountDialog from '#/network/game/server/model/PCountDialog.js';
+import SetPlayerOp from '#/network/game/server/model/SetPlayerOp.js';
 import SynthSound from '#/network/game/server/model/SynthSound.js';
 import TutFlash from '#/network/game/server/model/TutFlash.js';
 import ColorConversion from '#/util/ColorConversion.js';
@@ -1166,7 +1169,17 @@ const PlayerOps: CommandHandlers = {
 
     [ScriptOpcode.PLAYERMEMBER]: checkedHandler(ActivePlayer, state => {
         state.pushInt(state.activePlayer.members ? 1 : 0);
-    })
+    }),
+
+    [ScriptOpcode.SET_PLAYER_OP]: checkedHandler(ActivePlayer, state => {
+        const text = state.popString();
+        const [index, primary] = state.popInts(2);
+
+        check(index, PlayerOpIndexValid);
+        check(primary, PlayerOpStateValid);
+
+        state.activePlayer.write(new SetPlayerOp(index, text, primary));
+    }),
 };
 
 /**

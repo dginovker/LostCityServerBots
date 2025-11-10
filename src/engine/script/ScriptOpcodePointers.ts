@@ -524,6 +524,9 @@ const ScriptOpcodePointers: {
     [ScriptOpcode.IF_SETSCROLLPOS]: {
         require: ['active_player']
     },
+    [ScriptOpcode.SET_PLAYER_OP]: {
+        require: ['active_player']
+    },
 
     // Npc ops
     [ScriptOpcode.NPC_ADD]: {
