@@ -73,6 +73,7 @@ import Environment from '#/util/Environment.js';
 import { toDisplayName } from '#/util/JString.js';
 import LinkList from '#/util/LinkList.js';
 import { MidiPack } from '#tools/pack/PackFile.js';
+import VarBitType from '#/cache/config/VarBitType.js';
 
 const levelExperience = new Int32Array(99);
 
@@ -1723,6 +1724,35 @@ export default class Player extends PathingEntity {
                 this.writeVarp(id, value);
             }
         }
+    }
+
+    getVarBit(id: number) {
+        const varbit = VarBitType.get(id);
+        if (!varbit) {
+            return 0;
+        }
+
+        const { basevar, startbit, endbit } = varbit;
+        const mask = Packet.bitmask[endbit - startbit + 1];
+
+        return this.vars[basevar] >> startbit & mask;
+    }
+
+    setVarBit(id: number, value: number) {
+        const varbit = VarBitType.get(id);
+        if (!varbit) {
+            return 0;
+        }
+
+        const { basevar, startbit, endbit } = varbit;
+        let mask = Packet.bitmask[endbit - startbit + 1];
+
+        if (value < 0 || value > mask) {
+            value = 0;
+        }
+
+        mask <<= startbit;
+        this.setVar(basevar, mask & value << startbit | this.vars[basevar] & ~mask);
     }
 
     private writeVarp(id: number, value: number): void {

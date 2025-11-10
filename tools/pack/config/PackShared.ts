@@ -7,7 +7,7 @@ import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { loadDir } from '#tools/pack/NameMap.js';
-import { VarnPack, VarpPack, VarsPack, shouldBuild, CategoryPack, shouldBuildFile } from '#tools/pack/PackFile.js';
+import { VarnPack, VarpPack, VarsPack, shouldBuild, CategoryPack, shouldBuildFile, VarbitPack } from '#tools/pack/PackFile.js';
 import { packDbRowConfigs, parseDbRowConfig } from '#tools/pack/config/DbRowConfig.js';
 import { packDbTableConfigs, parseDbTableConfig } from '#tools/pack/config/DbTableConfig.js';
 import { packEnumConfigs, parseEnumConfig } from '#tools/pack/config/EnumConfig.js';
@@ -27,6 +27,7 @@ import { packVarnConfigs, parseVarnConfig } from '#tools/pack/config/VarnConfig.
 import { packVarpConfigs, parseVarpConfig } from '#tools/pack/config/VarpConfig.js';
 import { packVarsConfigs, parseVarsConfig } from '#tools/pack/config/VarsConfig.js';
 import FileStream from '#/io/FileStream.js';
+import { packVarbitConfigs, parseVarbitConfig } from '#tools/pack/config/VarbitConfig.js';
 
 export function isConfigBoolean(input: string): boolean {
     return input === 'yes' || input === 'no' || input === 'true' || input === 'false' || input === '1' || input === '0';
@@ -291,6 +292,12 @@ export async function packConfigs(cache: FileStream, modelFlags: number[]) {
     // var domains are global, so we need to check for conflicts
     const names = new Set<string>();
     for (const [name, _id] of VarpPack.names.entries()) {
+        if (names.has(name)) {
+            throw new Error(`Non-unique var name found: ${name}`);
+        }
+        names.add(name);
+    }
+    for (const [name, _id] of VarbitPack.names.entries()) {
         if (names.has(name)) {
             throw new Error(`Non-unique var name found: ${name}`);
         }
@@ -604,6 +611,30 @@ export async function packConfigs(cache: FileStream, modelFlags: number[]) {
             },
             (client: Packet, _server: Packet): boolean => {
                 return Packet.checkcrc(client.data, 0, client.pos, 1039564548);
+            }
+        );
+    }
+
+    if (rebuildClient || shouldBuild(`${Environment.BUILD_SRC_DIR}/scripts`, '.varbit', 'data/pack/server/varbit.dat') || shouldBuild('tools/pack/config', '.ts', 'data/pack/server/varbit.dat')) {
+        await readConfigs(
+            dirTree,
+            '.varbit',
+            ['basevar', 'startbit', 'endbit'],
+            modelFlags,
+            parseVarbitConfig,
+            packVarbitConfigs,
+            (dat: Packet, idx: Packet) => {
+                jag.write('varbit.dat', dat);
+                jag.write('varbit.idx', idx);
+            },
+            (dat: Packet, idx: Packet) => {
+                dat.save('data/pack/server/varbit.dat');
+                idx.save('data/pack/server/varbit.idx');
+                dat.release();
+                idx.release();
+            },
+            (client: Packet, _server: Packet): boolean => {
+                return Packet.checkcrc(client.data, 0, client.pos, -1387031023);
             }
         );
     }

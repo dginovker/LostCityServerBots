@@ -6,7 +6,7 @@ import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { printFatalError, printWarning } from '#/util/Logger.js';
 import { listFilesExt } from '#tools/pack/Parse.js';
-import { InterfacePack, ModelPack, ObjPack, SeqPack, VarpPack } from '#tools/pack/PackFile.js';
+import { InterfacePack, ModelPack, ObjPack, SeqPack, VarbitPack, VarpPack } from '#tools/pack/PackFile.js';
 
 function renameModel(id: number) {
     const existingFiles = listFilesExt(`${Environment.BUILD_SRC_DIR}/models`, '.ob2');
@@ -527,11 +527,11 @@ class IfType {
                             str += `testbit,${VarpPack.getById(varp) || 'varp_' + varp},${bit}`;
                             break;
                         }
-                        // case 14: {
-                        //     const varbit = popStack();
-                        //     str += `push_varbit,${VarbitPack.getById(varbit) || 'varbit_' + varbit}`;
-                        //     break;
-                        // }
+                        case 14: {
+                            const varbit = popStack();
+                            str += `push_varbit,${VarbitPack.getById(varbit) || 'varbit_' + varbit}`;
+                            break;
+                        }
                         case 15:
                             str += 'subtract';
                             break;

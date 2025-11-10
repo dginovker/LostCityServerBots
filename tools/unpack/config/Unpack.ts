@@ -4,7 +4,7 @@ import FileStream from '#/io/FileStream.js';
 import Jagfile from '#/io/Jagfile.js';
 import Packet from '#/io/Packet.js';
 import { printFatalError, printInfo } from '#/util/Logger.js';
-import { FloPack, IdkPack, LocPack, ModelPack, NpcPack, ObjPack, SeqPack, SpotAnimPack, VarpPack } from '#tools/pack/PackFile.js';
+import { FloPack, IdkPack, LocPack, ModelPack, NpcPack, ObjPack, SeqPack, SpotAnimPack, VarbitPack, VarpPack } from '#tools/pack/PackFile.js';
 
 import { ConfigIdx } from './Common.js';
 import { unpackSeqConfig } from './SeqConfig.js';
@@ -18,6 +18,7 @@ import { unpackVarpConfig } from './VarpConfig.js';
 import { unpackSpotAnimConfig } from './SpotAnimConfig.js';
 import Model from '#/cache/graphics/Model.js';
 import { listFilesExt } from '#tools/pack/Parse.js';
+import { unpackVarbitConfig } from '#tools/unpack/config/VarbitConfig.js';
 
 function readConfigIdx(idx: Packet | null, dat: Packet | null): ConfigIdx {
     if (!idx || !dat) {
@@ -60,6 +61,8 @@ function unpackConfigNames(type: string, config: Jagfile) {
         pack = FloPack;
     } else if (type === 'varp') {
         pack = VarpPack;
+    } else if (type === 'varbit') {
+        pack = VarbitPack;
     } else if (type === 'spotanim') {
         pack = SpotAnimPack;
     }
@@ -114,7 +117,7 @@ function unpackConfig(revision: string, type: string, unpack: UnpackConfigImpl, 
     printInfo(`Unpacking ${sourceIdx.size} ${type} configs`);
 
     let compareIdx;
-    if (config2) {
+    if (config2 && config2.has(type + '.idx')) {
         compareIdx = readConfigIdx(config2.read(type + '.idx'), config2.read(type + '.dat'));
     }
 
@@ -203,7 +206,7 @@ function unpackModelNames(type: string, unpack: UnpackModelImpl, config: Jagfile
     const sourceIdx = readConfigIdx(config.read(type + '.idx'), config.read(type + '.dat'));
 
     let compareIdx;
-    if (config2) {
+    if (config2 && config2.has(type + '.dat')) {
         compareIdx = readConfigIdx(config2.read(type + '.idx'), config2.read(type + '.dat'));
     }
 
@@ -311,7 +314,7 @@ function unpackConfigs(revision: string) {
     unpackConfigNames('flo', config);
     unpackConfigNames('spotanim', config);
     unpackConfigNames('varp', config);
-    // unpackConfigNames('varbit', config);
+    unpackConfigNames('varbit', config);
 
     if (!fs.existsSync(`${Environment.BUILD_SRC_DIR}/models/obj`)) {
         fs.mkdirSync(`${Environment.BUILD_SRC_DIR}/models/obj`, { recursive: true });
@@ -343,7 +346,7 @@ function unpackConfigs(revision: string) {
     unpackConfig(revision, 'seq', unpackSeqConfig, config, config2);
     unpackConfig(revision, 'flo', unpackFloConfig, config, config2);
     unpackConfig(revision, 'varp', unpackVarpConfig, config, config2);
-    // unpackConfig(revision, 'varbit', unpackVarbitConfig, config, config2);
+    unpackConfig(revision, 'varbit', unpackVarbitConfig, config, config2);
 
     ModelPack.save();
 

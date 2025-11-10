@@ -2,7 +2,7 @@ import Packet from '#/io/Packet.js';
 import Environment from '#/util/Environment.js';
 import { printError } from '#/util/Logger.js';
 import { loadDir, loadOrder } from '#tools/pack/NameMap.js';
-import { InterfacePack, ModelPack, ObjPack, SeqPack, VarpPack } from '#tools/pack/PackFile.js';
+import { InterfacePack, ModelPack, ObjPack, SeqPack, VarbitPack, VarpPack } from '#tools/pack/PackFile.js';
 
 function nameToType(name: string) {
     switch (name) {
@@ -435,15 +435,15 @@ export function packInterface(modelFlags: number[]) {
                             client.p2(parseInt(parts[2]));
                             break;
                         }
-                        // case 'push_varbit': {
-                        //     const varbitLink = VarbitPack.getByName(parts[1]);
-                        //     if (varbitLink === -1) {
-                        //         printError(`${com.root} invalid lookup ${parts[1]}`);
-                        //     }
+                        case 'push_varbit': {
+                            const varbitLink = VarbitPack.getByName(parts[1]);
+                            if (varbitLink === -1) {
+                                printError(`${com.root} invalid lookup ${parts[1]}`);
+                            }
 
-                        //     client.p2(varbitLink);
-                        //     break;
-                        // }
+                            client.p2(varbitLink);
+                            break;
+                        }
                         case 'push_constant': {
                             client.p2(parseInt(parts[1]));
                             break;
