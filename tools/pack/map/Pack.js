@@ -23,6 +23,10 @@ function readMap(map) {
         }
 
         if (section === 'MAP') {
+            if (line[0] === '/') {
+                continue;
+            }
+
             let parts = line.split(':');
             let [level, x, z] = parts[0].split(' ');
             let data = parts[1].slice(1).split(' ');
