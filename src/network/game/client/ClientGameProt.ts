@@ -57,6 +57,7 @@ export default class ClientGameProt {
     static readonly OPPLAYER2 = new ClientGameProt(141, 17, 2); // NXT naming
     static readonly OPPLAYER3 = new ClientGameProt(142, 18, 2); // NXT naming
     static readonly OPPLAYER4 = new ClientGameProt(143, 72, 2); // NXT naming
+    static readonly OPPLAYER5 = new ClientGameProt(144, 230, 2); // NXT naming
     static readonly OPPLAYERT = new ClientGameProt(148, 68, 4); // NXT naming
     static readonly OPPLAYERU = new ClientGameProt(149, 113, 8); // NXT naming
 
