@@ -45,6 +45,7 @@ export default class ServerGameProt {
     static readonly ENABLE_TRACKING = new ServerGameProt(251, 0);
 
     // social
+    static readonly FRIENDLIST_LOADED = new ServerGameProt(255, 1); // NXT naming
     static readonly MESSAGE_GAME = new ServerGameProt(73, -1); // NXT naming
     static readonly UPDATE_IGNORELIST = new ServerGameProt(63, -2); // NXT naming
     static readonly CHAT_FILTER_SETTINGS = new ServerGameProt(24, 3); // NXT naming

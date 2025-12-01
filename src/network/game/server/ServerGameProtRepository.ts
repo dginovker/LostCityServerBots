@@ -141,6 +141,8 @@ import IfSetScrollPos from '#/network/game/server/model/IfSetScrollPos.js';
 import IfSetScrollPosEncoder from '#/network/game/server/codec/IfSetScrollPosEncoder.js';
 import SetPlayerOp from '#/network/game/server/model/SetPlayerOp.js';
 import SetPlayerOpEncoder from '#/network/game/server/codec/SetPlayerOpEncoder.js';
+import FriendlistLoaded from '#/network/game/server/model/FriendlistLoaded.js';
+import FriendlistLoadedEncoder from '#/network/game/server/codec/FriendlistLoadedEncoder.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type GenericOutgoingMessage<T extends ServerGameMessage> = new (...args: any[]) => T;
@@ -233,6 +235,7 @@ class ServerGameProtRepository {
         this.bind(VarpLarge, new VarpLargeEncoder());
         this.bind(VarpSmall, new VarpSmallEncoder());
         this.bind(SetPlayerOp, new SetPlayerOpEncoder());
+        this.bind(FriendlistLoaded, new FriendlistLoadedEncoder());
     }
 }
 
