@@ -6,7 +6,6 @@ import ClientGameMessage from '#/network/game/client/ClientGameMessage.js';
 import ChatSetModeDecoder from '#/network/game/client/codec/ChatSetModeDecoder.js';
 import ClientCheatDecoder from '#/network/game/client/codec/ClientCheatDecoder.js';
 import CloseModalDecoder from '#/network/game/client/codec/CloseModalDecoder.js';
-import EventTrackingDecoder from '#/network/game/client/codec/EventTrackingDecoder.js';
 import FriendListAddDecoder from '#/network/game/client/codec/FriendListAddDecoder.js';
 import FriendListDelDecoder from '#/network/game/client/codec/FriendListDelDecoder.js';
 import IdleTimerDecoder from '#/network/game/client/codec/IdleTimerDecoder.js';
@@ -41,7 +40,6 @@ import TutorialClickSideDecoder from '#/network/game/client/codec/TutorialClickS
 import ChatSetModeHandler from '#/network/game/client/handler/ChatSetModeHandler.js';
 import ClientCheatHandler from '#/network/game/client/handler/ClientCheatHandler.js';
 import CloseModalHandler from '#/network/game/client/handler/CloseModalHandler.js';
-import EventTrackingHandler from '#/network/game/client/handler/EventTrackingHandler.js';
 import FriendListAddHandler from '#/network/game/client/handler/FriendListAddHandler.js';
 import FriendListDelHandler from '#/network/game/client/handler/FriendListDelHandler.js';
 import IdleTimerHandler from '#/network/game/client/handler/IdleTimerHandler.js';
@@ -73,6 +71,14 @@ import ReportAbuseHandler from '#/network/game/client/handler/ReportAbuseHandler
 import ResumePauseButtonHandler from '#/network/game/client/handler/ResumePauseButtonHandler.js';
 import ResumePCountDialogHandler from '#/network/game/client/handler/ResumePCountDialogHandler.js';
 import TutorialClickSideHandler from '#/network/game/client/handler/TutorialClickSideHandler.js';
+import EventCameraPositionDecoder from '#/network/game/client/codec/EventCameraPositionDecoder.js';
+import EventCameraPositionHandler from '#/network/game/client/handler/EventCameraPositionHandler.js';
+import EventAppletFocusDecoder from '#/network/game/client/codec/EventAppletFocusDecoder.js';
+import EventAppletFocusHandler from '#/network/game/client/handler/EventAppletFocusHandler.js';
+import EventMouseClickDecoder from '#/network/game/client/codec/EventMouseClickDecoder.js';
+import EventMouseClickHandler from '#/network/game/client/handler/EventMouseClickHandler.js';
+import EventMouseMoveDecoder from '#/network/game/client/codec/EventMouseMoveDecoder.js';
+import EventMouseMoveHandler from '#/network/game/client/handler/EventMouseMoveHandler.js';
 
 class ClientGameProtRepository {
     decoders: Map<number, ClientGameMessageDecoder<ClientGameMessage>> = new Map();
@@ -159,8 +165,11 @@ class ClientGameProtRepository {
         this.bind(new ResumePCountDialogDecoder(), new ResumePCountDialogHandler());
         this.bind(new TutorialClickSideDecoder(), new TutorialClickSideHandler());
         this.bind(new ChatSetModeDecoder(), new ChatSetModeHandler());
-        this.bind(new EventTrackingDecoder(), new EventTrackingHandler());
         this.bind(new ReportAbuseDecoder(), new ReportAbuseHandler());
+        this.bind(new EventCameraPositionDecoder, new EventCameraPositionHandler());
+        this.bind(new EventAppletFocusDecoder(), new EventAppletFocusHandler());
+        this.bind(new EventMouseClickDecoder(), new EventMouseClickHandler());
+        this.bind(new EventMouseMoveDecoder(), new EventMouseMoveHandler());
     }
 }
 

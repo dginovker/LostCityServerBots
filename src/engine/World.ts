@@ -95,7 +95,7 @@ import { printDebug, printError, printInfo } from '#/util/Logger.js';
 import { WalkTriggerSetting } from '#/engine/entity/WalkTriggerSetting.js';
 import { createWorker } from '#/util/WorkerFactory.js';
 
-import InputTrackingBlob from './entity/tracking/InputEvent.js';
+import InputTrackingBlob from './entity/tracking/InputTrackingBlob.js';
 import OnDemand from './OnDemand.js';
 import { ObjDelayedRequest } from './entity/ObjDelayedRequest.js';
 import DbTableIndex from '#/cache/config/DbTableIndex.js';
@@ -945,7 +945,7 @@ class World {
                 player.client.send(Uint8Array.from([
                     2,
                     Math.min(player.staffModLevel, 2),
-                    1
+                    player.input.active ? 1 : 0
                 ]));
             }
 
@@ -2069,7 +2069,7 @@ class World {
 
                 const player = this.getPlayerByUsername(username);
                 if (player) {
-                    player.submitInput = state;
+                    player.input.active = state;
                 }
             } else if (opcode === FriendsServerOpcodes.RELAY_RELOAD) {
                 this.reload(false);
@@ -2328,7 +2328,7 @@ class World {
             const offenderPlayer = this.getPlayerByUsername(offender);
             if (offenderPlayer) {
                 // Immediately turn on tracking when a user is reported as macroing or abusing a bug.
-                offenderPlayer.submitInput = true;
+                offenderPlayer.input.active = true;
             }
         }
         this.loggerThread.postMessage({

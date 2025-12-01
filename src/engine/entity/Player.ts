@@ -306,7 +306,6 @@ export default class Player extends PathingEntity {
     // input tracking
     account_id: number = -1;
     input: InputTracking;
-    submitInput: boolean = false;
 
     // runtime variables
     pid: number = -1;
@@ -451,6 +450,7 @@ export default class Player extends PathingEntity {
         this.lastAppearance = 0;
         this.lastAppearanceBytes = null;
         this.isActive = false;
+        this.input.flush();
     }
 
     resetEntity(respawn: boolean) {
