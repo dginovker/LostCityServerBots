@@ -946,7 +946,7 @@ class World {
                 player.client.send(Uint8Array.from([
                     2,
                     Math.min(player.staffModLevel, 2),
-                    player.input.active ? 1 : 0
+                    1 // mouse tracking can only be enabled on login
                 ]));
             }
 
