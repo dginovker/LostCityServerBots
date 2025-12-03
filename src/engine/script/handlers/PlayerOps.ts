@@ -103,37 +103,83 @@ const PlayerOps: CommandHandlers = {
         if (!script) {
             throw new Error(`Unable to find queue script: ${scriptId}`);
         }
+
         state.activePlayer.enqueueScript(script, PlayerQueueType.STRONG, delay, args);
     }),
 
-    // https://x.com/JagexAsh/status/1698973910048403797
-    [ScriptOpcode.WEAKQUEUE]: checkedHandler(ActivePlayer, state => {
+    [ScriptOpcode.STRONGQUEUEVARARG]: checkedHandler(ActivePlayer, state => {
         const args = popScriptArgs(state);
-        const delay = check(state.popInt(), NumberNotNull);
-        const scriptId = state.popInt();
+        const [scriptId, delay] = state.popInts(2);
 
         const script = ScriptProvider.get(scriptId);
         if (!script) {
             throw new Error(`Unable to find queue script: ${scriptId}`);
         }
+
+        state.activePlayer.enqueueScript(script, PlayerQueueType.STRONG, delay, args);
+    }),
+
+    // https://x.com/JagexAsh/status/1698973910048403797
+    [ScriptOpcode.WEAKQUEUE]: checkedHandler(ActivePlayer, state => {
+        const [scriptId, delay, arg] = state.popInts(3);
+
+        const script = ScriptProvider.get(scriptId);
+        if (!script) {
+            throw new Error(`Unable to find queue script: ${scriptId}`);
+        }
+
+        state.activePlayer.enqueueScript(script, PlayerQueueType.WEAK, delay, [arg]);
+    }),
+
+    [ScriptOpcode.WEAKQUEUEVARARG]: checkedHandler(ActivePlayer, state => {
+        const args = popScriptArgs(state);
+        const [scriptId, delay] = state.popInts(2);
+
+        const script = ScriptProvider.get(scriptId);
+        if (!script) {
+            throw new Error(`Unable to find queue script: ${scriptId}`);
+        }
+
         state.activePlayer.enqueueScript(script, PlayerQueueType.WEAK, delay, args);
     }),
 
     // https://x.com/JagexAsh/status/1698973910048403797
     // https://x.com/JagexAsh/status/1821831590906859683
     [ScriptOpcode.QUEUE]: checkedHandler(ActivePlayer, state => {
-        const args = popScriptArgs(state);
-        const delay = check(state.popInt(), NumberNotNull);
-        const scriptId = state.popInt();
+        const [scriptId, delay, arg] = state.popInts(3);
 
         const script = ScriptProvider.get(scriptId);
         if (!script) {
             throw new Error(`Unable to find queue script: ${scriptId}`);
         }
+
+        state.activePlayer.enqueueScript(script, PlayerQueueType.NORMAL, delay, [arg]);
+    }),
+
+    [ScriptOpcode.QUEUEVARARG]: checkedHandler(ActivePlayer, state => {
+        const args = popScriptArgs(state);
+        const [scriptId, delay] = state.popInts(2);
+
+        const script = ScriptProvider.get(scriptId);
+        if (!script) {
+            throw new Error(`Unable to find queue script: ${scriptId}`);
+        }
+
         state.activePlayer.enqueueScript(script, PlayerQueueType.NORMAL, delay, args);
     }),
 
     [ScriptOpcode.LONGQUEUE]: checkedHandler(ActivePlayer, state => {
+        const [scriptId, delay, arg, logoutAction] = state.popInts(4);
+
+        const script = ScriptProvider.get(scriptId);
+        if (!script) {
+            throw new Error(`Unable to find queue script: ${scriptId}`);
+        }
+
+        state.activePlayer.enqueueScript(script, PlayerQueueType.LONG, delay, [logoutAction, arg]);
+    }),
+
+    [ScriptOpcode.LONGQUEUEVARARG]: checkedHandler(ActivePlayer, state => {
         const args = popScriptArgs(state);
         const [scriptId, delay, logoutAction] = state.popInts(3);
 

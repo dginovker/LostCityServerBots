@@ -70,7 +70,7 @@ export default class InputTracking {
             return;
         }
 
-        if (this.buf.pos + 3 > this.max) {
+        if (this.buf.pos + 2 > this.max) {
             this.flush();
         }
 
