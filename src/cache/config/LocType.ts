@@ -111,7 +111,7 @@ export default class LocType extends ConfigType {
     offsetz = 0;
     forcedecor = false;
     breakroutefinding = false;
-    raiseobject = false;
+    raiseobject = -1;
 
     // server-side
     category = -1;
@@ -213,7 +213,7 @@ export default class LocType extends ConfigType {
         } else if (code === 74) {
             this.breakroutefinding = true;
         } else if (code === 75) {
-            this.raiseobject = dat.gbool();
+            this.raiseobject = dat.g1();
         } else if (code === 249) {
             this.params = ParamHelper.decodeParams(dat);
         } else if (code === 250) {

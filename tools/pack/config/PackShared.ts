@@ -26,8 +26,8 @@ import { packStructConfigs, parseStructConfig } from '#tools/pack/config/StructC
 import { packVarnConfigs, parseVarnConfig } from '#tools/pack/config/VarnConfig.js';
 import { packVarpConfigs, parseVarpConfig } from '#tools/pack/config/VarpConfig.js';
 import { packVarsConfigs, parseVarsConfig } from '#tools/pack/config/VarsConfig.js';
-import FileStream from '#/io/FileStream.js';
 import { packVarbitConfigs, parseVarbitConfig } from '#tools/pack/config/VarbitConfig.js';
+import FileStream from '#/io/FileStream.js';
 
 export function isConfigBoolean(input: string): boolean {
     return input === 'yes' || input === 'no' || input === 'true' || input === 'false' || input === '1' || input === '0';

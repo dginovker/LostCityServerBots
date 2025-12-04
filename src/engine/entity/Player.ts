@@ -745,9 +745,10 @@ export default class Player extends PathingEntity {
         }
     }
 
-    closeModal() {
-        this.weakQueue.clear();
-
+    closeModal(clearWeakQueue: boolean = true) {
+        if (clearWeakQueue) {
+            this.weakQueue.clear();
+        }
         if (!this.delayed) {
             this.protect = false;
         }
@@ -2169,7 +2170,7 @@ export default class Player extends PathingEntity {
 
             if ((this.modalState & ModalState.MAIN) === ModalState.NONE) {
                 // close chat dialogues automatically and leave main modals alone
-                this.closeModal();
+                this.closeModal(false);
             }
         }
     }
