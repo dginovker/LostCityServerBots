@@ -5,7 +5,9 @@ import NpcType from '#/cache/config/NpcType.js';
 
 import { compressGz } from '#/io/GZip.js';
 import Packet from '#/io/Packet.js';
+
 import Environment from '#/util/Environment.js';
+
 import { MapPack, shouldBuildFile } from '#tools/pack/PackFile.js';
 import { listFilesExt } from '#tools/pack/Parse.js';
 

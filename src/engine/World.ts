@@ -1797,11 +1797,11 @@ class World {
                         }
                     } else if (msg.type === 'dev_progress') {
                         if (msg.broadcast) {
-                            console.log(msg.broadcast);
+                            printDebug(msg.broadcast);
 
                             this.broadcastMes(msg.broadcast);
                         } else if (msg.text) {
-                            console.log(msg.text);
+                            printInfo(msg.text);
                         }
                     }
                 } catch (err) {
