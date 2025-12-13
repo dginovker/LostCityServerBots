@@ -193,12 +193,6 @@ export class NetworkPlayer extends Player {
             this.write(new IfOpenOverlay(this.overlay));
             this.lastOverlay = this.overlay;
         }
-
-        for (const message of this.buffer) {
-            this.writeInner(message);
-        }
-
-        this.buffer = [];
     }
 
     writeInner(message: ServerGameMessage): void {
@@ -425,24 +419,4 @@ export class NetworkPlayer extends Player {
 
 export function isClientConnected(player: Player): player is NetworkPlayer {
     return player instanceof NetworkPlayer && !(player.client instanceof NullClientSocket);
-}
-
-export function isBufferFull(player: Player): boolean {
-    if (!isClientConnected(player)) {
-        return false;
-    }
-
-    let total = 0;
-
-    for (const message of player.buffer) {
-        const encoder: ServerGameMessageEncoder<ServerGameMessage> | undefined = ServerGameProtRepository.getEncoder(message);
-        if (!encoder) {
-            return true;
-        }
-
-        const prot = encoder.prot;
-        total += 1 + (prot.length === -1 ? 1 : prot.length === -2 ? 2 : 0) + encoder.test(message);
-    }
-
-    return total >= 5000;
 }

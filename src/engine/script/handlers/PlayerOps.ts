@@ -7,7 +7,6 @@ import { CoordGrid } from '#/engine/CoordGrid.js';
 import CameraInfo from '#/engine/entity/CameraInfo.js';
 import { PlayerTimerType } from '#/engine/entity/EntityTimer.js';
 import { Interaction } from '#/engine/entity/Interaction.js';
-import { isBufferFull } from '#/engine/entity/NetworkPlayer.js';
 import Player from '#/engine/entity/Player.js';
 import { PlayerQueueType, ScriptArgument } from '#/engine/entity/PlayerQueueRequest.js';
 import { PlayerStat } from '#/engine/entity/PlayerStat.js';
@@ -202,7 +201,8 @@ const PlayerOps: CommandHandlers = {
     // https://x.com/JagexAsh/status/1694990340669747261
     // soft-limit for developers to be better aware of the bandwidth used and mitigate the impact on the player experience
     [ScriptOpcode.BUFFER_FULL]: checkedHandler(ActivePlayer, state => {
-        state.pushInt(isBufferFull(state.activePlayer) ? 1 : 0);
+        // todo: should we have this yet?
+        state.pushInt(0);
     }),
 
     [ScriptOpcode.BUILDAPPEARANCE]: checkedHandler(ActivePlayer, state => {

@@ -46,7 +46,6 @@ import ScriptState from '#/engine/script/ScriptState.js';
 import ServerTriggerType from '#/engine/script/ServerTriggerType.js';
 import World from '#/engine/World.js';
 import Packet from '#/io/Packet.js';
-import { ServerGameProtPriority } from '#/network/game/server/ServerGameProtPriority.js';
 import ChatFilterSettings from '#/network/game/server/model/ChatFilterSettings.js';
 import HintArrow from '#/network/game/server/model/HintArrow.js';
 import IfClose from '#/network/game/server/model/IfClose.js';
@@ -335,8 +334,6 @@ export default class Player extends PathingEntity {
     preventLogoutMessage: string | null = null;
     preventLogoutUntil: number = -1;
 
-    // not stored as a byte buffer so we can write and encrypt opcodes later
-    buffer: ServerGameMessage[] = [];
     lastResponse: number = -1;
     lastConnected: number = -1;
 
@@ -447,7 +444,6 @@ export default class Player extends PathingEntity {
         this.activeScript = null;
         this.invListeners.length = 0;
         this.resumeButtons.length = 0;
-        this.buffer = [];
         this.queue.clear();
         this.weakQueue.clear();
         this.engineQueue.clear();
@@ -2202,11 +2198,7 @@ export default class Player extends PathingEntity {
             return;
         }
 
-        if (message.priority === ServerGameProtPriority.IMMEDIATE) {
-            this.writeInner(message);
-        } else {
-            this.buffer.push(message);
-        }
+        this.writeInner(message);
     }
 
     unsetMapFlag() {
