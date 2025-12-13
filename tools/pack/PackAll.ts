@@ -48,7 +48,7 @@ export async function packClient(modelFlags: number[]) {
     packClientWordenc(cache);
     packClientSound(cache);
     packClientModel(cache, modelFlags);
-    packMaps(cache);
+    packMaps(cache, modelFlags);
     packClientMusic(cache);
     packClientVersionList(cache, modelFlags);
 
