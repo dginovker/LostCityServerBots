@@ -8,8 +8,8 @@ export default class CamMoveTo extends ServerGameMessage {
         readonly x: number,
         readonly z: number,
         readonly height: number,
-        readonly speed: number,
-        readonly multiplier: number
+        readonly rate: number,
+        readonly rate2: number
     ) {
         super();
     }

@@ -5,10 +5,10 @@ export default class CamShake extends ServerGameMessage {
     priority = ServerGameProtPriority.BUFFERED;
 
     constructor(
-        readonly type: number,
-        readonly jitter: number,
+        readonly axis: number,
+        readonly random: number,
         readonly amplitude: number,
-        readonly frequency: number
+        readonly rate: number
     ) {
         super();
     }
