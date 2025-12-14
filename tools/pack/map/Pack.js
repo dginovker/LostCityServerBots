@@ -7,6 +7,7 @@ import { compressGz } from '#/io/GZip.js';
 import Packet from '#/io/Packet.js';
 
 import Environment from '#/util/Environment.js';
+import { printFatalError } from '#/util/Logger.js';
 
 import { MapPack, shouldBuildFile } from '#tools/pack/PackFile.js';
 import { listFilesExt } from '#tools/pack/Parse.js';
@@ -65,7 +66,7 @@ function readMap(map) {
         } else if (section === 'NPC') {
             let parts = line.split(':');
             let [level, localX, localZ] = parts[0].split(' ');
-            let id = parts[1];
+            let id = parts[1].slice(1);
 
             if (!npc[level]) {
                 npc[level] = [];
@@ -390,7 +391,10 @@ export function packMaps(cache, modelFlags) {
                         for (let i = 0; i < npcs.length; i++) {
                             out.p2(npcs[i]);
 
-                            const type = NpcType.get(parseInt(npcs[i]));
+                            const type = NpcType.get(npcs[i]);
+                            if (!type) {
+                                printFatalError(`m${mapX}_${mapZ}: NPC type does not exist: ${npcs[i]}`);
+                            }
                             if (type.models) {
                                 for (const model of type.models) {
                                     modelFlags[model] |= 0x4;
