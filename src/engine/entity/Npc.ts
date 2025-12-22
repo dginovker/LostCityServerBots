@@ -47,8 +47,8 @@ export default class Npc extends PathingEntity {
     startX: number;
     startZ: number;
     startLevel: number;
-    levels: Uint8Array = new Uint8Array(6);
-    baseLevels: Uint8Array = new Uint8Array(6);
+    levels: Uint16Array = new Uint16Array(6);
+    baseLevels: Uint16Array = new Uint16Array(6);
 
     // runtime variables
     readonly vars: Int32Array;
