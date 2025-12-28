@@ -437,7 +437,7 @@ export function packNpcConfigs(configs: Map<string, ConfigLine[]>, modelFlags: n
                 } else if (key === 'regenrate') {
                     server.p1(214);
                     server.p2(value as number);
-                } 
+                }
             }
 
             if (recol_s.length > 0) {

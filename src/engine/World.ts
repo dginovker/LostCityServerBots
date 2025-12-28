@@ -1,6 +1,6 @@
 // stdlib
 import fs from 'fs';
-import { Worker as NodeWorker } from 'worker_threads';
+import { Worker } from 'worker_threads';
 
 // deps
 import * as rsbuf from '@2004scape/rsbuf';
@@ -93,7 +93,6 @@ import { fromBase37, toBase37, toSafeName } from '#/util/JString.js';
 import LinkList from '#/util/LinkList.js';
 import { printDebug, printError, printInfo } from '#/util/Logger.js';
 import { WalkTriggerSetting } from '#/engine/entity/WalkTriggerSetting.js';
-import { createWorker } from '#/util/WorkerFactory.js';
 
 import InputTrackingBlob from './entity/tracking/InputTrackingBlob.js';
 import OnDemand from './OnDemand.js';
@@ -102,7 +101,7 @@ import DbTableIndex from '#/cache/config/DbTableIndex.js';
 import VarBitType from '#/cache/config/VarBitType.js';
 import FriendlistLoaded from '#/network/game/server/model/FriendlistLoaded.js';
 
-const priv = forge.pki.privateKeyFromPem(Environment.STANDALONE_BUNDLE ? await (await fetch('data/config/private.pem')).text() : fs.readFileSync('data/config/private.pem', 'ascii'));
+const priv = forge.pki.privateKeyFromPem(fs.readFileSync('data/config/private.pem', 'ascii'));
 
 type LogoutRequest = {
     save: Uint8Array;
@@ -110,10 +109,10 @@ type LogoutRequest = {
 };
 
 class World {
-    private loginThread = createWorker(Environment.STANDALONE_BUNDLE ? 'LoginThread.js' : './src/server/login/LoginThread.ts');
-    private friendThread = createWorker(Environment.STANDALONE_BUNDLE ? 'FriendThread.js' : './src/server/friend/FriendThread.ts');
-    private loggerThread = createWorker(Environment.STANDALONE_BUNDLE ? 'LoggerThread.js' : './src/server/logger/LoggerThread.ts');
-    private devThread: Worker | NodeWorker | null = null;
+    private loginThread = new Worker('./src/server/login/LoginThread.ts');
+    private friendThread = new Worker('./src/server/friend/FriendThread.ts');
+    private loggerThread = new Worker('./src/server/logger/LoggerThread.ts');
+    private devThread: Worker | null = null;
 
     private static readonly PLAYERS: number = Environment.NODE_MAX_PLAYERS;
     private static readonly NPCS: number = Environment.NODE_MAX_NPCS;
@@ -179,47 +178,21 @@ class World {
         this.lastCycleStats = new Array(12).fill(0);
         this.cycleStats = new Array(12).fill(0);
 
-        if (Environment.STANDALONE_BUNDLE) {
-            if (this.loginThread instanceof Worker) {
-                this.loginThread.onmessage = msg => {
-                    try {
-                        this.onLoginMessage(msg.data);
-                    } catch (err) {
-                        console.error(err);
-                    }
-                };
+        this.loginThread.on('message', msg => {
+            try {
+                this.onLoginMessage(msg);
+            } catch (err) {
+                console.error(err);
             }
+        });
 
-            if (this.friendThread instanceof Worker) {
-                this.friendThread.onmessage = msg => {
-                    try {
-                        this.onFriendMessage(msg.data);
-                    } catch (err) {
-                        console.error(err);
-                    }
-                };
+        this.friendThread.on('message', msg => {
+            try {
+                this.onFriendMessage(msg);
+            } catch (err) {
+                console.error(err);
             }
-        } else {
-            if (this.loginThread instanceof NodeWorker) {
-                this.loginThread.on('message', msg => {
-                    try {
-                        this.onLoginMessage(msg);
-                    } catch (err) {
-                        console.error(err);
-                    }
-                });
-            }
-
-            if (this.friendThread instanceof NodeWorker) {
-                this.friendThread.on('message', msg => {
-                    try {
-                        this.onFriendMessage(msg);
-                    } catch (err) {
-                        console.error(err);
-                    }
-                });
-            }
-        }
+        });
     }
 
     get shutdown() {
@@ -319,15 +292,13 @@ class World {
     async start(skipMaps = false, startCycle = true): Promise<void> {
         printInfo('Starting world');
 
-        if (!Environment.STANDALONE_BUNDLE) {
-            FontType.load('data/pack');
-            WordEnc.load('data/pack');
+        FontType.load('data/pack');
+        WordEnc.load('data/pack');
 
-            this.reload();
+        this.reload();
 
-            if (!skipMaps) {
-                this.gameMap.init();
-            }
+        if (!skipMaps) {
+            this.gameMap.init();
         }
 
         setTimeout(() => {
@@ -340,20 +311,18 @@ class World {
             });
         }, 2000);
 
-        if (!Environment.STANDALONE_BUNDLE) {
-            if (!Environment.NODE_PRODUCTION) {
-                this.createDevThread();
+        if (!Environment.NODE_PRODUCTION) {
+            this.createDevThread();
 
-                if (Environment.BUILD_STARTUP) {
-                    this.rebuild();
-                }
+            if (Environment.BUILD_STARTUP) {
+                this.rebuild();
             }
+        }
 
-            if (Environment.WEB_PORT === 80) {
-                printInfo(kleur.green().bold('World ready') + kleur.white().bold(': Visit http://localhost/rs2.cgi'));
-            } else {
-                printInfo(kleur.green().bold('World ready') + kleur.white().bold(': Visit http://localhost:' + Environment.WEB_PORT + '/rs2.cgi'));
-            }
+        if (Environment.WEB_PORT === 80) {
+            printInfo(kleur.green().bold('World ready') + kleur.white().bold(': Visit http://localhost/rs2.cgi'));
+        } else {
+            printInfo(kleur.green().bold('World ready') + kleur.white().bold(': Visit http://localhost:' + Environment.WEB_PORT + '/rs2.cgi'));
         }
 
         if (startCycle) {
@@ -1781,47 +1750,45 @@ class World {
     }
 
     private createDevThread() {
-        this.devThread = createWorker('./src/cache/DevThread.ts');
+        this.devThread = new Worker('./src/cache/DevThread.ts');
 
-        if (this.devThread instanceof NodeWorker) {
-            this.devThread.on('message', msg => {
-                try {
-                    if (msg.type === 'dev_reload') {
-                        this.reload();
-                    } else if (msg.type === 'dev_failure') {
-                        if (msg.error) {
-                            console.error(msg.error);
+        this.devThread.on('message', msg => {
+            try {
+                if (msg.type === 'dev_reload') {
+                    this.reload();
+                } else if (msg.type === 'dev_failure') {
+                    if (msg.error) {
+                        console.error(msg.error);
 
-                            this.broadcastMes(msg.error.replaceAll(`${Environment.BUILD_SRC_DIR}/scripts/`, ''));
-                            this.broadcastMes('Check the console for more information.');
-                        }
-                    } else if (msg.type === 'dev_progress') {
-                        if (msg.broadcast) {
-                            printDebug(msg.broadcast);
-
-                            this.broadcastMes(msg.broadcast);
-                        } else if (msg.text) {
-                            printInfo(msg.text);
-                        }
+                        this.broadcastMes(msg.error.replaceAll(`${Environment.BUILD_SRC_DIR}/scripts/`, ''));
+                        this.broadcastMes('Check the console for more information.');
                     }
-                } catch (err) {
-                    console.error(err);
-                }
-            });
+                } else if (msg.type === 'dev_progress') {
+                    if (msg.broadcast) {
+                        printDebug(msg.broadcast);
 
-            // todo: catch all cases where it might exit instead of throwing an error, so we aren't
-            // re-initializing the file watchers after errors
-            this.devThread.on('exit', () => {
-                try {
-                    // todo: remove this mes after above the todo above is addressed
-                    this.broadcastMes('Error while rebuilding - see console for more info.');
-
-                    this.createDevThread();
-                } catch (err) {
-                    console.error(err);
+                        this.broadcastMes(msg.broadcast);
+                    } else if (msg.text) {
+                        printInfo(msg.text);
+                    }
                 }
-            });
-        }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        // todo: catch all cases where it might exit instead of throwing an error, so we aren't
+        // re-initializing the file watchers after errors
+        this.devThread.on('exit', () => {
+            try {
+                // todo: remove this mes after above the todo above is addressed
+                this.broadcastMes('Error while rebuilding - see console for more info.');
+
+                this.createDevThread();
+            } catch (err) {
+                console.error(err);
+            }
+        });
     }
 
     rebootTimer(duration: number): void {

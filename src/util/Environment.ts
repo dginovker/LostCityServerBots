@@ -6,9 +6,6 @@ export default {
     EASY_STARTUP: tryParseBoolean(process.env.EASY_STARTUP, false),
     WEBSITE_REGISTRATION: tryParseBoolean(process.env.WEBSITE_REGISTRATION, true),
 
-    // bundler/webrtc browser mode
-    STANDALONE_BUNDLE: tryParseBoolean(process.env.STANDALONE_BUNDLE, false),
-
     /// web server
     WEB_PORT: tryParseInt(process.env.WEB_PORT, process.platform === 'win32' || process.platform === 'darwin' ? 80 : 8888),
     WEB_ALLOWED_ORIGIN: tryParseString(process.env.WEB_ALLOWED_ORIGIN, ''),

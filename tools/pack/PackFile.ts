@@ -220,6 +220,7 @@ export const VarnPack = new PackFile('varn', validateConfigPack, '.varn');
 export const VarsPack = new PackFile('vars', validateConfigPack, '.vars');
 
 export function revalidatePack() {
+    AnimSetPack.reload();
     AnimPack.reload();
     BasePack.reload();
     CategoryPack.reload();
@@ -233,6 +234,8 @@ export function revalidatePack() {
     InvPack.reload();
     LocPack.reload();
     MesAnimPack.reload();
+    MapPack.reload();
+    MidiPack.reload();
     ModelPack.reload();
     NpcPack.reload();
     ObjPack.reload();
