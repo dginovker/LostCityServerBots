@@ -363,7 +363,7 @@ export class FriendServerRepository {
             .select('a.username')
             .where('local.username', '=', username)
             .where('f.profile', '=', this.profile)
-            .orderBy('f.created asc')
+            .orderBy('f.created', 'asc')
             .execute();
         const friendUsername37s = friendUsernames.map(f => toBase37(f.username));
 
@@ -377,7 +377,7 @@ export class FriendServerRepository {
             .select('i.value')
             .where('local.username', '=', username)
             .where('i.profile', '=', this.profile)
-            .orderBy('i.created asc')
+            .orderBy('i.created', 'asc')
             .execute();
 
         const ignoreUsername37s = ignores.map(f => toBase37(f.value));

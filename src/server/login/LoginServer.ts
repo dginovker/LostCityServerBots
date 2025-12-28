@@ -231,42 +231,6 @@ export default class LoginServer {
                                     .executeTakeFirst();
                             }
 
-                            if (account) {
-                                const recent = await db
-                                    .selectFrom('login')
-                                    .selectAll()
-                                    .where('account_id', '=', account.id)
-                                    .where('ip', '=', remoteAddress)
-                                    .where('timestamp', '>=', toDbDate(new Date(Date.now() - 5000)))
-                                    .limit(3)
-                                    .execute();
-
-                                if (recent.length === 3) {
-                                    // rate limited
-                                    s.send(
-                                        JSON.stringify({
-                                            replyTo,
-                                            response: 8
-                                        })
-                                    );
-                                    return;
-                                }
-
-                                // todo: concurrent logins by ip
-
-                                await db
-                                    .insertInto('login')
-                                    .values({
-                                        uuid: socket,
-                                        account_id: account.id,
-                                        world: nodeId,
-                                        timestamp: toDbDate(nodeTime),
-                                        uid,
-                                        ip: remoteAddress
-                                    })
-                                    .execute();
-                            }
-
                             if (!account || !(await bcrypt.compare(password.toLowerCase(), account.password))) {
                                 // invalid username or password
                                 s.send(
@@ -363,20 +327,24 @@ export default class LoginServer {
                                     })
                                 );
                                 return;
-                            } else if (account.staffmodlevel < 2 
-                                && account.logged_out !== null 
-                                && account.logged_out !== 0 
-                                && account.logged_out !== nodeId 
-                                && account.logout_time !== null 
-                                && new Date(account.logout_time) >= new Date(Date.now() - 45000)) {
-                                // rate limited (hop timer)
-                                s.send(
-                                    JSON.stringify({
-                                        replyTo,
-                                        response: 6
-                                    })
-                                );
-                                return;
+                            } else if (
+                                account.staffmodlevel < 2 &&
+                                account.logged_out !== 0 &&
+                                account.logged_out !== nodeId &&
+                                account.logout_time !== null
+                            ) {
+                                const remaining = new Date(account.logout_time).getTime() - new Date(Date.now() - Environment.NODE_HOP_TIME).getTime();
+                                if (remaining > 0) {
+                                    // rate limited (hop timer)
+                                    s.send(
+                                        JSON.stringify({
+                                            replyTo,
+                                            response: 10,
+                                            remaining
+                                        })
+                                    );
+                                    return;
+                                }
                             }
 
                             await db

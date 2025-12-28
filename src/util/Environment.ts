@@ -57,6 +57,7 @@ export default {
     NODE_MAX_NPCS: tryParseInt(process.env.NODE_MAX_NPCS, 16383),
     NODE_DEBUGPROC_CHAR: tryParseString(process.env.NODE_DEBUGPROC_CHAR, '~'),
     NODE_WS_ONDEMAND: tryParseBoolean(process.env.NODE_WS_ONDEMAND, false),
+    NODE_HOP_TIME: tryParseInt(process.env.NODE_MAX_NPCS, 45000), // 45s
 
     /// login server
     LOGIN_SERVER: tryParseBoolean(process.env.LOGIN_SERVER, false),

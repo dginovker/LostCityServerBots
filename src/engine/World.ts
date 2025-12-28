@@ -1871,6 +1871,15 @@ class World {
                 client.send(Uint8Array.from([12]));
                 client.close();
                 return;
+            } else if (reply === 10) {
+                // hop timer
+                const { remaining } = msg;
+                client.send(Uint8Array.from([
+                    21,
+                    Math.min(255, remaining! / 1000)
+                ]));
+                client.close();
+                return;
             }
 
             const { account_id, username, lowMemory, reconnecting, staffmodlevel, muted_until, members, messageCount } = msg;
