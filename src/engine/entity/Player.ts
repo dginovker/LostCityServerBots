@@ -1858,7 +1858,7 @@ export default class Player extends PathingEntity {
 
         if (this.combatLevel != this.getCombatLevel()) {
             this.combatLevel = this.getCombatLevel();
-            this.buildAppearance(InvType.WORN);
+            this.buildAppearance(this.appearanceInv);
         }
     }
 
@@ -1876,9 +1876,9 @@ export default class Player extends PathingEntity {
         this.levels[stat] = level;
         this.stats[stat] = getExpByLevel(level);
 
-        if (this.getCombatLevel() != this.combatLevel) {
+        if (this.combatLevel != this.getCombatLevel()) {
             this.combatLevel = this.getCombatLevel();
-            this.buildAppearance(InvType.WORN);
+            this.buildAppearance(this.appearanceInv);
         }
     }
 

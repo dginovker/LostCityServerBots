@@ -582,7 +582,7 @@ class World {
                     const hunt = HuntType.get(npc.huntMode);
 
                     if (hunt && hunt.type === HuntModeType.PLAYER) {
-                        npc.huntAll();
+                        npc.huntAll(hunt);
                     }
                 }
             }
@@ -1163,13 +1163,13 @@ class World {
                 }
                 // Item stock is under min
                 if (item.count < invType.stockcount[index] && tick % invType.stockrate[index] === 0) {
-                    inv.add(item?.id, 1, index, true, false, false);
+                    inv.add(item.id, 1, index, true, false, false);
                     inv.update = true;
                     continue;
                 }
                 // Item stock is over min
                 if (item.count > invType.stockcount[index] && tick % invType.stockrate[index] === 0) {
-                    inv.remove(item?.id, 1, index, true);
+                    inv.remove(item.id, 1, index, true);
                     inv.update = true;
                     continue;
                 }
@@ -1177,7 +1177,7 @@ class World {
                 // Item stock is not listed, such as general stores
                 // Tested on low and high player count worlds, ever 1 minute stock decreases.
                 if (invType.allstock && !invType.stockcount[index] && tick % World.INV_STOCKRATE === 0) {
-                    inv.remove(item?.id, 1, index, true);
+                    inv.remove(item.id, 1, index, true);
                     inv.update = true;
                 }
             }
@@ -1572,11 +1572,6 @@ class World {
             username: player.username,
             target: targetUsername37
         });
-    }
-
-    addPlayer(player: Player): void {
-        this.newPlayers.add(player);
-        player.isActive = true;
     }
 
     sendPrivateChatModeToFriendsServer(player: Player): void {

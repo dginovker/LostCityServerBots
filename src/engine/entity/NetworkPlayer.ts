@@ -197,9 +197,6 @@ export class NetworkPlayer extends Player {
 
     writeInner(message: ServerGameMessage): void {
         const client = this.client;
-        if (!client) {
-            return;
-        }
 
         const encoder: ServerGameMessageEncoder<ServerGameMessage> | undefined = ServerGameProtRepository.getEncoder(message);
         if (!encoder) {
