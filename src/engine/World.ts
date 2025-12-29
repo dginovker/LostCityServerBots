@@ -7,6 +7,7 @@ import * as rsbuf from '@2004scape/rsbuf';
 import { PlayerInfoProt } from '@2004scape/rsbuf';
 import kleur from 'kleur';
 import forge from 'node-forge';
+import { TTLCache } from '@isaacs/ttlcache';
 
 // lostcity
 import CategoryType from '#/cache/config/CategoryType.js';
@@ -162,6 +163,9 @@ class World {
     sessionLogs: SessionLog[] = [];
     wealthTransactionGroup: Map<string, WealthTransactionEvent> = new Map();
     wealthTransactions: WealthTransactionEvent[] = [];
+
+    loginAddressAttempts: TTLCache<string, number> = new TTLCache({ ttl: 60000 });
+    loginDeviceAttempts: TTLCache<string, number> = new TTLCache({ ttl: 15000 });
 
     constructor() {
         this.gameMap = new GameMap(Environment.NODE_MEMBERS);
@@ -2120,7 +2124,20 @@ class World {
         if (client.opcode === 14) {
             client.send(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0]));
 
-            const _loginServer = World.loginBuf.g1();
+            if (Environment.NODE_PRODUCTION && Environment.NODE_RATELIMIT_ADDRESS_LOGIN > 0) {
+                const last = this.loginAddressAttempts.get(client.remoteAddress);
+                const attempts = last ? last + 1 : 1;
+                this.loginAddressAttempts.set(client.remoteAddress, attempts);
+
+                if (attempts >= Environment.NODE_RATELIMIT_ADDRESS_LOGIN) {
+                    // login attempts exceeded
+                    client.send(Uint8Array.from([16]));
+                    client.close();
+                    return;
+                }
+            }
+
+            const _loginServer = World.loginBuf.g1(); // jagex stores player saves on different servers
             client.send(Uint8Array.from([0]));
 
             const seed = new Packet(new Uint8Array(8));
@@ -2171,6 +2188,19 @@ class World {
             const uid = World.loginBuf.g4s();
             const username = World.loginBuf.gjstr();
             const password = World.loginBuf.gjstr();
+
+            if (Environment.NODE_PRODUCTION && Environment.NODE_RATELIMIT_DEVICE_LOGIN > 0) {
+                const last = this.loginDeviceAttempts.get(`${uid}@${client.remoteAddress}`);
+                const attempts = last ? last + 1 : 1;
+                this.loginDeviceAttempts.set(`${uid}@${client.remoteAddress}`, attempts);
+
+                if (attempts >= Environment.NODE_RATELIMIT_DEVICE_LOGIN) {
+                    // login attempts exceeded
+                    client.send(Uint8Array.from([16]));
+                    client.close();
+                    return;
+                }
+            }
 
             if (username.length < 1 || username.length > 12) {
                 client.send(Uint8Array.from([3]));

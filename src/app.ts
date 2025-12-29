@@ -52,8 +52,7 @@ await startManagementWeb();
 register.setDefaultLabels({ nodeId: Environment.NODE_ID });
 collectDefaultMetrics({ register });
 
-// unfortunately, tsx watch is not giving us a way to gracefully shut down in our dev mode:
-// https://github.com/privatenumber/tsx/issues/494
+// bun does not give us a signal to gracefully shut down in our dev mode...
 let exiting = false;
 function safeExit() {
     if (exiting) {
