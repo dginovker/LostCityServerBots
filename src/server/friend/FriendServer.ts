@@ -289,17 +289,12 @@ export class FriendServer {
 
                         await this.sendPrivateMessage(profile, username37, staffLvl, pmId, targetUsername37, chat);
                     } else if (type === FriendsClientOpcodes.PUBLIC_CHAT_LOG) {
-                        const { nodeId, nodeTime, profile, username, coord, chat } = message;
-
-                        const from = await db.selectFrom('account').selectAll().where('username', '=', username).executeTakeFirstOrThrow();
+                        const { nodeTime, session_uuid, coord, chat } = message;
 
                         await db
                             .insertInto('public_chat')
                             .values({
-                                account_id: from.id,
-                                profile,
-                                world: nodeId,
-
+                                session_uuid,
                                 timestamp: toDbDate(nodeTime),
                                 coord,
                                 message: chat
@@ -701,7 +696,7 @@ export class FriendClient extends InternalClient {
         );
     }
 
-    async publicMessage(username: string, coord: number, chat: string) {
+    async publicMessage(session_uuid: string, coord: number, chat: string) {
         await this.connect();
 
         if (!this.ws || !this.wsr || !this.wsr.checkIfWsLive()) {
@@ -714,7 +709,7 @@ export class FriendClient extends InternalClient {
                 nodeId: this.nodeId,
                 profile: this.profile,
                 nodeTime: Date.now(),
-                username,
+                session_uuid,
                 coord,
                 chat
             })

@@ -94,7 +94,6 @@ import LinkList from '#/util/LinkList.js';
 import { printDebug, printError, printInfo } from '#/util/Logger.js';
 import { WalkTriggerSetting } from '#/engine/entity/WalkTriggerSetting.js';
 
-import InputTrackingBlob from './entity/tracking/InputTrackingBlob.js';
 import OnDemand from './OnDemand.js';
 import { ObjDelayedRequest } from './entity/ObjDelayedRequest.js';
 import DbTableIndex from '#/cache/config/DbTableIndex.js';
@@ -846,6 +845,7 @@ class World {
 
                     if (other instanceof NetworkPlayer && player instanceof NetworkPlayer) {
                         other.client = player.client;
+                        other.session = other.client.uuid;
                         other.client.send(Uint8Array.from([15]));
                     }
 
@@ -1585,7 +1585,7 @@ class World {
     logPublicChat(player: Player, chat: string) {
         this.friendThread.postMessage({
             type: 'public_message',
-            username: player.username,
+            session_uuid: player.session,
             coord: player.coord,
             chat
         });
@@ -1882,7 +1882,7 @@ class World {
                 return;
             }
 
-            const { account_id, username, lowMemory, reconnecting, staffmodlevel, muted_until, members, messageCount } = msg;
+            const { username, lowMemory, reconnecting, staffmodlevel, muted_until, members, messageCount } = msg;
             const save = msg.save ?? new Uint8Array();
 
             // if (reconnecting && !this.getPlayerByUsername(username)) {
@@ -1901,7 +1901,7 @@ class World {
             try {
                 const player = PlayerLoading.load(username, new Packet(save), client);
 
-                player.account_id = account_id;
+                player.session = client.uuid;
                 player.reconnecting = reconnecting;
                 player.staffModLevel = staffmodlevel ?? 0;
                 player.lowMemory = lowMemory;
@@ -2221,9 +2221,8 @@ class World {
         client.opcode = -1;
     }
 
-    addSessionLog(event_type: LoggerEventType, account_id: number, session_uuid: string, coord: number, message: string, ...args: string[]) {
+    addSessionLog(event_type: LoggerEventType, session_uuid: string, coord: number, message: string, ...args: string[]) {
         this.sessionLogs.push({
-            account_id,
             session_uuid,
             timestamp: Date.now(),
             coord,
@@ -2250,8 +2249,8 @@ class World {
 
         const key = JSON.stringify({
             type: event.event_type,
-            id: event.account_id,
-            recipient: event.recipient_id,
+            session: event.session_uuid,
+            recipient: event.recipient_session,
             coord: event.coord,
             tick: this.currentTick
         });
@@ -2307,20 +2306,19 @@ class World {
         }
         this.loggerThread.postMessage({
             type: 'report',
-            username: player.username,
+            session_uuid: player.session,
             coord: player.coord,
             offender,
             reason
         });
     }
 
-    submitInputTracking(username: string, session_uuid: string, blobs: InputTrackingBlob[]) {
+    submitInputTracking(player: Player, buf: Uint8Array) {
         this.loggerThread.postMessage({
             type: 'input_track',
-            username,
-            session_uuid,
+            session_uuid: player.session,
             timestamp: Date.now(),
-            blobs
+            buf: Buffer.from(buf).toString('base64')
         });
     }
 

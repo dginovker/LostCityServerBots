@@ -271,7 +271,6 @@ export default class Player extends PathingEntity {
         return sav.data.subarray(0, sav.pos);
     }
 
-    // constructor properties
     username: string;
     username37: bigint;
     hash64: bigint;
@@ -304,8 +303,7 @@ export default class Player extends PathingEntity {
     privateChat: ChatModePrivate = ChatModePrivate.ON;
     tradeDuel: ChatModeTradeDuel = ChatModeTradeDuel.ON;
 
-    // input tracking
-    account_id: number = -1;
+    session: string = 'headless';
     input: InputTracking;
 
     // runtime variables
@@ -638,14 +636,13 @@ export default class Player extends PathingEntity {
     }
 
     addSessionLog(event_type: LoggerEventType, message: string, ...args: string[]): void {
-        World.addSessionLog(event_type, this.account_id, 'headless', CoordGrid.packCoord(this.level, this.x, this.z), message, ...args);
+        World.addSessionLog(event_type, this.session, CoordGrid.packCoord(this.level, this.x, this.z), message, ...args);
     }
 
     addWealthEvent(event: WealthEventParams) {
         World.addWealthEvent({
             coord: CoordGrid.packCoord(this.level, this.x, this.z),
-            account_id: this.account_id,
-            account_session: 'headless',
+            session_uuid: this.session,
             ...event
         });
     }

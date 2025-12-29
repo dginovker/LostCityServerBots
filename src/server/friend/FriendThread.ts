@@ -95,8 +95,8 @@ async function handleRequests(_parentPort: ParentPort, msg: any) {
         }
         case 'public_message': {
             if (Environment.FRIEND_SERVER) {
-                const { username, coord, chat } = msg;
-                await client.publicMessage(username, coord, chat);
+                const { session_uuid, coord, chat } = msg;
+                await client.publicMessage(session_uuid, coord, chat);
             }
             break;
         }

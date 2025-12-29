@@ -3,7 +3,7 @@ import { parentPort } from 'worker_threads';
 import LoggerClient from '#/server/logger/LoggerClient.js';
 import Environment from '#/util/Environment.js';
 
-const client = new LoggerClient(Environment.NODE_ID);
+const client = new LoggerClient();
 
 if (!parentPort) throw new Error('This file must be run as a worker thread.');
 
@@ -51,8 +51,8 @@ async function handleRequests(_parentPort: ParentPort, msg: any) {
         }
         case 'input_track': {
             if (Environment.LOGGER_SERVER) {
-                const { username, session_uuid, timestamp, blobs } = msg;
-                await client.inputTrack(username, session_uuid, timestamp, blobs);
+                const { session_uuid, timestamp, buf } = msg;
+                await client.inputTrack(session_uuid, timestamp, buf);
             }
             break;
         }
