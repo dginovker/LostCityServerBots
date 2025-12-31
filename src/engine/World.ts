@@ -35,7 +35,7 @@ import { CrcBuffer32, makeCrcs } from '#/cache/CrcTable.js';
 import WordEnc from '#/cache/wordenc/WordEnc.js';
 import { BlockWalk } from '#/engine/entity/BlockWalk.js';
 import { EntityLifeCycle } from '#/engine/entity/EntityLifeCycle.js';
-import { NpcList, PlayerList } from '#/engine/entity/EntityList.js';
+import { NpcList } from '#/engine/entity/EntityList.js';
 import { PlayerTimerType } from '#/engine/entity/EntityTimer.js';
 import { HuntModeType } from '#/engine/entity/hunt/HuntModeType.js';
 import Loc from '#/engine/entity/Loc.js';
@@ -91,7 +91,7 @@ import {
 } from '#/server/Metrics.js';
 import Environment from '#/util/Environment.js';
 import { fromBase37, toBase37, toSafeName } from '#/util/JString.js';
-import LinkList from '#/util/LinkList.js';
+import LinkList from '#/datastruct/LinkList.js';
 import { printDebug, printError, printInfo } from '#/util/Logger.js';
 import { WalkTriggerSetting } from '#/engine/entity/WalkTriggerSetting.js';
 
@@ -100,6 +100,7 @@ import { ObjDelayedRequest } from './entity/ObjDelayedRequest.js';
 import DbTableIndex from '#/cache/config/DbTableIndex.js';
 import VarBitType from '#/cache/config/VarBitType.js';
 import FriendlistLoaded from '#/network/game/server/model/FriendlistLoaded.js';
+import HashTable from '#/datastruct/HashTable.js';
 
 const priv = forge.pki.privateKeyFromPem(fs.readFileSync('data/config/private.pem', 'ascii'));
 
@@ -128,28 +129,33 @@ class World {
     private static readonly TIMEOUT_NO_RESPONSE: number = Environment.NODE_DEBUG_SOCKET ? 60000 : 100; // 60s without any response
 
     // the game/zones map
-    readonly gameMap: GameMap;
+    readonly gameMap: GameMap = new GameMap(Environment.NODE_MEMBERS);
 
     // shared inventories (shops)
-    readonly invs: Set<Inventory>;
+    readonly invs: Set<Inventory> = new Set();
 
     // entities
     readonly loginRequests: Map<string, ClientSocket> = new Map(); // waiting for response from login server
     readonly logoutRequests: Map<string, LogoutRequest> = new Map(); // waiting for confirmation from login server
-    readonly newPlayers: Set<Player>; // players joining at the end of this tick
-    readonly players: PlayerList;
-    readonly npcs: NpcList;
+    readonly newPlayers: Set<Player> = new Set(); // players joining at the end of this tick
+
+    // the server processes players in the underlying bucket-order (key fragment + insertion order)
+    readonly playerLoop: HashTable<Player> = new HashTable(8);
+    // the client and server communicate via player "slots," separate from processing
+    readonly players: Player[] = new Array(2048);
+
+    readonly npcs: NpcList = new NpcList(World.NPCS);
 
     // zones
-    readonly zonesTracking: Set<Zone>;
-    readonly locObjTracker: LinkList<LocObjEvent>;
-    readonly queue: LinkList<EntityQueueState>;
-    readonly npcEventQueue: LinkList<NpcEventRequest>;
-    readonly objDelayedQueue: LinkList<ObjDelayedRequest>;
+    readonly zonesTracking: Set<Zone> = new Set();
+    readonly locObjTracker: LinkList<LocObjEvent> = new LinkList();
+    readonly queue: LinkList<EntityQueueState> = new LinkList();
+    readonly npcEventQueue: LinkList<NpcEventRequest> = new LinkList();
+    readonly objDelayedQueue: LinkList<ObjDelayedRequest> = new LinkList();
 
     // debug data
-    readonly lastCycleStats: number[];
-    readonly cycleStats: number[];
+    readonly lastCycleStats: Uint16Array = new Uint16Array(12);
+    readonly cycleStats: Uint16Array = new Uint16Array(12);
 
     tickRate: number = World.TICKRATE; // speeds up when we're processing server shutdown
     currentTick: number = 0; // the current tick of the game world.
@@ -168,19 +174,6 @@ class World {
     loginDeviceAttempts: TTLCache<string, number> = new TTLCache({ ttl: 15000 });
 
     constructor() {
-        this.gameMap = new GameMap(Environment.NODE_MEMBERS);
-        this.invs = new Set();
-        this.newPlayers = new Set();
-        this.players = new PlayerList(World.PLAYERS);
-        this.npcs = new NpcList(World.NPCS);
-        this.zonesTracking = new Set();
-        this.locObjTracker = new LinkList();
-        this.queue = new LinkList();
-        this.npcEventQueue = new LinkList();
-        this.objDelayedQueue = new LinkList();
-        this.lastCycleStats = new Array(12).fill(0);
-        this.cycleStats = new Array(12).fill(0);
-
         this.loginThread.on('message', msg => {
             try {
                 this.onLoginMessage(msg);
@@ -230,7 +223,7 @@ class World {
                 if (inv.scope === InvType.SCOPE_SHARED) {
                     this.invs.add(Inventory.fromType(id));
                 } else if (inv.scope === InvType.SCOPE_TEMP) {
-                    for (const player of this.players) {
+                    for (const player of this.playerLoop.all()) {
                         if (player.invs.has(id)) {
                             player.invs.delete(id);
                         }
@@ -429,7 +422,7 @@ class World {
             }
 
             if (tick % World.PLAYER_COORDLOGRATE === 0 && tick > 0) {
-                for (const player of this.players) {
+                for (const player of this.playerLoop.all()) {
                     player.addSessionLog(LoggerEventType.MODERATOR, 'Server check in');
                 }
             }
@@ -515,7 +508,7 @@ class World {
 
             printError('Removing all players...');
 
-            for (const player of this.players) {
+            for (const player of this.playerLoop.all()) {
                 this.removePlayer(player);
             }
 
@@ -603,7 +596,7 @@ class World {
 
         this.cycleStats[WorldStat.BANDWIDTH_IN] = 0;
 
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             try {
                 player.playtime++;
 
@@ -708,7 +701,7 @@ class World {
     private processPlayers(): void {
         const start: number = Date.now();
 
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             try {
                 if (player.delayed && this.currentTick >= player.delayedUntil) player.delayed = false;
 
@@ -753,7 +746,7 @@ class World {
     private processLogouts(): void {
         const start: number = Date.now();
 
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             let force = false;
             if (this.shutdown || this.currentTick - player.lastResponse >= World.TIMEOUT_NO_RESPONSE) {
                 // world shutdown or x-logged / timed out for 60s: force logout
@@ -837,7 +830,7 @@ class World {
 
             // reconnect a new socket with player in the world
             if (player.reconnecting) {
-                for (const other of this.players) {
+                for (const other of this.playerLoop.all()) {
                     if (player.username !== other.username) {
                         continue;
                     }
@@ -853,7 +846,7 @@ class World {
                         other.client.send(Uint8Array.from([15]));
                     }
 
-                    rsbuf.cleanupPlayerBuildArea(other.pid);
+                    rsbuf.cleanupPlayerBuildArea(other.slot);
 
                     other.onReconnect();
 
@@ -869,7 +862,7 @@ class World {
             }
 
             // player already logged in
-            for (const other of this.players) {
+            for (const other of this.playerLoop.all()) {
                 if (player.username !== other.username) {
                     continue;
                 }
@@ -894,11 +887,8 @@ class World {
             }
 
             // normal login process
-            let pid: number;
-            try {
-                // if it throws then there was no available pid. otherwise guaranteed to not be -1.
-                pid = this.getNextPid(isClientConnected(player) ? player.client : null);
-            } catch (_) {
+            const slot: number = this.getNextPlayerSlot();
+            if (slot === -1) {
                 // world full
                 if (isClientConnected(player)) {
                     player.addSessionLog(LoggerEventType.ENGINE, 'Tried to log in - world full');
@@ -921,13 +911,28 @@ class World {
                     Math.min(player.staffModLevel, 2),
                     1 // mouse tracking can only be enabled on login
                 ]));
+
+                const remote = player.client.remoteAddress;
+                if (remote.indexOf('.') !== -1) {
+                    // IPv4 - last octet determines the bucket
+                    const octets = remote.split('.');
+                    const bucket = (parseInt(octets[0]) << 24) | (parseInt(octets[1]) << 16) | (parseInt(octets[2]) << 8) | parseInt(octets[3]);
+                    this.playerLoop.add(BigInt(bucket), player);
+                } else if (remote.indexOf(':') !== -1) {
+                    // IPv6 - site prefix determines the bucket
+                    const hextets = remote.split(':');
+                    const bucket = parseInt(hextets[2], 16) % 256;
+                    this.playerLoop.add(BigInt(bucket), player);
+                }
+            } else {
+                // 127.0.0.1
+                this.playerLoop.add(2130706433n, player);
             }
 
-            // insert player into first available slot
-            this.players.set(pid, player);
-            rsbuf.addPlayer(pid);
-            player.pid = pid;
-            player.uid = ((Number(player.username37 & 0x1fffffn) << 11) | player.pid) >>> 0;
+            this.players[slot] = player;
+            rsbuf.addPlayer(slot);
+            player.slot = slot;
+            player.uid = ((Number(player.username37 & 0x1fffffn) << 11) | player.slot) >>> 0;
             player.tele = true;
             player.moveClickRequest = false;
 
@@ -984,7 +989,7 @@ class World {
     // - compute npc info
     private processInfo(): void {
         // TODO: benchmark this?
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             player.reorient();
             player.buildArea.rebuildNormal(); // set origin before compute player is why this is above.
 
@@ -996,7 +1001,7 @@ class World {
                 player.z,
                 player.originX,
                 player.originZ,
-                player.pid,
+                player.slot,
                 player.tele,
                 player.jump,
                 player.runDir,
@@ -1084,7 +1089,7 @@ class World {
 
         this.cycleStats[WorldStat.BANDWIDTH_OUT] = 0; // reset bandwidth counter
 
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             if (!isClientConnected(player)) {
                 continue;
             }
@@ -1131,7 +1136,7 @@ class World {
         this.zonesTracking.clear();
 
         // - reset players
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             player.resetEntity(false);
 
             // - reset invs (players)
@@ -1193,7 +1198,7 @@ class World {
     }
 
     private processShutdown(): void {
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             if (isClientConnected(player)) {
                 player.logout();
                 player.client.close();
@@ -1203,7 +1208,7 @@ class World {
         const duration = this.currentTick - this.shutdownTick;
         if (duration >= 1024) {
             // force remove all players, they had their chances to finish processing
-            for (const player of this.players) {
+            for (const player of this.playerLoop.all()) {
                 player.addSessionLog(LoggerEventType.ENGINE, 'Player force removed!');
                 printError(`Player '${player.username}' force removed!`);
                 this.removePlayer(player);
@@ -1223,27 +1228,13 @@ class World {
     }
 
     private savePlayers(): void {
-        // would cause excessive save dialogs on webworker
-        if (typeof self !== 'undefined') {
-            return;
-        }
-
-        const names = [];
-
-        for (const player of this.players) {
-            names.push(player.username);
-
+        for (const player of this.playerLoop.all()) {
             this.loginThread.postMessage({
                 type: 'player_autosave',
                 username: player.username,
                 save: player.save()
             });
         }
-
-        this.loginThread.postMessage({
-            type: 'world_heartbeat',
-            names
-        });
     }
 
     enqueueScript(script: ScriptState, delay: number = 0): void {
@@ -1596,7 +1587,7 @@ class World {
     }
 
     removePlayer(player: Player): void {
-        if (player.pid === -1) {
+        if (player.slot === -1) {
             return;
         }
 
@@ -1605,9 +1596,10 @@ class World {
             player.client.close();
         }
 
-        rsbuf.removePlayer(player.pid);
+        rsbuf.removePlayer(player.slot);
         this.gameMap.getZone(player.x, player.z, player.level).leave(player);
-        this.players.remove(player.pid);
+        delete this.players[player.slot];
+        player.unlink();
         changeNpcCollision(player.width, player.x, player.z, player.level, false);
         player.cleanup();
 
@@ -1652,20 +1644,30 @@ class World {
         });
     }
 
-    getPlayer(pid: number): Player | undefined {
-        return this.players.get(pid);
+    getNextPlayerSlot(): number {
+        for (let i = 1; i < 2047; i++) {
+            if (typeof this.players[i] === 'undefined') {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    getPlayer(slot: number): Player | undefined {
+        return this.players[slot];
     }
 
     getPlayerByUid(uid: number): Player | null {
-        const pid = uid & 0x7ff;
-        const name37 = (uid >> 11) & 0x1fffff;
+        const slot = uid & 0x7ff;
+        const hash = (uid >> 11) & 0x1fffff;
 
-        const player = this.getPlayer(pid);
+        const player = this.getPlayer(slot);
         if (!player) {
             return null;
         }
 
-        if (Number(player.username37 & 0x1fffffn) !== name37) {
+        if (Number(player.username37 & 0x1fffffn) !== hash) {
             return null;
         }
 
@@ -1674,30 +1676,48 @@ class World {
 
     getPlayerByUsername(username: string): Player | undefined {
         const username37: bigint = toBase37(username);
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             if (player.username37 === username37) {
                 return player;
             }
         }
+
         for (const player of this.newPlayers) {
             if (player.username37 === username37) {
                 return player;
             }
         }
+
         return undefined;
     }
 
     getPlayerByHash64(hash64: bigint): Player | undefined {
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             if (player.hash64 === hash64) {
                 return player;
             }
         }
+
         return undefined;
     }
 
+    // todo: could cache this, or increment/decrement on add/remove
     getTotalPlayers(): number {
-        return this.players.count;
+        let count = 0;
+
+        for (let i = 1; i < 2047; i++) {
+            if (typeof this.players[i] !== 'undefined') {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    scaleByPlayerCount(rate: number): number {
+        // not sure if it caps at 2k player count or not
+        const playerCount = Math.min(this.getTotalPlayers(), 2000);
+        return (((4000 - playerCount) * rate) / 4000) | 0; // assuming scale works the same way as the runescript one
     }
 
     getTotalNpcs(): number {
@@ -1722,30 +1742,6 @@ class World {
 
     getNextNid(): number {
         return this.npcs.next();
-    }
-
-    getNextPid(client: ClientSocket | null = null): number {
-        // valid pid range is 1-2046
-        if (client) {
-            const ip = client.remoteAddress;
-            if (ip.indexOf('.') !== -1) {
-                // IPv4 - first available index starting from (low ip octet % 20) * 100
-                const octets = ip.split('.');
-                const start = (parseInt(octets[3]) % 20) * 100;
-                return this.players.next(true, start);
-            } else if (ip.indexOf(':') !== -1) {
-                // IPv6 - first available index starting from (low site prefix % 20) * 100
-                const start = (parseInt(ip.split(':')[2], 16) % 20) * 100;
-                return this.players.next(true, start);
-            }
-        }
-        return this.players.next();
-    }
-
-    scaleByPlayerCount(rate: number): number {
-        // not sure if it caps at 2k player count or not
-        const playerCount = Math.min(this.getTotalPlayers(), 2000);
-        return (((4000 - playerCount) * rate) / 4000) | 0; // assuming scale works the same way as the runescript one
     }
 
     private createDevThread() {
@@ -1793,7 +1789,7 @@ class World {
     rebootTimer(duration: number): void {
         this.shutdownTick = this.currentTick + duration;
 
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             player.write(new UpdateRebootTimer(this.shutdownTick - this.currentTick));
         }
     }
@@ -1807,9 +1803,9 @@ class World {
     }
 
     broadcastMes(message: string): void {
-        for (const player of this.players) {
+        for (const player of this.playerLoop.all()) {
             if (message.includes('\n')) {
-                message.split('\n').forEach(wrap => player.wrappedMessageGame(wrap));
+                message.split('\n').forEach(wrap => player!.wrappedMessageGame(wrap));
             } else {
                 player.wrappedMessageGame(message);
             }

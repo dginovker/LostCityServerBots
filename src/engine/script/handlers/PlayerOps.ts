@@ -587,7 +587,7 @@ const PlayerOps: CommandHandlers = {
 
         const level = state.activePlayer.levels[stat];
         const value = Math.floor((low * (99 - level)) / 98) + Math.floor((high * (level - 1)) / 98) + 1;
-        const chance = JavaRandom.nextDouble() * 256;
+        const chance = Math.floor(JavaRandom.nextDouble() * 256);
 
         state.pushInt(value > chance ? 1 : 0);
     }),
@@ -991,7 +991,7 @@ const PlayerOps: CommandHandlers = {
         if (!player) {
             return;
         }
-        state.activePlayer.hintPlayer(player.pid);
+        state.activePlayer.hintPlayer(player.slot);
     },
 
     [ScriptOpcode.HEADICONS_GET]: state => {

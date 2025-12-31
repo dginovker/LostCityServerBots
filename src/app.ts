@@ -65,3 +65,11 @@ function safeExit() {
 
 process.on('SIGINT', safeExit);
 process.on('SIGTERM', safeExit);
+
+process.on('uncaughtException', function (err) {
+    console.error(err, 'Uncaught exception');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error({ promise, reason }, 'Unhandled Rejection at: Promise');
+});

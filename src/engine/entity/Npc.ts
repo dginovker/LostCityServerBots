@@ -35,7 +35,7 @@ import ScriptRunner from '#/engine/script/ScriptRunner.js';
 import ScriptState from '#/engine/script/ScriptState.js';
 import ServerTriggerType from '#/engine/script/ServerTriggerType.js';
 import World from '#/engine/World.js';
-import LinkList from '#/util/LinkList.js';
+import LinkList from '#/datastruct/LinkList.js';
 import { printError } from '#/util/Logger.js';
 
 export default class Npc extends PathingEntity {

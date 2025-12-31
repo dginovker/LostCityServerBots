@@ -59,7 +59,7 @@ import ResetClientVarCache from '#/network/game/server/model/ResetClientVarCache
 import TutOpen from '#/network/game/server/model/TutOpen.js';
 import UnsetMapFlag from '#/network/game/server/model/UnsetMapFlag.js';
 import UpdateInvStopTransmit from '#/network/game/server/model/UpdateInvStopTransmit.js';
-import UpdateUid192 from '#/network/game/server/model/UpdatePid.js';
+import UpdatePid from '#/network/game/server/model/UpdatePid.js';
 import UpdateRebootTimer from '#/network/game/server/model/UpdateRebootTimer.js';
 import UpdateRunEnergy from '#/network/game/server/model/UpdateRunEnergy.js';
 import UpdateStat from '#/network/game/server/model/UpdateStat.js';
@@ -70,7 +70,7 @@ import { LoggerEventType } from '#/server/logger/LoggerEventType.js';
 import { ChatModePrivate, ChatModePublic, ChatModeTradeDuel } from '#/engine/entity/ChatModes.js';
 import Environment from '#/util/Environment.js';
 import { toDisplayName } from '#/util/JString.js';
-import LinkList from '#/util/LinkList.js';
+import LinkList from '#/datastruct/LinkList.js';
 import { MidiPack } from '#tools/pack/PackFile.js';
 import VarBitType from '#/cache/config/VarBitType.js';
 import FriendlistLoaded from '#/network/game/server/model/FriendlistLoaded.js';
@@ -306,8 +306,7 @@ export default class Player extends PathingEntity {
     session: string = 'headless';
     input: InputTracking;
 
-    // runtime variables
-    pid: number = -1;
+    slot: number = -1;
     uid: number = -1;
     reconnecting: boolean = false;
     lowMemory: boolean = false;
@@ -437,7 +436,7 @@ export default class Player extends PathingEntity {
     }
 
     cleanup(): void {
-        this.pid = -1;
+        this.slot = -1;
         this.uid = -1;
         this.activeScript = null;
         this.invListeners.length = 0;
@@ -501,7 +500,7 @@ export default class Player extends PathingEntity {
         }
 
         this.write(new IfClose());
-        this.write(new UpdateUid192(this.pid, this.members));
+        this.write(new UpdatePid(this.slot, this.members));
         this.write(new ResetClientVarCache());
         for (let varp = 0; varp < this.vars.length; varp++) {
             const type = VarPlayerType.get(varp);
@@ -2213,8 +2212,8 @@ export default class Player extends PathingEntity {
         this.write(new HintArrow(offset, 0, 0, x, z, height));
     }
 
-    hintPlayer(pid: number) {
-        this.write(new HintArrow(10, 0, pid, 0, 0, 0));
+    hintPlayer(target: number) {
+        this.write(new HintArrow(10, 0, target, 0, 0, 0));
     }
 
     stopHint() {

@@ -1,66 +1,52 @@
-import Linkable from '#/util/Linkable.js';
+import DoublyLinkable from '#/datastruct/DoublyLinkable.js';
 
-export default class LinkList<T extends Linkable> {
-    // constructor
-    private readonly sentinel: Linkable = new Linkable();
-    // runtime
-    public cursor: Linkable | null = null;
+export default class DoublyLinkList<T extends DoublyLinkable> {
+    private readonly sentinel: DoublyLinkable = new DoublyLinkable();
+    public cursor: DoublyLinkable | null = null;
 
     constructor() {
-        this.sentinel.next = this.sentinel;
-        this.sentinel.prev = this.sentinel;
+        this.sentinel.next2 = this.sentinel;
+        this.sentinel.prev2 = this.sentinel;
     }
 
     addTail(node: T): void {
-        if (node.prev) {
-            node.unlink();
+        if (node.prev2) {
+            node.unlink2();
         }
-        node.prev = this.sentinel.prev;
-        node.next = this.sentinel;
-        if (node.prev) {
-            node.prev.next = node;
+        node.prev2 = this.sentinel.prev2;
+        node.next2 = this.sentinel;
+        if (node.prev2) {
+            node.prev2.next2 = node;
         }
-        node.next.prev = node;
-    }
-
-    addHead(node: T): void {
-        if (node.prev) {
-            node.unlink();
-        }
-        node.prev = this.sentinel;
-        node.next = this.sentinel.next;
-        node.prev.next = node;
-        if (node.next) {
-            node.next.prev = node;
-        }
+        node.next2.prev2 = node;
     }
 
     removeHead(): T | null {
-        const node: T | null = this.sentinel.next as T | null;
+        const node: T | null = this.sentinel.next2 as T | null;
         if (node === this.sentinel) {
             return null;
         }
-        node?.unlink();
+        node?.unlink2();
         return node;
     }
 
     head(): T | null {
-        const node: T | null = this.sentinel.next as T | null;
+        const node: T | null = this.sentinel.next2 as T | null;
         if (node === this.sentinel) {
             this.cursor = null;
             return null;
         }
-        this.cursor = node?.next || null;
+        this.cursor = node?.next2 || null;
         return node;
     }
 
     tail(): T | null {
-        const node: T | null = this.sentinel.prev as T | null;
+        const node: T | null = this.sentinel.prev2 as T | null;
         if (node === this.sentinel) {
             this.cursor = null;
             return null;
         }
-        this.cursor = node?.prev || null;
+        this.cursor = node?.prev2 || null;
         return node;
     }
 
@@ -70,7 +56,7 @@ export default class LinkList<T extends Linkable> {
             this.cursor = null;
             return null;
         }
-        this.cursor = node?.next || null;
+        this.cursor = node?.next2 || null;
         return node;
     }
 
@@ -80,18 +66,8 @@ export default class LinkList<T extends Linkable> {
             this.cursor = null;
             return null;
         }
-        this.cursor = node?.prev || null;
+        this.cursor = node?.prev2 || null;
         return node;
-    }
-
-    clear(): void {
-        while (true) {
-            const node: T | null = this.sentinel.next as T | null;
-            if (node === this.sentinel) {
-                return;
-            }
-            node?.unlink();
-        }
     }
 
     *all(reverse = false): IterableIterator<T> {

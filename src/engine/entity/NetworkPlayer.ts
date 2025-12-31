@@ -294,11 +294,11 @@ export class NetworkPlayer extends Player {
     }
 
     updatePlayers() {
-        this.write(new PlayerInfo(rsbuf.playerInfo(this.client.out.pos, this.pid, Math.abs(this.lastTickX - this.x), Math.abs(this.lastTickZ - this.z), this.lastLevel !== this.level)));
+        this.write(new PlayerInfo(rsbuf.playerInfo(this.client.out.pos, this.slot, Math.abs(this.lastTickX - this.x), Math.abs(this.lastTickZ - this.z), this.lastLevel !== this.level)));
     }
 
     updateNpcs() {
-        this.write(new NpcInfo(rsbuf.npcInfo(this.client.out.pos, this.pid, Math.abs(this.lastTickX - this.x), Math.abs(this.lastTickZ - this.z), this.lastLevel !== this.level)));
+        this.write(new NpcInfo(rsbuf.npcInfo(this.client.out.pos, this.slot, Math.abs(this.lastTickX - this.x), Math.abs(this.lastTickZ - this.z), this.lastLevel !== this.level)));
     }
 
     updateZones() {
