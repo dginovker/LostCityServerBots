@@ -12,7 +12,7 @@ import Npc from '#/engine/entity/Npc.js';
 import { NpcIteratorType } from '#/engine/entity/NpcIteratorType.js';
 import { NpcMode } from '#/engine/entity/NpcMode.js';
 import Obj from '#/engine/entity/Obj.js';
-import { NpcIterator } from '#/engine/script/ScriptIterators.js';
+import { NpcHuntAllCommandIterator, NpcIterator } from '#/engine/script/ScriptIterators.js';
 import { ScriptOpcode } from '#/engine/script/ScriptOpcode.js';
 import ScriptPointer, { ActiveNpc, ActivePlayer, checkedHandler } from '#/engine/script/ScriptPointer.js';
 import { CommandHandlers } from '#/engine/script/ScriptRunner.js';
@@ -281,6 +281,51 @@ const NpcOps: CommandHandlers = {
 
         state.activeNpc.spotanim(spotanimType.id, height, delay);
     }),
+
+    [ScriptOpcode.NPC_HUNT]: state => {
+        const [coord, distance, checkVis] = state.popInts(3);
+
+        const position: CoordGrid = check(coord, CoordValid);
+        // const npcType: NpcType = check(npc, NpcTypeValid);
+        check(distance, NumberNotNull);
+        const huntvis: HuntVis = check(checkVis, HuntVisValid);
+
+        let closestNpc: Npc | null = null;
+        let closestDistance = Number.MAX_SAFE_INTEGER;
+
+        const npcs = new NpcHuntAllCommandIterator(World.currentTick, position.level, position.x, position.z, distance, huntvis);
+
+        for (const npc of npcs) {
+            if (npc) {
+                // Picks the smallest euclidean distance
+                const npcDistance = CoordGrid.euclideanSquaredDistance(position, npc);
+                if (npcDistance <= closestDistance) {
+                    closestNpc = npc;
+                    closestDistance = npcDistance;
+                }
+            }
+        }
+        if (!closestNpc) {
+            state.pushInt(0);
+            return;
+        }
+
+        state.activeNpc = closestNpc;
+        state.pointerAdd(ActiveNpc[state.intOperand]);
+        state.pushInt(1);
+    },
+
+    // https://x.com/JagexAsh/status/1796460129430433930
+    // https://x.com/JagexAsh/status/1821236327150710829
+    [ScriptOpcode.NPC_HUNTALL]: state => {
+        const [coord, distance, checkVis] = state.popInts(3);
+
+        const position: CoordGrid = check(coord, CoordValid);
+        check(distance, NumberNotNull);
+        const huntvis: HuntVis = check(checkVis, HuntVisValid);
+
+        state.npcIterator = new NpcHuntAllCommandIterator(World.currentTick, position.level, position.x, position.z, distance, huntvis);
+    },
 
     // https://x.com/JagexAsh/status/1796460129430433930
     [ScriptOpcode.NPC_FIND]: state => {

@@ -6,11 +6,13 @@ import VarPlayerType from '#/cache/config/VarPlayerType.js';
 import { CoordGrid } from '#/engine/CoordGrid.js';
 import CameraInfo from '#/engine/entity/CameraInfo.js';
 import { PlayerTimerType } from '#/engine/entity/EntityTimer.js';
+import type { HuntVis } from '#/engine/entity/hunt/HuntVis.js';
 import { Interaction } from '#/engine/entity/Interaction.js';
 import Player from '#/engine/entity/Player.js';
 import { PlayerQueueType, ScriptArgument } from '#/engine/entity/PlayerQueueRequest.js';
 import { PlayerStat } from '#/engine/entity/PlayerStat.js';
 import { findPath } from '#/engine/GameMap.js';
+import { PlayerHuntAllCommandIterator } from '#/engine/script/ScriptIterators.js';
 import { ScriptOpcode } from '#/engine/script/ScriptOpcode.js';
 import ScriptPointer, { ActivePlayer, checkedHandler, ProtectedActivePlayer } from '#/engine/script/ScriptPointer.js';
 import ScriptProvider from '#/engine/script/ScriptProvider.js';
@@ -31,7 +33,8 @@ import {
     GenderValid,
     SkinColourValid,
     PlayerOpIndexValid,
-    PlayerOpStateValid
+    PlayerOpStateValid,
+    HuntVisValid
 } from '#/engine/script/ScriptValidators.js';
 import ServerTriggerType from '#/engine/script/ServerTriggerType.js';
 import World from '#/engine/World.js';
@@ -197,13 +200,6 @@ const PlayerOps: CommandHandlers = {
         const seq = state.popInt();
 
         state.activePlayer.playAnimation(seq, delay);
-    }),
-
-    // https://x.com/JagexAsh/status/1694990340669747261
-    // soft-limit for developers to be better aware of the bandwidth used and mitigate the impact on the player experience
-    [ScriptOpcode.BUFFER_FULL]: checkedHandler(ActivePlayer, state => {
-        // todo: should we have this yet?
-        state.pushInt(0);
     }),
 
     [ScriptOpcode.BUILDAPPEARANCE]: checkedHandler(ActivePlayer, state => {
@@ -944,31 +940,31 @@ const PlayerOps: CommandHandlers = {
         state.activePlayer.lastLoginInfo();
     },
 
-    [ScriptOpcode.BAS_READYANIM]: state => {
+    [ScriptOpcode.READYANIM]: state => {
         state.activePlayer.readyanim = check(state.popInt(), SeqTypeValid).id;
     },
 
-    [ScriptOpcode.BAS_TURNONSPOT]: state => {
+    [ScriptOpcode.TURNANIM]: state => {
         state.activePlayer.turnanim = check(state.popInt(), SeqTypeValid).id;
     },
 
-    [ScriptOpcode.BAS_WALK_F]: state => {
+    [ScriptOpcode.WALKANIM]: state => {
         state.activePlayer.walkanim = check(state.popInt(), SeqTypeValid).id;
     },
 
-    [ScriptOpcode.BAS_WALK_B]: state => {
+    [ScriptOpcode.WALKANIM_B]: state => {
         state.activePlayer.walkanim_b = check(state.popInt(), SeqTypeValid).id;
     },
 
-    [ScriptOpcode.BAS_WALK_L]: state => {
+    [ScriptOpcode.WALKANIM_L]: state => {
         state.activePlayer.walkanim_l = check(state.popInt(), SeqTypeValid).id;
     },
 
-    [ScriptOpcode.BAS_WALK_R]: state => {
+    [ScriptOpcode.WALKANIM_R]: state => {
         state.activePlayer.walkanim_r = check(state.popInt(), SeqTypeValid).id;
     },
 
-    [ScriptOpcode.BAS_RUNNING]: state => {
+    [ScriptOpcode.RUNANIM]: state => {
         const seq = state.popInt();
         if (seq === -1) {
             state.activePlayer.runanim = -1;
@@ -982,16 +978,11 @@ const PlayerOps: CommandHandlers = {
     },
 
     [ScriptOpcode.HINT_NPC]: state => {
-        state.activePlayer.hintNpc(check(state.popInt(), NumberNotNull));
+        state.activePlayer.hintNpc(state.activeNpc.nid);
     },
 
-    [ScriptOpcode.HINT_PLAYER]: state => {
-        const uid = check(state.popInt(), NumberNotNull);
-        const player = World.getPlayerByUid(uid);
-        if (!player) {
-            return;
-        }
-        state.activePlayer.hintPlayer(player.slot);
+    [ScriptOpcode.HINT_PL]: state => {
+        state.activePlayer.hintPlayer(state.activePlayer2.slot);
     },
 
     [ScriptOpcode.HEADICONS_GET]: state => {
@@ -1076,7 +1067,7 @@ const PlayerOps: CommandHandlers = {
         state.activePlayer.afkEventReady = false;
     },
 
-    [ScriptOpcode.LOWMEMORY]: state => {
+    [ScriptOpcode.LOWMEM]: state => {
         state.pushInt(state.activePlayer.lowMemory ? 1 : 0);
     },
 
@@ -1238,6 +1229,32 @@ const PlayerOps: CommandHandlers = {
 
         state.activePlayer.write(new SetPlayerOp(index, text, primary));
     }),
+
+    [ScriptOpcode.HUNTALL]: state => {
+        const [coord, distance, checkVis] = state.popInts(3);
+
+        const position: CoordGrid = check(coord, CoordValid);
+        check(distance, NumberNotNull);
+        const huntvis: HuntVis = check(checkVis, HuntVisValid);
+
+        state.playerIterator = new PlayerHuntAllCommandIterator(World.currentTick, position.level, position.x, position.z, distance, huntvis);
+    },
+
+    [ScriptOpcode.HUNTNEXT]: state => {
+        const result = state.playerIterator?.next();
+        if (!result || result.done) {
+            state.pushInt(0);
+            return;
+        }
+
+        if (!(result.value instanceof Player)) {
+            throw new Error('[ServerOps] huntnext command must result instance of Player.');
+        }
+
+        state.activePlayer = result.value;
+        state.pointerAdd(ActivePlayer[state.intOperand]);
+        state.pushInt(1);
+    },
 };
 
 /**

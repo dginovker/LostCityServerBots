@@ -2203,8 +2203,8 @@ export default class Player extends PathingEntity {
         this.write(new HintArrow(offset, 0, 0, x, z, height));
     }
 
-    hintPlayer(target: number) {
-        this.write(new HintArrow(10, 0, target, 0, 0, 0));
+    hintPlayer(playerSlot: number) {
+        this.write(new HintArrow(10, 0, playerSlot, 0, 0, 0));
     }
 
     stopHint() {
