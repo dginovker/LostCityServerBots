@@ -527,7 +527,7 @@ class World {
         const start: number = Date.now();
 
         // - world queue
-        for (let request: EntityQueueState | null = this.queue.head(); request; request = this.queue.next()) {
+        for (const request of this.queue.all()) {
             const delay = request.delay--;
             if (delay > 0) {
                 continue;
@@ -556,7 +556,7 @@ class World {
         }
 
         // - add objs delayed
-        for (let request: ObjDelayedRequest | null = this.objDelayedQueue.head(); request; request = this.objDelayedQueue.next()) {
+        for (const request of this.objDelayedQueue.all()) {
             const delay = request.delay--;
             if (delay > 0) {
                 continue;
@@ -772,7 +772,7 @@ class World {
                 player.closeModal();
 
                 let queueDiscardable = true;
-                for (let request = player.queue.head(); request !== null; request = player.queue.next()) {
+                for (const request of player.queue.all()) {
                     if (request.type === PlayerQueueType.LONG) {
                         const logoutAction = request.args[0];
                         if (logoutAction === 1) {

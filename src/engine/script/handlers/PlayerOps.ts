@@ -916,12 +916,12 @@ const PlayerOps: CommandHandlers = {
         const scriptId = state.popInt();
 
         let count: number = 0;
-        for (let request = state.activePlayer.queue.head(); request !== null; request = state.activePlayer.queue.next()) {
+        for (const request of state.activePlayer.queue.all()) {
             if (request.script.id === scriptId) {
                 count++;
             }
         }
-        for (let request = state.activePlayer.weakQueue.head(); request !== null; request = state.activePlayer.weakQueue.next()) {
+        for (const request of state.activePlayer.weakQueue.all()) {
             if (request.script.id === scriptId) {
                 count++;
             }

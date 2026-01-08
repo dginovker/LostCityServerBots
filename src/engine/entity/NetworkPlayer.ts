@@ -247,7 +247,7 @@ export class NetworkPlayer extends Player {
 
     updateMap() {
         // update the camera after rebuild.
-        for (let info = this.cameraPackets.head(); info !== null; info = this.cameraPackets.next()) {
+        for (const info of this.cameraPackets.all()) {
             const localX = info.camX - CoordGrid.zoneOrigin(this.originX);
             const localZ = info.camZ - CoordGrid.zoneOrigin(this.originZ);
             if (info.type === 0) {
