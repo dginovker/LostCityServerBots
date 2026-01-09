@@ -1406,8 +1406,10 @@ export default class Player extends PathingEntity {
         }
     }
 
-    getInventoryFromListener(listener: InventoryListener) {
-        if (listener.source === -1) {
+    getInventoryFromListener(listener: InventoryListener | undefined) {
+        if (!listener) {
+            return null;
+        } else if (listener.source === -1) {
             return World.getInventory(listener.type);
         } else {
             const player = World.getPlayerByUid(listener.source);
