@@ -17,7 +17,7 @@ export default class InvButtonHandler extends ClientGameMessageHandler<InvButton
         }
 
         const com = Component.get(comId);
-        if (typeof com === 'undefined' || !com.operable) {
+        if (typeof com === 'undefined') {
             // bad client: component is not acceptable for this packet
             return false;
         } else if (!player.isComponentVisible(com)) {
