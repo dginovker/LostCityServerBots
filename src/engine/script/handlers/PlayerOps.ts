@@ -642,7 +642,7 @@ const PlayerOps: CommandHandlers = {
     }),
 
     [ScriptOpcode.IF_OPENCHAT]: checkedHandler(ActivePlayer, state => {
-        state.activePlayer.openChat(check(state.popInt(), NumberNotNull));
+        state.activePlayer.openChatModal(check(state.popInt(), NumberNotNull));
     }),
 
     [ScriptOpcode.IF_OPENMAIN_SIDE]: checkedHandler(ActivePlayer, state => {
@@ -651,7 +651,7 @@ const PlayerOps: CommandHandlers = {
         check(main, NumberNotNull);
         check(side, NumberNotNull);
 
-        state.activePlayer.openMainModalSide(main, side);
+        state.activePlayer.openMainSideModal(main, side);
     }),
 
     [ScriptOpcode.IF_SETHIDE]: checkedHandler(ActivePlayer, state => {
@@ -717,7 +717,7 @@ const PlayerOps: CommandHandlers = {
 
     [ScriptOpcode.IF_OPENOVERLAY]: checkedHandler(ActivePlayer, state => {
         const com = state.popInt();
-        state.activePlayer.openOverlay(com);
+        state.activePlayer.openMainOverlay(com);
     }),
 
     [ScriptOpcode.TUT_OPEN]: checkedHandler(ActivePlayer, state => {

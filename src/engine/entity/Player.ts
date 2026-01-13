@@ -1977,9 +1977,14 @@ export default class Player extends PathingEntity {
         this.modalState |= ModalState.MAIN;
         this.modalMain = com;
         this.refreshModal = true;
+
+        // clear old suspended scripts
+        if (this.activeScript?.execution === ScriptState.COUNTDIALOG || this.activeScript?.execution === ScriptState.PAUSEBUTTON) {
+            this.activeScript = null;
+        }
     }
 
-    openOverlay(com: number) {
+    openMainOverlay(com: number) {
         if (this.overlay === com) {
             return;
         }
@@ -1991,7 +1996,7 @@ export default class Player extends PathingEntity {
         this.overlay = com;
     }
 
-    openChat(com: number) {
+    openChatModal(com: number) {
         if ((this.modalState & ModalState.MAIN) !== ModalState.NONE) {
             this.write(new IfClose());
             this.modalState &= ~ModalState.MAIN;
@@ -2007,6 +2012,11 @@ export default class Player extends PathingEntity {
         this.modalState |= ModalState.CHAT;
         this.modalChat = com;
         this.refreshModal = true;
+
+        // clear old suspended scripts
+        if (this.activeScript?.execution === ScriptState.COUNTDIALOG || this.activeScript?.execution === ScriptState.PAUSEBUTTON) {
+            this.activeScript = null;
+        }
     }
 
     openSideModal(com: number) {
@@ -2025,6 +2035,11 @@ export default class Player extends PathingEntity {
         this.modalState |= ModalState.SIDE;
         this.modalSide = com;
         this.refreshModal = true;
+
+        // clear old suspended scripts
+        if (this.activeScript?.execution === ScriptState.COUNTDIALOG || this.activeScript?.execution === ScriptState.PAUSEBUTTON) {
+            this.activeScript = null;
+        }
     }
 
     openTutorial(com: number) {
@@ -2033,7 +2048,7 @@ export default class Player extends PathingEntity {
         this.modalTutorial = com;
     }
 
-    openMainModalSide(top: number, side: number) {
+    openMainSideModal(top: number, side: number) {
         if ((this.modalState & ModalState.CHAT) !== ModalState.NONE) {
             this.write(new IfClose());
             this.modalState &= ~ModalState.CHAT;
@@ -2045,6 +2060,11 @@ export default class Player extends PathingEntity {
         this.modalState |= ModalState.SIDE;
         this.modalSide = side;
         this.refreshModal = true;
+
+        // clear old suspended scripts
+        if (this.activeScript?.execution === ScriptState.COUNTDIALOG || this.activeScript?.execution === ScriptState.PAUSEBUTTON) {
+            this.activeScript = null;
+        }
     }
 
     exactMove(startX: number, startZ: number, endX: number, endZ: number, startCycle: number, endCycle: number, direction: number) {

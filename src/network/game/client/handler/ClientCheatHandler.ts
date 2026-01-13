@@ -539,9 +539,9 @@ export default class ClientCheatHandler extends ClientGameMessageHandler<ClientC
                     return false;
                 }
 
-                player.openOverlay(type.id);
+                player.openMainOverlay(type.id);
             } else if (cmd === 'closeoverlay') {
-                player.openOverlay(-1);
+                player.openMainOverlay(-1);
             } else if (cmd === 'snapshot') {
                 const heap = v8.writeHeapSnapshot();
                 printDebug(`Heap snapshot written to: ${heap}`);
