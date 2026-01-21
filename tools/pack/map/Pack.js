@@ -127,7 +127,7 @@ export function packMaps(cache, modelFlags) {
         const serverNpcFile = `data/pack/server/maps/n${mapX}_${mapZ}`;
         const serverObjFile = `data/pack/server/maps/o${mapX}_${mapZ}`;
 
-        const packerUpdated = shouldBuildFile(__filename, mapFile);
+        const packerUpdated = shouldBuildFile(Environment.IS_BUN ? __filename : import.meta.filename, mapFile);
 
         const data = fs
             .readFileSync(file, 'utf8')
