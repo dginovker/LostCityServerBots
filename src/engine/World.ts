@@ -606,6 +606,9 @@ class World {
                     player.afkEventReady = Math.random() < (player.zonesAfk() ? 0.1666 : 0.0833);
                 }
 
+                // - client input tracking
+                player.processInputTracking();
+
                 if (isClientConnected(player) && player.decodeIn()) {
                     const followingPlayer = player.targetOp === ServerTriggerType.APPLAYER3 || player.targetOp === ServerTriggerType.OPPLAYER3;
                     if (player.userPath.length > 0 || player.opcalled) {
@@ -639,9 +642,6 @@ class World {
                         }
                     }
                 }
-
-                // - client input tracking
-                player.processInputTracking();
 
                 if (player.logMessage !== null) {
                     this.logPublicChat(player, player.logMessage);

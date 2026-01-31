@@ -5,10 +5,13 @@ import Envelope from './Envelope.js';
 export default class Tone {
     frequencyBase: Envelope | null = null;
     amplitudeBase: Envelope | null = null;
+
     frequencyModRate: Envelope | null = null;
     frequencyModRange: Envelope | null = null;
+
     amplitudeModRate: Envelope | null = null;
     amplitudeModRange: Envelope | null = null;
+
     release: Envelope | null = null;
     attack: Envelope | null = null;
 
@@ -18,20 +21,20 @@ export default class Tone {
 
     reverbDelay: number = 0;
     reverbVolume: number = 100;
-    start: number = 0;
+
     length: number = 500;
+    start: number = 0;
 
-    static buf: Int32Array | null = null; // jag::oldscape::sound::Tone::m_buf
-    static noise: Int32Array | null = null; // jag::oldscape::sound::Tone::m_noise
-    static sine: Int32Array | null = null; // jag::oldscape::sound::Tone::m_sine
+    static buf: Int32Array | null = null;
+    static noise: Int32Array | null = null;
+    static sine: Int32Array | null = null;
 
-    static fPos: Int32Array = new Int32Array(5); // jag::oldscape::sound::Tone::m_fPos
-    static fDel: Int32Array = new Int32Array(5); // jag::oldscape::sound::Tone::m_fDel
-    static fAmp: Int32Array = new Int32Array(5); // jag::oldscape::sound::Tone::m_fAmp
-    static fMulti: Int32Array = new Int32Array(5); // jag::oldscape::sound::Tone::m_fMulti
-    static fOffset: Int32Array = new Int32Array(5); // jag::oldscape::sound::Tone::m_fOffset
+    static fPos: Int32Array = new Int32Array(5);
+    static fDel: Int32Array = new Int32Array(5);
+    static fAmp: Int32Array = new Int32Array(5);
+    static fMulti: Int32Array = new Int32Array(5);
+    static fOffset: Int32Array = new Int32Array(5);
 
-    // jag::oldscape::sound::Tone::StaticInit
     static init(): void {
         this.noise = new Int32Array(32768);
         for (let i: number = 0; i < 32768; i++) {
@@ -50,7 +53,6 @@ export default class Tone {
         this.buf = new Int32Array(22050 * 10); // 22050 KHz * 10s
     }
 
-    // jag::oldscape::sound::Tone::Generate
     generate(sampleCount: number, length: number): Int32Array {
         if (!this.frequencyBase || !this.amplitudeBase) {
             return Tone.buf!;
@@ -182,7 +184,6 @@ export default class Tone {
         return Tone.buf!;
     }
 
-    // jag::oldscape::sound::Tone::WaveFunc
     waveFunc(amplitude: number, phase: number, form: number): number {
         if (form === 1) {
             return (phase & 0x7fff) < 16384 ? amplitude : -amplitude;
@@ -197,7 +198,6 @@ export default class Tone {
         }
     }
 
-    // jag::oldscape::sound::Tone::Load
     load(dat: Packet): void {
         this.frequencyBase = new Envelope();
         this.frequencyBase.load(dat);

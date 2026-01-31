@@ -11,14 +11,14 @@ import EventMouseMove from '#/network/game/client/model/EventMouseMove.js';
 
 enum InputTrackingEvent {
     CAMERA_POSITION = 1,
-    APPLET_FOCUS = 2,
-    MOUSE_CLICK = 3,
-    MOUSE_MOVE = 4
+    APPLET_FOCUS,
+    MOUSE_CLICK,
+    MOUSE_MOVE
 }
 
 export default class InputTracking {
     private readonly player: Player;
-    private max: number = 500;
+    private softLimit: number = 1500;
 
     active: boolean = false;
     buf: Packet = Packet.alloc(1);
@@ -28,7 +28,7 @@ export default class InputTracking {
     }
 
     onCycle(): void {
-        if (this.buf.pos >= this.max) {
+        if (this.buf.pos >= this.softLimit) {
             this.flush();
         }
     }
@@ -50,7 +50,7 @@ export default class InputTracking {
             return;
         }
 
-        if (this.buf.pos + 5 > this.max) {
+        if (this.buf.pos + 5 >= this.buf.length) {
             this.flush();
         }
 
@@ -64,7 +64,7 @@ export default class InputTracking {
             return;
         }
 
-        if (this.buf.pos + 2 > this.max) {
+        if (this.buf.pos + 2 >= this.buf.length) {
             this.flush();
         }
 
@@ -77,7 +77,7 @@ export default class InputTracking {
             return;
         }
 
-        if (this.buf.pos + 5 > this.max) {
+        if (this.buf.pos + 5 >= this.buf.length) {
             this.flush();
         }
 
@@ -90,7 +90,7 @@ export default class InputTracking {
             return;
         }
 
-        if (this.buf.pos + event.data.length > this.max) {
+        if (this.buf.pos + event.data.length >= this.buf.length) {
             this.flush();
         }
 

@@ -219,9 +219,9 @@ export class NetworkPlayer extends Player {
         }
 
         if (prot.length === -1) {
-            buf.p1(0);
+            buf.pos += 1;
         } else if (prot.length === -2) {
-            buf.p2(0);
+            buf.pos += 2;
         }
 
         const start: number = buf.pos;
