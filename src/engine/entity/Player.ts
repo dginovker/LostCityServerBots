@@ -190,7 +190,7 @@ export default class Player extends PathingEntity {
     ]);
 
     save() {
-        const sav = Packet.alloc(1);
+        const sav = Packet.alloc(2);
         sav.p2(PlayerLoading.SAV_MAGIC); // magic
         sav.p2(PlayerLoading.SAV_VERSION); // version
 
