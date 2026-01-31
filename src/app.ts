@@ -28,7 +28,7 @@ if (
         await packAll(modelFlags);
     } catch (err) {
         if (err instanceof Error) {
-            printError(err.message);
+            printError(err);
         }
 
         process.exit(1);
