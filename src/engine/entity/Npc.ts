@@ -894,7 +894,7 @@ export default class Npc extends PathingEntity {
         const hunt: HuntType = HuntType.get(this.huntMode);
 
         // We need a huntTarget and a huntMode
-        if (!this.huntTarget || hunt.type === HuntModeType.OFF) {
+        if (!this.huntTarget || typeof hunt === 'undefined' || hunt.type === HuntModeType.OFF) {
             return;
         }
 
