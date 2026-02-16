@@ -1053,6 +1053,7 @@ class World {
                 npc.nid,
                 npc.type,
                 npc.tele,
+                npc.jump,
                 npc.runDir,
                 npc.walkDir,
                 npc.isActive,
@@ -2143,7 +2144,10 @@ class World {
             seed.p4(Math.floor(Math.random() * 0xffffffff));
             client.send(seed.data);
         } else if (client.opcode === 16 || client.opcode === 18) {
-            const rev = World.loginBuf.g1();
+            let rev = World.loginBuf.g1();
+            if (rev === 0xFF) {
+                rev = World.loginBuf.g2();
+            }
             if (rev !== Environment.ENGINE_REVISION) {
                 client.send(Uint8Array.from([6]));
                 client.close();

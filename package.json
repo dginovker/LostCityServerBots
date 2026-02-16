@@ -34,7 +34,7 @@
     ]
   },
   "dependencies": {
-    "@2004scape/rsbuf": "254.1.0",
+    "@2004scape/rsbuf": "274.1.0",
     "@2004scape/rsmod-pathfinder": "^5.0.4",
     "@inquirer/prompts": "^8.0.1",
     "@isaacs/ttlcache": "^2.1.3",
