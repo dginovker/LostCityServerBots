@@ -14,7 +14,7 @@ try {
     console.timeEnd('pack');
 } catch (err) {
     if (err instanceof Error) {
-        printError(err);
+        printError(err.stack ?? '');
     }
 
     process.exit(1);

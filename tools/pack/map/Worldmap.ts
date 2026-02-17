@@ -613,7 +613,7 @@ export async function packWorldmap() {
 
     const mapscene = await convertImage(index, `${Environment.BUILD_SRC_DIR}/sprites`, 'mapscene');
     const mapfunction = await convertImage(index, `${Environment.BUILD_SRC_DIR}/sprites`, 'mapfunction');
-    const b12 = await convertImage(index, `${Environment.BUILD_SRC_DIR}/fonts`, 'b12');
+    const b12 = await convertImage(index, `${Environment.BUILD_SRC_DIR}/fonts`, 'b12_full');
     const mapdots = await convertImage(index, `${Environment.BUILD_SRC_DIR}/sprites`, 'mapdots');
     const f11 = Packet.load(`${Environment.BUILD_SRC_DIR}/fonts/f11.fm`, true);
     const f12 = Packet.load(`${Environment.BUILD_SRC_DIR}/fonts/f12.fm`, true);

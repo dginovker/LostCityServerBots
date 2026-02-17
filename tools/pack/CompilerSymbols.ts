@@ -183,6 +183,9 @@ export function generateCompilerSymbols() {
 
         const varbit = VarBitType.get(i);
         const basevar = VarPlayerType.get(varbit.basevar);
+        if (!basevar) {
+            throw new Error('basevar does not exist');
+        }
         varbitSymbols += `${i}\t${varbit.debugname}\t${ScriptVarType.getType(basevar.type)}\t${basevar.protect}\n`;
     }
     fs.writeFileSync('data/symbols/varbit.sym', varbitSymbols);
@@ -444,7 +447,7 @@ export function generateCompilerSymbols() {
 
     fs.writeFileSync('data/symbols/locshape.sym', locshapes.map((name, index) => `${index}\t${name}`).join('\n') + '\n');
 
-    const fonts = ['p11', 'p12', 'b12', 'q8'];
+    const fonts = ['p11_full', 'p12_full', 'b12_full', 'q8_full'];
     fs.writeFileSync('data/symbols/fontmetrics.sym', fonts.map((name, index) => `${index}\t${name}`).join('\n') + '\n');
 
     const npcmodes = Array.from(NpcModeMap.entries())

@@ -154,13 +154,13 @@ function nameToStat(name: string) {
 
 function nameToFont(name: string) {
     switch (name) {
-        case 'p11':
+        case 'p11_full':
             return 0;
-        case 'p12':
+        case 'p12_full':
             return 1;
-        case 'b12':
+        case 'b12_full':
             return 2;
-        case 'q8':
+        case 'q8_full':
             return 3;
     }
 
