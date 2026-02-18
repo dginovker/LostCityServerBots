@@ -212,6 +212,8 @@ export function packMaps(cache, modelFlags) {
             // only parse NPC section for model flags
             const map = readMapSection(data, 'NPC');
             updateModelFlags(map.npc, modelFlags);
+            cache.write(4, MapPack.getByName(`m${mapXZ}`), fs.readFileSync(mapFile), 1);
+            cache.write(4, MapPack.getByName(`l${mapXZ}`), fs.readFileSync(locFile), 1);
             continue;
         }
 
