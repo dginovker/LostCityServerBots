@@ -1,8 +1,9 @@
-import child_process from 'child_process';
 import fs from 'fs';
 import { parentPort } from 'worker_threads';
 
 import * as fflate from 'fflate';
+
+import { CompileServerScript } from '@lostcityrs/runescript';
 
 import FileStream from '#/io/FileStream.js';
 import Packet from '#/io/Packet.js';
@@ -21,8 +22,6 @@ import { packClientTitle } from '#tools/pack/sprite/title.js';
 import { generateCompilerSymbols } from '#tools/pack/CompilerSymbols.js';
 import { packClientVersionList } from '#tools/pack/versionlist/pack.js';
 import { clearFsCache } from '#tools/pack/FsCache.js';
-
-import Environment from '#/util/Environment.js';
 
 export async function packAll(modelFlags: number[]) {
     if (parentPort) {
@@ -47,11 +46,7 @@ export async function packAll(modelFlags: number[]) {
 
     // todo: better/native compiler integration to extract npc_add/npc_changetype calls for modelFlags
     generateCompilerSymbols(); // relies on reading configs/interfaces
-    try {
-        child_process.execSync(`"${Environment.BUILD_JAVA_PATH}" -jar RuneScriptCompiler.jar`, { stdio: 'inherit' });
-    } catch (_err) {
-        throw new Error('Failed to compile scripts.');
-    }
+    CompileServerScript();
 
     await packClientTitle(cache);
     await packClientMedia(cache);
