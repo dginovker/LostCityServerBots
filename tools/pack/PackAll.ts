@@ -3,8 +3,6 @@ import { parentPort } from 'worker_threads';
 
 import * as fflate from 'fflate';
 
-import { CompileServerScript } from '@lostcityrs/runescript';
-
 import FileStream from '#/io/FileStream.js';
 import Packet from '#/io/Packet.js';
 
@@ -19,7 +17,7 @@ import { packClientSound } from '#tools/pack/sound/pack.js';
 import { packClientMedia } from '#tools/pack/sprite/media.js';
 import { packClientTexture } from '#tools/pack/sprite/textures.js';
 import { packClientTitle } from '#tools/pack/sprite/title.js';
-import { generateCompilerSymbols } from '#tools/pack/CompilerSymbols.js';
+import { runServerCompiler } from '#tools/pack/Compiler.js';
 import { packClientVersionList } from '#tools/pack/versionlist/pack.js';
 import { clearFsCache } from '#tools/pack/FsCache.js';
 
@@ -44,9 +42,8 @@ export async function packAll(modelFlags: number[]) {
     await packConfigs(cache, modelFlags);
     packClientInterface(cache, modelFlags);
 
-    // todo: better/native compiler integration to extract npc_add/npc_changetype calls for modelFlags
-    generateCompilerSymbols(); // relies on reading configs/interfaces
-    CompileServerScript();
+    // relies on reading configs/interfaces for compile-time context
+    runServerCompiler();
 
     await packClientTitle(cache);
     await packClientMedia(cache);
