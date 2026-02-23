@@ -23,7 +23,7 @@ if (
         await packAll(modelFlags);
     } catch (err) {
         if (err instanceof Error) {
-            printError(err.stack ?? '');
+            printError(err);
         }
 
         process.exit(1);

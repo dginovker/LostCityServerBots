@@ -96,6 +96,7 @@ export default {
     KYSELY_VERBOSE: tryParseBoolean(process.env.KYSELY_VERBOSE, false),
 
     /// development
+    BUILD_VERBOSE: tryParseBoolean(process.env.BUILD_VERBOSE, false),
     // auto-build on startup
     BUILD_STARTUP: tryParseBoolean(process.env.BUILD_STARTUP, false),
     // used to check if we're producing the original cache without edits

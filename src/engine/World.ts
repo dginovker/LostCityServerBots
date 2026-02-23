@@ -1808,7 +1808,7 @@ class World {
     broadcastMes(message: string): void {
         for (const player of this.playerLoop.all()) {
             if (message.includes('\n')) {
-                message.split('\n').forEach(wrap => player!.wrappedMessageGame(wrap));
+                message.split('\n').forEach(wrap => player.wrappedMessageGame(wrap));
             } else {
                 player.wrappedMessageGame(message);
             }
