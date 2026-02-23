@@ -798,24 +798,25 @@ const PlayerOps: CommandHandlers = {
     }),
 
     [ScriptOpcode.MIDI_SONG]: state => {
-        const name = check(state.popString(), StringNotNull);
+        const id = state.popInt();
 
         const player = state.activePlayer;
         if (player.lowMemory) {
             return;
         }
-        player.playSong(name);
+
+        player.playSong(id);
     },
 
     [ScriptOpcode.MIDI_JINGLE]: state => {
-        const delay = check(state.popInt(), NumberNotNull);
-        const name = check(state.popString(), StringNotNull);
+        const [id, delay] = state.popInts(2);
 
         const player = state.activePlayer;
         if (player.lowMemory) {
             return;
         }
-        player.playJingle(delay, name);
+
+        player.playJingle(id, delay);
     },
 
     [ScriptOpcode.MINIMAP_TOGGLE]: checkedHandler(ActivePlayer, state => {

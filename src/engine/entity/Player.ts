@@ -71,7 +71,6 @@ import { ChatModePrivate, ChatModePublic, ChatModeTradeDuel } from '#/engine/ent
 import Environment from '#/util/Environment.js';
 import { toDisplayName } from '#/util/JString.js';
 import LinkList from '#/datastruct/LinkList.js';
-import { MidiPack } from '#tools/pack/PackFile.js';
 import VarBitType from '#/cache/config/VarBitType.js';
 import FriendlistLoaded from '#/network/game/server/model/FriendlistLoaded.js';
 import UpdateIgnoreList from '#/network/game/server/model/UpdateIgnoreList.js';
@@ -1945,20 +1944,12 @@ export default class Player extends PathingEntity {
         this.focus(CoordGrid.fine(x, 1), CoordGrid.fine(z, 1), true);
     }
 
-    // todo: make compiler do this at pack time
-    playSong(name: string) {
-        // todo: don't rely on MidiPack (server should be runnable using only packed content)
-        const id = MidiPack.getByName(name.toLowerCase().replaceAll(' ', '_').replace(/[^a-z0-9_-]/g, ''));
-        if (id !== -1) {
-            this.write(new MidiSong(id));
-        }
+    playSong(id: number) {
+        this.write(new MidiSong(id));
     }
 
-    playJingle(delay: number, name: string): void {
-        const id = MidiPack.getByName(name.toLowerCase());
-        if (id !== -1) {
-            this.write(new MidiJingle(id, delay));
-        }
+    playJingle(id: number, delay: number): void {
+        this.write(new MidiJingle(id, delay));
     }
 
     openMainModal(com: number) {

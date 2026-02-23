@@ -196,6 +196,7 @@ export function runServerCompiler() {
     const dbtableInfo = CompilerTypeInfo.load(`${Environment.BUILD_SRC_DIR}/pack/dbtable.pack`);
     const dbcolumnInfo = new CompilerTypeInfo();
     const dbrowInfo = CompilerTypeInfo.load(`${Environment.BUILD_SRC_DIR}/pack/dbrow.pack`);
+    const midiInfo = CompilerTypeInfo.load(`${Environment.BUILD_SRC_DIR}/pack/midi.pack`);
 
     // load extra context for compiler
     InvType.load('data/pack');
@@ -364,6 +365,7 @@ export function runServerCompiler() {
             'dbtable': dbtableInfo,
             'dbcolumn': dbcolumnInfo,
             'dbrow': dbrowInfo,
+            'midi': midiInfo,
 
             'stat': statInfo,
             'npc_stat': npcStatInfo,
