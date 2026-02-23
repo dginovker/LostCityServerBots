@@ -66,11 +66,29 @@ class CompilerTypeInfo {
         return pack;
     }
 
-    static loadRecords(input: Record<string, string>) {
+    static loadRecords(input: Record<string, string>, valueAsKey: boolean = false) {
         const pack = new CompilerTypeInfo();
 
         for (const [key, value] of Object.entries(input)) {
-            pack.map[key] = value;
+            if (valueAsKey) {
+                pack.map[value] = key.toLowerCase();
+            } else {
+                pack.map[key] = value.toLowerCase();
+            }
+        }
+
+        return pack;
+    }
+
+    static loadMap(input: Map<string, number>, valueAsKey: boolean = false) {
+        const pack = new CompilerTypeInfo();
+
+        for (const [key, value] of input) {
+            if (valueAsKey) {
+                pack.map[value.toString()] = key.toLowerCase();
+            } else {
+                pack.map[key.toLowerCase()] = value.toString();
+            }
         }
 
         return pack;
@@ -285,9 +303,9 @@ export function runServerCompiler() {
     }
 
     // prepare meta mapping files
-    const statInfo = CompilerTypeInfo.loadArray(PlayerStatMap.keys().toArray());
-    const npcStatInfo = CompilerTypeInfo.loadArray(NpcStatMap.keys().toArray());
-    const npcModeInfo = CompilerTypeInfo.loadArray(NpcModeMap.keys().toArray());
+    const statInfo = CompilerTypeInfo.loadMap(PlayerStatMap, true);
+    const npcStatInfo = CompilerTypeInfo.loadMap(NpcStatMap, true);
+    const npcModeInfo = CompilerTypeInfo.loadMap(NpcModeMap, true);
     const fontmetricsInfo = CompilerTypeInfo.loadArray(['p11_full', 'p12_full', 'b12_full', 'q8_full']);
     const locshapeInfo = CompilerTypeInfo.loadArray([
         'wall_straight',
