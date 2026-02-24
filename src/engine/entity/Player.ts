@@ -211,14 +211,19 @@ export default class Player extends PathingEntity {
             sav.p1(this.levels[i]);
         }
 
-        sav.p2(this.vars.length);
-        for (let i = 0; i < this.vars.length; i++) {
-            const type = VarPlayerType.get(i);
-
-            if (type.scope === VarPlayerType.SCOPE_PERM) {
-                sav.p4(this.vars[i]);
-            } else {
-                sav.p4(0);
+        let saved = 0;
+        for (let id = 0; id < this.vars.length; id++) {
+            const varp = VarPlayerType.get(id);
+            if (varp.scope === VarPlayerType.SCOPE_PERM && this.vars[id] !== 0) {
+                saved++;
+            }
+        }
+        sav.p2(saved);
+        for (let id = 0; id < this.vars.length; id++) {
+            const varp = VarPlayerType.get(id);
+            if (varp.scope === VarPlayerType.SCOPE_PERM && this.vars[id] !== 0) {
+                sav.p2(id);
+                sav.pVarInt(this.vars[id]);
             }
         }
 
