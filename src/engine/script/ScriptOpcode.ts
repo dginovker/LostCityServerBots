@@ -110,7 +110,7 @@ export const enum ScriptOpcode {
     IF_SETOBJECT, // official
     IF_SETPLAYERHEAD, // official
     IF_SETPOSITION, // official
-    IF_SETRESUMEBUTTONS,
+    IF_ADDRESUMEBUTTON,
     IF_SETSCROLLPOS, // official
     IF_SETTAB,
     IF_SETTABACTIVE,
@@ -555,7 +555,7 @@ export const ScriptOpcodeMap: Map<string, number> = new Map([
     ['IF_SETOBJECT', ScriptOpcode.IF_SETOBJECT],
     ['IF_SETPLAYERHEAD', ScriptOpcode.IF_SETPLAYERHEAD],
     ['IF_SETPOSITION', ScriptOpcode.IF_SETPOSITION],
-    ['IF_SETRESUMEBUTTONS', ScriptOpcode.IF_SETRESUMEBUTTONS],
+    ['IF_ADDRESUMEBUTTON', ScriptOpcode.IF_ADDRESUMEBUTTON],
     ['IF_SETSCROLLPOS', ScriptOpcode.IF_SETSCROLLPOS],
     ['IF_SETTAB', ScriptOpcode.IF_SETTAB],
     ['IF_SETTABACTIVE', ScriptOpcode.IF_SETTABACTIVE],

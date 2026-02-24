@@ -785,10 +785,10 @@ const PlayerOps: CommandHandlers = {
         player.applyDamage(amount, type);
     },
 
-    [ScriptOpcode.IF_SETRESUMEBUTTONS]: checkedHandler(ActivePlayer, state => {
-        const [button1, button2, button3, button4, button5] = state.popInts(5);
+    [ScriptOpcode.IF_ADDRESUMEBUTTON]: checkedHandler(ActivePlayer, state => {
+        const comId = state.popInt();
 
-        state.activePlayer.resumeButtons = [button1, button2, button3, button4, button5];
+        state.activePlayer.resumeButtons.push(comId);
     }),
 
     [ScriptOpcode.TEXT_GENDER]: checkedHandler(ActivePlayer, state => {
