@@ -211,7 +211,7 @@ const ScriptOpcodePointers: {
     [ScriptOpcode.IF_SETPOSITION]: {
         require: ['active_player']
     },
-    [ScriptOpcode.IF_SETRESUMEBUTTONS]: {
+    [ScriptOpcode.IF_ADDRESUMEBUTTON]: {
         require: ['active_player']
     },
     [ScriptOpcode.IF_SETTAB]: {
