@@ -57,7 +57,7 @@ export const enum ScriptOpcode {
     MAP_PLAYERCOUNT, // official, see giant dwarf cutscene
     MOVECOORD, // official
     PLAYERCOUNT,
-    PROJANIM_MAP,
+    PROJANIM_MAP, // official
     SEQLENGTH, // official
     SPOTANIM_MAP,
     WORLD_DELAY, // official
@@ -156,7 +156,7 @@ export const enum ScriptOpcode {
     P_TELEPORT,
     P_WALK, // official
     PLAYERMEMBER, // official
-    PROJANIM_PL, // todo: take active_player
+    PROJANIM_PL, // official
     QUEUE, // official
     QUEUEVARARG,
     READYANIM,
@@ -248,7 +248,7 @@ export const enum ScriptOpcode {
     NPC_UID,
     NPC_WALK,
     NPC_WALKTRIGGER, // official
-    PROJANIM_NPC, // todo: take active_npc
+    PROJANIM_NPC, // official
     SPOTANIM_NPC,
 
     // Loc ops (3000-3499)
@@ -269,7 +269,7 @@ export const enum ScriptOpcode {
 
     // Obj ops (3500-4000)
     OBJ_ADD = 3500, // official
-    OBJ_ADDALL,
+    OBJ_ADDALL, // official
     OBJ_COORD,
     OBJ_COUNT,
     OBJ_DEL,
@@ -278,7 +278,7 @@ export const enum ScriptOpcode {
     OBJ_FINDNEXT,
     OBJ_NAME,
     OBJ_PARAM,
-    OBJ_TAKEITEM,
+    OBJ_TAKEITEM, // official
     OBJ_TYPE,
 
     // Npc config ops (4000-4099)
@@ -329,17 +329,17 @@ export const enum ScriptOpcode {
     INV_CLEAR,
     INV_DEBUGNAME,
     INV_DEL, // official
-    INV_DELSLOT,
-    INV_DROPALL,
+    INV_DELSLOT, // official
+    INV_DROPALL, // official
     INV_DROPITEM_DELAYED,
-    INV_DROPITEM,
-    INV_DROPSLOT,
+    INV_DROPITEM, // official
+    INV_DROPSLOT, // official
     INV_FREESPACE,
     INV_GETNUM,
     INV_GETOBJ, // official
     INV_ITEMSPACE,
     INV_ITEMSPACE2, // official
-    INV_MOVEFROMSLOT,
+    INV_MOVEFROMSLOT, // official
     INV_MOVEITEM_CERT, // official
     INV_MOVEITEM_UNCERT, // official
     INV_MOVEITEM, // official
