@@ -157,6 +157,9 @@ class World {
     readonly npcEventQueue: LinkList<NpcEventRequest> = new LinkList();
     readonly objDelayedQueue: LinkList<ObjDelayedRequest> = new LinkList();
 
+    // bot controllers - registered by BotManager for per-tick processing
+    readonly botControllers: Set<{ onTick(): void }> = new Set();
+
     // debug data
     readonly lastCycleStats: Uint16Array = new Uint16Array(12);
     readonly cycleStats: Uint16Array = new Uint16Array(12);
@@ -351,6 +354,9 @@ class World {
             // - process pathfinding/following request
             // - client input tracking
             this.processClientsIn();
+
+            // bot input - advance bot controllers so bot-set actions are processed this tick
+            this.processBotInput();
 
             // Spawn triggers, despawn triggers
             this.processNpcEventQueue();
@@ -658,6 +664,12 @@ class World {
         }
 
         this.cycleStats[WorldStat.CLIENT_IN] = Date.now() - start;
+    }
+
+    private processBotInput(): void {
+        for (const controller of this.botControllers) {
+            controller.onTick();
+        }
     }
 
     // Despawn and respawn
