@@ -1,3 +1,4 @@
+import Component from '../../src/cache/config/Component.ts';
 import InvType from '../../src/cache/config/InvType.ts';
 import LocType from '../../src/cache/config/LocType.ts';
 import NpcType from '../../src/cache/config/NpcType.ts';
@@ -7,12 +8,15 @@ import { Interaction } from '../../src/engine/entity/Interaction.ts';
 import type Loc from '../../src/engine/entity/Loc.ts';
 import type Npc from '../../src/engine/entity/Npc.ts';
 import { PlayerStatMap } from '../../src/engine/entity/PlayerStat.ts';
+import ScriptProvider from '../../src/engine/script/ScriptProvider.ts';
+import ScriptRunner from '../../src/engine/script/ScriptRunner.ts';
 import ScriptState from '../../src/engine/script/ScriptState.ts';
 import ServerTriggerType from '../../src/engine/script/ServerTriggerType.ts';
 import { BotPlayer } from '../integration/bot-player.ts';
 import { BotController } from './controller.ts';
 import { BotLogger, type LogLevel } from './logger.ts';
 import { findPathSegment, findPathToLocSegment } from './pathfinding.ts';
+import { findPathToEntity } from '../../src/engine/GameMap.ts';
 
 export interface SkillInfo {
     level: number;
@@ -266,6 +270,139 @@ export class BotAPI {
         }
 
         return closest;
+    }
+
+    /**
+     * Find a nearby Loc by its display name (the name= field, not the debugname).
+     * For example, gates are named "Gate" regardless of their debugname (loc_1596, fencegate_l, etc.).
+     * Returns the closest matching loc within maxDist tiles.
+     */
+    findNearbyLocByDisplayName(displayName: string, maxDist: number = 16): Loc | null {
+        const lowerName = displayName.toLowerCase();
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        let closest: Loc | null = null;
+        let closestDist = maxDist + 1;
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const loc of zone.getAllLocsSafe()) {
+                    const locType = LocType.get(loc.type);
+                    if (locType.name?.toLowerCase() !== lowerName) {
+                        continue;
+                    }
+                    const dist = Math.max(Math.abs(loc.x - px), Math.abs(loc.z - pz));
+                    if (dist < closestDist) {
+                        closest = loc;
+                        closestDist = dist;
+                    }
+                }
+            }
+        }
+
+        return closest;
+    }
+
+    /**
+     * Find all locs near the player within maxDist tiles.
+     * Returns an array of { loc, debugname, displayName, dist } sorted by distance.
+     * Useful for debugging what locs exist in an area.
+     */
+    findAllNearbyLocs(maxDist: number = 16): Array<{ loc: Loc; debugname: string; displayName: string; dist: number; x: number; z: number }> {
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        const results: Array<{ loc: Loc; debugname: string; displayName: string; dist: number; x: number; z: number }> = [];
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const loc of zone.getAllLocsSafe()) {
+                    const dist = Math.max(Math.abs(loc.x - px), Math.abs(loc.z - pz));
+                    if (dist <= maxDist) {
+                        const locType = LocType.get(loc.type);
+                        results.push({
+                            loc,
+                            debugname: locType.debugname ?? `loc_${loc.type}`,
+                            displayName: locType.name ?? '',
+                            dist,
+                            x: loc.x,
+                            z: loc.z
+                        });
+                    }
+                }
+            }
+        }
+
+        results.sort((a, b) => a.dist - b.dist);
+        return results;
+    }
+
+    /**
+     * Open a gate by display name. Searches for a nearby loc with name="Gate" and op1=Open.
+     * This handles all gate types (fence gates, wooden gates, etc.) regardless of their debugname.
+     * If no gate is found nearby, this is a no-op (the gate may already be open).
+     */
+    async openGate(maxDist: number = 16): Promise<void> {
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        let closestGate: Loc | null = null;
+        let closestDist = maxDist + 1;
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const loc of zone.getAllLocsSafe()) {
+                    const locType = LocType.get(loc.type);
+                    if (locType.name?.toLowerCase() !== 'gate') {
+                        continue;
+                    }
+                    // Only match gates that have op1=Open (closed gates)
+                    if (locType.op?.[0]?.toLowerCase() !== 'open') {
+                        continue;
+                    }
+                    const dist = Math.max(Math.abs(loc.x - px), Math.abs(loc.z - pz));
+                    if (dist < closestDist) {
+                        closestGate = loc;
+                        closestDist = dist;
+                    }
+                }
+            }
+        }
+
+        if (!closestGate) {
+            this.log('STATE', 'openGate: no closed gate found nearby — may already be open');
+            return;
+        }
+
+        const locType = LocType.get(closestGate.type);
+        this.log('ACTION', `openGate: ${locType.debugname} at (${closestGate.x},${closestGate.z}), dist=${closestDist}`);
+        await this.interactLoc(closestGate, 1);
+        await this.waitForTicks(1);
     }
 
     /**
@@ -597,5 +734,280 @@ export class BotAPI {
      */
     getQuestProgress(varpId: number): number {
         return this.player.vars[varpId]!;
+    }
+
+    /**
+     * Find a nearby NPC by its internal type ID (debugname in npc.pack).
+     * Unlike findNearbyNpc which matches the display name, this matches the
+     * NpcType.id directly. Useful when multiple NPC types share the same
+     * display name (e.g. sheered vs unsheered sheep are both "Sheep").
+     */
+    findNearbyNpcByTypeId(typeId: number, maxDist: number = 16): Npc | null {
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        let closest: Npc | null = null;
+        let closestDist = maxDist + 1;
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const npc of zone.getAllNpcsSafe()) {
+                    if (npc.type !== typeId) {
+                        continue;
+                    }
+                    const dist = Math.max(Math.abs(npc.x - px), Math.abs(npc.z - pz));
+                    if (dist < closestDist) {
+                        closest = npc;
+                        closestDist = dist;
+                    }
+                }
+            }
+        }
+
+        return closest;
+    }
+
+    /**
+     * Find a nearby NPC by type ID, but only if the bot can actually path to it.
+     * This prevents targeting NPCs on the other side of walls/fences that the bot
+     * can't reach. Uses entity-aware pathfinding to check reachability.
+     * Returns the closest reachable NPC within maxDist.
+     */
+    findReachableNpcByTypeId(typeId: number, maxDist: number = 16): Npc | null {
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        const candidates: Array<{ npc: Npc; dist: number }> = [];
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const npc of zone.getAllNpcsSafe()) {
+                    if (npc.type !== typeId) {
+                        continue;
+                    }
+                    const dist = Math.max(Math.abs(npc.x - px), Math.abs(npc.z - pz));
+                    if (dist <= maxDist) {
+                        candidates.push({ npc, dist });
+                    }
+                }
+            }
+        }
+
+        // Sort by distance, then check pathfinding for each until we find a reachable one
+        candidates.sort((a, b) => a.dist - b.dist);
+        for (const { npc } of candidates) {
+            const path = findPathToEntity(level, px, pz, npc.x, npc.z, this.player.width, npc.width, npc.length);
+            if (path.length > 0) {
+                return npc;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find ALL nearby NPCs of a given type ID within maxDist tiles.
+     * Returns an array sorted by distance (closest first).
+     */
+    findAllNearbyNpcsByTypeId(typeId: number, maxDist: number = 16): Npc[] {
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        const results: Array<{ npc: Npc; dist: number }> = [];
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const npc of zone.getAllNpcsSafe()) {
+                    if (npc.type !== typeId) {
+                        continue;
+                    }
+                    const dist = Math.max(Math.abs(npc.x - px), Math.abs(npc.z - pz));
+                    if (dist <= maxDist) {
+                        results.push({ npc, dist });
+                    }
+                }
+            }
+        }
+
+        results.sort((a, b) => a.dist - b.dist);
+        return results.map(r => r.npc);
+    }
+
+    /**
+     * Use an item from inventory on a nearby NPC.
+     * Sets player.lastUseItem and player.lastUseSlot, then triggers APNPCU.
+     * This mirrors how OpNpcUHandler works in the client network layer.
+     */
+    async useItemOnNpc(itemName: string, npcName: string): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`useItemOnNpc: item "${itemName}" not found in inventory`);
+        }
+
+        const npc = this.findNearbyNpc(npcName);
+        if (!npc) {
+            throw new Error(`useItemOnNpc: NPC "${npcName}" not found nearby`);
+        }
+
+        const npcType = NpcType.get(npc.type);
+        this.log('ACTION', `useItemOnNpc: ${itemName} (id=${item.id}, slot=${item.slot}) on ${npcType.name} at (${npc.x},${npc.z})`);
+
+        // Set the use-item fields (same as OpNpcUHandler)
+        this.player.lastUseItem = item.id;
+        this.player.lastUseSlot = item.slot;
+
+        const success = this.player.setInteraction(Interaction.SCRIPT, npc, ServerTriggerType.APNPCU);
+        if (!success) {
+            throw new Error(`setInteraction APNPCU failed for NPC ${npcType.name} at (${npc.x},${npc.z}) npc.delayed=${npc.delayed} npc.isActive=${npc.isActive}`);
+        }
+
+        // Wait for the engine to process the interaction
+        for (let i = 0; i < 15; i++) {
+            await this.waitForTick();
+            if (this.player.target === null) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Use an item from inventory on a specific NPC instance (by reference).
+     * Same as useItemOnNpc but takes an Npc directly instead of searching by name.
+     */
+    async useItemOnNpcDirect(itemName: string, npc: Npc): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`useItemOnNpcDirect: item "${itemName}" not found in inventory`);
+        }
+
+        const npcType = NpcType.get(npc.type);
+        this.log('ACTION', `useItemOnNpcDirect: ${itemName} (id=${item.id}, slot=${item.slot}) on ${npcType.name} at (${npc.x},${npc.z})`);
+
+        // Pre-compute path to the NPC using entity-aware pathfinding.
+        // This mirrors how the real client handler works: OpNpcUHandler sets
+        // opcalled=true, then processClientsIn calls pathToTarget() which uses
+        // findPathToEntity. Since BotPlayer extends Player (not NetworkPlayer),
+        // we don't have opcalled, so we pre-queue the path ourselves.
+        const waypoints = findPathToEntity(
+            this.player.level, this.player.x, this.player.z,
+            npc.x, npc.z, this.player.width,
+            npc.width, npc.length
+        );
+        if (waypoints.length > 0) {
+            this.player.queueWaypoints(waypoints);
+        }
+
+        this.player.lastUseItem = item.id;
+        this.player.lastUseSlot = item.slot;
+
+        const success = this.player.setInteraction(Interaction.SCRIPT, npc, ServerTriggerType.APNPCU);
+        if (!success) {
+            throw new Error(`setInteraction APNPCU failed for NPC ${npcType.name} at (${npc.x},${npc.z}) npc.delayed=${npc.delayed} npc.isActive=${npc.isActive}`);
+        }
+
+        for (let i = 0; i < 15; i++) {
+            await this.waitForTick();
+            if (this.player.target === null) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Buy an item from an open shop interface.
+     *
+     * Simulates clicking "Buy 1" (inv_button2) on the shop_template:inv component.
+     * The shop must already be open (e.g. after interacting with a shopkeeper via op3/Trade
+     * or via dialog). The RS2 shop script sets up invListeners and varps when the shop opens.
+     *
+     * @param itemName Display name of the item to buy
+     * @param quantity Number to buy (each triggers a separate buy-1 click)
+     */
+    async buyFromShop(itemName: string, quantity: number): Promise<void> {
+        const lowerName = itemName.toLowerCase();
+
+        // shop_template:inv component ID (from interface.pack: 3900=shop_template:inv)
+        const SHOP_TEMPLATE_INV_COM = 3900;
+
+        // Find the shop inventory from the invListeners
+        const shopListener = this.player.invListeners.find(l => l.com === SHOP_TEMPLATE_INV_COM);
+        if (!shopListener) {
+            throw new Error(`buyFromShop: shop is not open (no invListener for shop_template:inv). invListeners: [${this.player.invListeners.map(l => `com=${l.com},type=${l.type}`).join('; ')}]`);
+        }
+
+        const shopInv = this.player.getInventoryFromListener(shopListener);
+        if (!shopInv) {
+            throw new Error('buyFromShop: could not get shop inventory from listener');
+        }
+
+        // Find the item slot in the shop inventory
+        let itemSlot = -1;
+        let itemObjId = -1;
+        for (let slot = 0; slot < shopInv.capacity; slot++) {
+            const slotItem = shopInv.items[slot];
+            if (slotItem) {
+                const objType = ObjType.get(slotItem.id);
+                if (objType.name?.toLowerCase() === lowerName) {
+                    itemSlot = slot;
+                    itemObjId = slotItem.id;
+                    break;
+                }
+            }
+        }
+
+        if (itemSlot === -1) {
+            throw new Error(`buyFromShop: item "${itemName}" not found in shop inventory`);
+        }
+
+        this.log('ACTION', `buyFromShop: ${itemName} (id=${itemObjId}, slot=${itemSlot}) x${quantity}`);
+
+        // Buy one at a time by executing the INV_BUTTON2 trigger for shop_template:inv
+        const com = Component.get(SHOP_TEMPLATE_INV_COM);
+        const trigger = ServerTriggerType.INV_BUTTON2;
+
+        for (let i = 0; i < quantity; i++) {
+            // Verify item is still in stock
+            const currentItem = shopInv.items[itemSlot];
+            if (!currentItem || currentItem.id !== itemObjId) {
+                throw new Error(`buyFromShop: item "${itemName}" no longer in stock at slot ${itemSlot} after buying ${i}/${quantity}`);
+            }
+
+            // Set lastItem and lastSlot (same as InvButtonHandler)
+            this.player.lastItem = itemObjId;
+            this.player.lastSlot = itemSlot;
+
+            const script = ScriptProvider.getByTrigger(trigger, SHOP_TEMPLATE_INV_COM, -1);
+            if (!script) {
+                throw new Error('buyFromShop: no script found for [inv_button2,shop_template:inv]');
+            }
+
+            const root = Component.get(com.rootLayer);
+            this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
+            await this.waitForTick();
+        }
     }
 }
