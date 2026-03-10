@@ -6,7 +6,7 @@ import path from 'path';
 const testName = process.argv[2];
 if (!testName) {
     console.error('Usage: bun engine/bots/test/runner.ts <test-name>');
-    console.error('Available tests: foundation, thieving, mining, quest, sheepshearer');
+    console.error('Available tests: foundation, thieving, mining, quest, sheepshearer, princeali');
     process.exit(1);
 }
 
@@ -20,6 +20,8 @@ if (testName === 'foundation') {
     await import('./tests/quest.test.ts');
 } else if (testName === 'sheepshearer') {
     await import('./tests/sheepshearer.test.ts');
+} else if (testName === 'princeali') {
+    await import('./tests/princealirrescue.test.ts');
 } else {
     console.error(`Unknown test: ${testName}`);
     process.exit(1);

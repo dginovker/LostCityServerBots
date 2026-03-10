@@ -1,3 +1,4 @@
+import CategoryType from '../../src/cache/config/CategoryType.ts';
 import Component from '../../src/cache/config/Component.ts';
 import InvType from '../../src/cache/config/InvType.ts';
 import LocType from '../../src/cache/config/LocType.ts';
@@ -7,6 +8,7 @@ import World from '../../src/engine/World.ts';
 import { Interaction } from '../../src/engine/entity/Interaction.ts';
 import type Loc from '../../src/engine/entity/Loc.ts';
 import type Npc from '../../src/engine/entity/Npc.ts';
+import type Obj from '../../src/engine/entity/Obj.ts';
 import { PlayerStatMap } from '../../src/engine/entity/PlayerStat.ts';
 import ScriptProvider from '../../src/engine/script/ScriptProvider.ts';
 import ScriptRunner from '../../src/engine/script/ScriptRunner.ts';
@@ -1009,5 +1011,169 @@ export class BotAPI {
             this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
             await this.waitForTick();
         }
+    }
+
+    /**
+     * Use one inventory item on another (triggers OPHELDU).
+     * This simulates the client's "Use X -> Y" action. The engine looks up
+     * [opheldu,b] then [opheldu,a] then category variants, matching the
+     * OpHeldUHandler behavior.
+     *
+     * @param itemAName Display name of the item being used (the one you click "Use" on)
+     * @param itemBName Display name of the target item
+     */
+    async useItemOnItem(itemAName: string, itemBName: string): Promise<void> {
+        const itemA = this.findItem(itemAName);
+        if (!itemA) {
+            throw new Error(`useItemOnItem: item "${itemAName}" not found in inventory`);
+        }
+
+        const itemB = this.findItem(itemBName);
+        if (!itemB) {
+            throw new Error(`useItemOnItem: item "${itemBName}" not found in inventory`);
+        }
+
+        this.log('ACTION', `useItemOnItem: ${itemAName} (id=${itemA.id}, slot=${itemA.slot}) on ${itemBName} (id=${itemB.id}, slot=${itemB.slot})`);
+
+        // Set lastItem/lastSlot = the "target" (obj), lastUseItem/lastUseSlot = the "used" item
+        // This matches OpHeldUHandler: obj is the target, useObj is the source.
+        this.player.lastItem = itemB.id;
+        this.player.lastSlot = itemB.slot;
+        this.player.lastUseItem = itemA.id;
+        this.player.lastUseSlot = itemA.slot;
+
+        const objType = ObjType.get(this.player.lastItem);
+        const useObjType = ObjType.get(this.player.lastUseItem);
+
+        this.player.clearPendingAction();
+
+        // Look up script in the same order as OpHeldUHandler:
+        // [opheldu,b] -> [opheldu,a] -> [opheldu,b_category] -> [opheldu,a_category]
+        let script = ScriptProvider.getByTriggerSpecific(ServerTriggerType.OPHELDU, objType.id, -1);
+
+        if (!script) {
+            script = ScriptProvider.getByTriggerSpecific(ServerTriggerType.OPHELDU, useObjType.id, -1);
+            if (script) {
+                [this.player.lastItem, this.player.lastUseItem] = [this.player.lastUseItem, this.player.lastItem];
+                [this.player.lastSlot, this.player.lastUseSlot] = [this.player.lastUseSlot, this.player.lastSlot];
+            }
+        }
+
+        const objCategory = objType.category !== -1 ? CategoryType.get(objType.category) : null;
+        if (!script && objCategory) {
+            script = ScriptProvider.getByTriggerSpecific(ServerTriggerType.OPHELDU, -1, objCategory.id);
+        }
+
+        const useObjCategory = useObjType.category !== -1 ? CategoryType.get(useObjType.category) : null;
+        if (!script && useObjCategory) {
+            script = ScriptProvider.getByTriggerSpecific(ServerTriggerType.OPHELDU, -1, useObjCategory.id);
+            if (script) {
+                [this.player.lastItem, this.player.lastUseItem] = [this.player.lastUseItem, this.player.lastItem];
+                [this.player.lastSlot, this.player.lastUseSlot] = [this.player.lastUseSlot, this.player.lastSlot];
+            }
+        }
+
+        if (!script) {
+            throw new Error(`useItemOnItem: no [opheldu] script found for ${itemAName} (${objType.debugname}) on ${itemBName} (${useObjType.debugname})`);
+        }
+
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Pick up a ground item (world Obj) at the given coordinates.
+     * Simulates clicking "Take" (op3 by default for most items) on a ground object.
+     * The engine will walk to the tile and execute the appropriate trigger.
+     *
+     * @param objName Display name of the obj to pick up
+     * @param x World x coordinate
+     * @param z World z coordinate
+     */
+    async takeGroundItem(objName: string, x: number, z: number): Promise<void> {
+        const lowerName = objName.toLowerCase();
+        const level = this.player.level;
+
+        // Search for the obj at the given tile
+        const zone = World.gameMap.getZone(x, z, level);
+        let targetObj: Obj | null = null;
+
+        for (const obj of zone.getAllObjsSafe()) {
+            if (obj.x !== x || obj.z !== z) {
+                continue;
+            }
+            const objType = ObjType.get(obj.type);
+            if (objType.name?.toLowerCase() === lowerName) {
+                targetObj = obj;
+                break;
+            }
+        }
+
+        if (!targetObj) {
+            throw new Error(`takeGroundItem: "${objName}" not found at (${x},${z},${level})`);
+        }
+
+        const objType = ObjType.get(targetObj.type);
+        this.log('ACTION', `takeGroundItem: ${objType.name} (id=${targetObj.type}) at (${x},${z})`);
+
+        // Ground item "Take" is typically op3 (APOBJ3).
+        // Walk to the tile first, then set interaction.
+        const waypoints = findPathSegment(level, this.player.x, this.player.z, x, z);
+        if (waypoints.length > 0) {
+            this.player.queueWaypoints(waypoints);
+        }
+
+        const trigger: ServerTriggerType = ServerTriggerType.APOBJ3;
+        const success = this.player.setInteraction(Interaction.ENGINE, targetObj, trigger);
+        if (!success) {
+            throw new Error(`takeGroundItem: setInteraction failed for ${objType.name} at (${x},${z})`);
+        }
+
+        // Wait for the engine to process the interaction
+        for (let i = 0; i < 30; i++) {
+            await this.waitForTick();
+            if (this.player.target === null) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Find ground items of a given name near the player.
+     * Returns the closest matching Obj within maxDist tiles, or null.
+     */
+    findNearbyGroundItem(name: string, maxDist: number = 16): { obj: Obj; x: number; z: number } | null {
+        const lowerName = name.toLowerCase();
+        const px = this.player.x;
+        const pz = this.player.z;
+        const level = this.player.level;
+
+        let closest: { obj: Obj; x: number; z: number } | null = null;
+        let closestDist = maxDist + 1;
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const playerZoneX = px >> 3;
+        const playerZoneZ = pz >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = playerZoneX + dx;
+                const zoneZ = playerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const obj of zone.getAllObjsSafe()) {
+                    const objType = ObjType.get(obj.type);
+                    if (objType.name?.toLowerCase() !== lowerName) {
+                        continue;
+                    }
+                    const dist = Math.max(Math.abs(obj.x - px), Math.abs(obj.z - pz));
+                    if (dist < closestDist) {
+                        closest = { obj, x: obj.x, z: obj.z };
+                        closestDist = dist;
+                    }
+                }
+            }
+        }
+
+        return closest;
     }
 }
