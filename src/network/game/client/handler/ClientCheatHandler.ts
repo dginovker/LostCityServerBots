@@ -36,9 +36,9 @@ import Environment from '#/util/Environment.js';
 import { printDebug } from '#/util/Logger.js';
 import { tryParseInt } from '#/util/TryParse.js';
 
-import BotManager from '../../../../../bots/runtime/manager.ts';
-import { getScriptFn, listScriptNames } from '../../../../../bots/runtime/registry.ts';
-import { skipTutorial } from '../../../../../bots/scripts/skip-tutorial.ts';
+import BotManager from '../../../../../bots/runtime/manager.js';
+import { getScriptFn, listScriptNames } from '../../../../../bots/runtime/registry.js';
+import { skipTutorial } from '../../../../../bots/scripts/skip-tutorial.js';
 
 export default class ClientCheatHandler extends ClientGameMessageHandler<ClientCheat> {
     handle(message: ClientCheat, player: Player): boolean {

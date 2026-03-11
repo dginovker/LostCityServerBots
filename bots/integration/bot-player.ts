@@ -1,9 +1,9 @@
-import Player from '../../src/engine/entity/Player.ts';
-import ServerGameMessage from '../../src/network/game/server/ServerGameMessage.ts';
-import MessageGame from '../../src/network/game/server/model/MessageGame.ts';
-import IfOpenChat from '../../src/network/game/server/model/IfOpenChat.ts';
-import IfSetText from '../../src/network/game/server/model/IfSetText.ts';
-import { toBase37 } from '../../src/util/JString.ts';
+import Player from '../../src/engine/entity/Player.js';
+import ServerGameMessage from '../../src/network/game/server/ServerGameMessage.js';
+import MessageGame from '../../src/network/game/server/model/MessageGame.js';
+import IfOpenChat from '../../src/network/game/server/model/IfOpenChat.js';
+import IfSetText from '../../src/network/game/server/model/IfSetText.js';
+import { toBase37 } from '../../src/util/JString.js';
 
 export interface CapturedMessage {
     type: string;

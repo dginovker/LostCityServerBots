@@ -6,7 +6,7 @@ import path from 'path';
 const testName = process.argv[2];
 if (!testName) {
     console.error('Usage: bun engine/bots/test/runner.ts <test-name>');
-    console.error('Available tests: foundation, thieving, mining, quest, sheepshearer, princeali, impcatcher, romeojuliet, f2pskills, botcommand, autostart, live');
+    console.error('Available tests: foundation, thieving, mining, quest, sheepshearer, princeali, impcatcher, romeojuliet, f2pskills, cooksassistant, botcommand, autostart, live');
     process.exit(1);
 }
 
@@ -32,6 +32,8 @@ if (testName === 'foundation') {
     await import('./tests/botcommand.test.ts');
 } else if (testName === 'autostart') {
     await import('./tests/autostart.test.ts');
+} else if (testName === 'cooksassistant') {
+    await import('./tests/cooksassistant.test.ts');
 } else if (testName === 'live') {
     await import('./tests/live.test.ts');
 } else {

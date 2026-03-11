@@ -1,7 +1,7 @@
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
-import NpcType from '../../src/cache/config/NpcType.ts';
-import type Npc from '../../src/engine/entity/Npc.ts';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
+import NpcType from '../../src/cache/config/NpcType.js';
+import type Npc from '../../src/engine/entity/Npc.js';
 
 // ---- Varp IDs ----
 const VARP_ACTION_DELAY = 58;
@@ -286,7 +286,7 @@ async function _goToLumbridgeBank(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1738', 1);
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 1) {
+    if (bot.player.level as number !== 1) {
         throw new Error(`Failed to climb to level 1: ${bot.player.level}`);
     }
 
@@ -294,7 +294,7 @@ async function _goToLumbridgeBank(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1739', 2); // op2=Climb-up
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 2) {
+    if (bot.player.level as number !== 2) {
         throw new Error(`Failed to climb to level 2: ${bot.player.level}`);
     }
 
@@ -314,7 +314,7 @@ async function _goDownFromLumbridgeBank(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1740', 1); // op1=Climb-down
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 1) {
+    if (bot.player.level as number !== 1) {
         throw new Error(`Failed to climb down to level 1: ${bot.player.level}`);
     }
 
@@ -322,7 +322,7 @@ async function _goDownFromLumbridgeBank(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1739', 3); // op3=Climb-down
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 0) {
+    if (bot.player.level as number !== 0) {
         throw new Error(`Failed to climb down to level 0: ${bot.player.level}`);
     }
 

@@ -1,6 +1,6 @@
-import InvType from '../../src/cache/config/InvType.ts';
-import ObjType from '../../src/cache/config/ObjType.ts';
-import { BotAPI } from '../runtime/api.ts';
+import InvType from '../../src/cache/config/InvType.js';
+import ObjType from '../../src/cache/config/ObjType.js';
+import { BotAPI } from '../runtime/api.js';
 
 const TUTORIAL_VARP_ID = 281;
 const TUTORIAL_COMPLETE_VALUE = 1000;

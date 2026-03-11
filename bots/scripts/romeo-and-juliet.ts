@@ -1,5 +1,5 @@
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
 
 // Varp ID for Romeo & Juliet quest progress (from content/pack/varp.pack: 144=rjquest)
 const RJQUEST_VARP = 144;

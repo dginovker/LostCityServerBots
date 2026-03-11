@@ -1,8 +1,8 @@
-import Environment from '../../src/util/Environment.ts';
-import BotManager from './manager.ts';
-import { getScriptFn } from './registry.ts';
-import { skipTutorial } from '../scripts/skip-tutorial.ts';
-import { printInfo } from '../../src/util/Logger.ts';
+import Environment from '../../src/util/Environment.js';
+import BotManager from './manager.js';
+import { getScriptFn } from './registry.js';
+import { skipTutorial } from '../scripts/skip-tutorial.js';
+import { printInfo } from '../../src/util/Logger.js';
 
 export function autostartBots(): void {
     const config = Environment.BOT_AUTOSTART;

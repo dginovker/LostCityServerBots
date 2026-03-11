@@ -1,6 +1,6 @@
-import LocType from '../../src/cache/config/LocType.ts';
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
+import LocType from '../../src/cache/config/LocType.js';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
 
 // Varp IDs (from content/pack/varp.pack)
 const PRINCEQUEST_VARP = 273;

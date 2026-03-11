@@ -1,5 +1,5 @@
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
 
 
 // Varp ID for Rune Mysteries quest progress (from content/pack/varp.pack: 63=runemysteries)
@@ -210,7 +210,7 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1739', 3);
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 0) {
+    if (bot.player.level as number !== 0) {
         throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
     bot.log('STATE', `Back on ground floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);

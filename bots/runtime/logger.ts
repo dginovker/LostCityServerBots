@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import World from '../../src/engine/World.ts';
+import World from '../../src/engine/World.js';
 
 export type LogLevel = 'INFO' | 'ACTION' | 'STATE' | 'EVENT' | 'ERROR' | 'SUCCESS' | 'FAIL';
 

@@ -9,7 +9,7 @@ import Environment from '#/util/Environment.js';
 import { printError, printInfo } from '#/util/Logger.js';
 import { startManagementWeb, startWeb } from '#/web.js';
 import OnDemand from '#/engine/OnDemand.js';
-import { autostartBots } from '../bots/runtime/autostart.ts';
+import { autostartBots } from '../bots/runtime/autostart.js';
 
 if (
     OnDemand.cache.count(0) !== 9 ||

@@ -1,5 +1,5 @@
-import World from '../../src/engine/World.ts';
-import { BotPlayer } from '../integration/bot-player.ts';
+import World from '../../src/engine/World.js';
+import { BotPlayer } from '../integration/bot-player.js';
 
 export class BotController {
     readonly player: BotPlayer;

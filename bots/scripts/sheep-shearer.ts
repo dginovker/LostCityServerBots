@@ -1,8 +1,8 @@
-import LocType from '../../src/cache/config/LocType.ts';
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
-import { reachedEntity } from '../../src/engine/GameMap.ts';
-import type Npc from '../../src/engine/entity/Npc.ts';
+import LocType from '../../src/cache/config/LocType.js';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
+import { reachedEntity } from '../../src/engine/GameMap.js';
+import type Npc from '../../src/engine/entity/Npc.js';
 
 // Varp ID for Sheep Shearer quest progress (from content/pack/varp.pack: 179=sheep)
 const SHEEP_SHEARER_VARP = 179;

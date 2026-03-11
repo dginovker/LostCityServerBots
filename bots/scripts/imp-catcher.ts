@@ -1,5 +1,5 @@
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
 
 // Varp ID for Imp Catcher quest progress (from content/pack/varp.pack: 160=imp)
 const IMP_CATCHER_VARP = 160;
@@ -323,7 +323,7 @@ async function enterWizardTowerTopFloor(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1739', 2);
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 2) {
+    if (bot.player.level as number !== 2) {
         throw new Error(`Failed to climb to level 2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
     bot.log('STATE', `On Wizard Tower level 2 (top floor): pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
@@ -338,7 +338,7 @@ async function exitWizardTower(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1740', 1);
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 1) {
+    if (bot.player.level as number !== 1) {
         throw new Error(`Failed to climb down to level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
     bot.log('STATE', `On level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
@@ -347,7 +347,7 @@ async function exitWizardTower(bot: BotAPI): Promise<void> {
     await bot.climbStairs('loc_1739', 3);
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 0) {
+    if (bot.player.level as number !== 0) {
         throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
     bot.log('STATE', `Back on ground floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);

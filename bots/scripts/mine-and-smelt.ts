@@ -1,5 +1,5 @@
-import { BotAPI } from '../runtime/api.ts';
-import { skipTutorial } from './skip-tutorial.ts';
+import { BotAPI } from '../runtime/api.js';
+import { skipTutorial } from './skip-tutorial.js';
 
 // Closest copper/tin rocks to Lumbridge: SE Varrock mine area
 // copperrock1 at (3296,3314), (3297,3315), (3301,3318)

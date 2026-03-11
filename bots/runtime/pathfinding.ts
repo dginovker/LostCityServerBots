@@ -1,4 +1,4 @@
-import { findPath, findPathToLoc } from '../../src/engine/GameMap.ts';
+import { findPath, findPathToLoc } from '../../src/engine/GameMap.js';
 
 /**
  * Run a single rsmod pathfind from (srcX,srcZ) to (destX,destZ).

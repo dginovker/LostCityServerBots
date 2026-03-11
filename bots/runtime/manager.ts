@@ -1,9 +1,9 @@
-import World from '../../src/engine/World.ts';
-import { getExpByLevel } from '../../src/engine/entity/Player.ts';
-import { BotPlayer } from '../integration/bot-player.ts';
-import { BotController } from './controller.ts';
-import { BotLogger } from './logger.ts';
-import { BotAPI } from './api.ts';
+import World from '../../src/engine/World.js';
+import { getExpByLevel } from '../../src/engine/entity/Player.js';
+import { BotPlayer } from '../integration/bot-player.js';
+import { BotController } from './controller.js';
+import { BotLogger } from './logger.js';
+import { BotAPI } from './api.js';
 
 export type BotScriptFn = (bot: BotAPI) => Promise<void>;
 
