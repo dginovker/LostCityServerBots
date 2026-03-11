@@ -1223,4 +1223,335 @@ export class BotAPI {
         this.player.setVar(VarPlayerType.RUN, value);
         this.log('ACTION', `enableRun: ${enabled} (runenergy=${this.player.runenergy})`);
     }
+
+    // --- Banking methods ---
+
+    /**
+     * Open the bank by interacting with a bank booth (oploc2=Bank on bankbooth).
+     * The bot must be near a bank booth. After calling this, the bank interface
+     * will be open and you can use depositItem/withdrawItem.
+     */
+    async openBank(): Promise<void> {
+        const booth = this.findNearbyLoc('bankbooth');
+        if (!booth) {
+            throw new Error(`openBank: no bankbooth found near (${this.player.x},${this.player.z},${this.player.level})`);
+        }
+        this.log('ACTION', `openBank: bankbooth at (${booth.x},${booth.z})`);
+        await this.interactLoc(booth, 2); // op2 = Bank
+        await this.waitForTicks(2);
+    }
+
+    /**
+     * Deposit an item into the bank using the bank_side:inv interface.
+     * The bank must already be open (via openBank()).
+     * Uses inv_button2 (deposit 1) on bank_side:inv.
+     *
+     * @param itemName Display name of the item to deposit
+     * @param quantity Number to deposit (each triggers a separate deposit-1 click)
+     */
+    async depositItem(itemName: string, quantity: number = 1): Promise<void> {
+        const BANK_SIDE_INV_COM = 2006; // bank_side:inv component ID
+
+        for (let i = 0; i < quantity; i++) {
+            const item = this.findItem(itemName);
+            if (!item) {
+                if (i === 0) {
+                    throw new Error(`depositItem: "${itemName}" not found in inventory`);
+                }
+                break; // deposited all we had
+            }
+
+            this.player.lastItem = item.id;
+            this.player.lastSlot = item.slot;
+
+            const script = ScriptProvider.getByTrigger(ServerTriggerType.INV_BUTTON2, BANK_SIDE_INV_COM, -1);
+            if (!script) {
+                throw new Error('depositItem: no script found for [inv_button2,bank_side:inv]');
+            }
+
+            const com = Component.get(BANK_SIDE_INV_COM);
+            const root = Component.get(com.rootLayer);
+            this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
+            await this.waitForTick();
+        }
+
+        this.log('ACTION', `depositItem: ${itemName} x${quantity}`);
+    }
+
+    /**
+     * Deposit ALL items from inventory into the bank.
+     * The bank must already be open (via openBank()).
+     * Deposits each unique item stack one at a time using deposit-all (inv_button4).
+     */
+    async depositAll(): Promise<void> {
+        const BANK_SIDE_INV_COM = 2006; // bank_side:inv component ID
+
+        // Get all items currently in inventory
+        const items = this.getInventory();
+        const deposited = new Set<number>();
+
+        for (const item of items) {
+            if (deposited.has(item.id)) continue; // already deposited this item type
+            deposited.add(item.id);
+
+            this.player.lastItem = item.id;
+            this.player.lastSlot = item.slot;
+
+            // inv_button4 = deposit all
+            const script = ScriptProvider.getByTrigger(ServerTriggerType.INV_BUTTON4, BANK_SIDE_INV_COM, -1);
+            if (!script) {
+                throw new Error('depositAll: no script found for [inv_button4,bank_side:inv]');
+            }
+
+            const com = Component.get(BANK_SIDE_INV_COM);
+            const root = Component.get(com.rootLayer);
+            this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
+            await this.waitForTick();
+        }
+
+        this.log('ACTION', `depositAll: deposited ${deposited.size} item types`);
+    }
+
+    /**
+     * Withdraw an item from the bank using the bank_main:inv interface.
+     * The bank must already be open (via openBank()).
+     *
+     * @param itemName Display name of the item to withdraw
+     * @param quantity Number to withdraw (each triggers a separate withdraw-1 click)
+     */
+    async withdrawItem(itemName: string, quantity: number = 1): Promise<void> {
+        const BANK_MAIN_INV_COM = 5382; // bank_main:inv component ID
+        const lowerName = itemName.toLowerCase();
+
+        // Find the item in the bank inventory
+        const bankListener = this.player.invListeners.find(l => l.com === BANK_MAIN_INV_COM);
+        if (!bankListener) {
+            throw new Error(`withdrawItem: bank is not open (no invListener for bank_main:inv). invListeners: [${this.player.invListeners.map(l => `com=${l.com},type=${l.type}`).join('; ')}]`);
+        }
+
+        const bankInv = this.player.getInventoryFromListener(bankListener);
+        if (!bankInv) {
+            throw new Error('withdrawItem: could not get bank inventory from listener');
+        }
+
+        // Find the item slot in the bank
+        let itemSlot = -1;
+        let itemObjId = -1;
+        for (let slot = 0; slot < bankInv.capacity; slot++) {
+            const slotItem = bankInv.items[slot];
+            if (slotItem) {
+                const objType = ObjType.get(slotItem.id);
+                if (objType.name?.toLowerCase() === lowerName) {
+                    itemSlot = slot;
+                    itemObjId = slotItem.id;
+                    break;
+                }
+            }
+        }
+
+        if (itemSlot === -1) {
+            throw new Error(`withdrawItem: "${itemName}" not found in bank`);
+        }
+
+        this.log('ACTION', `withdrawItem: ${itemName} (id=${itemObjId}, slot=${itemSlot}) x${quantity}`);
+
+        for (let i = 0; i < quantity; i++) {
+            // Verify item is still in bank
+            const currentItem = bankInv.items[itemSlot];
+            if (!currentItem || currentItem.id !== itemObjId) {
+                if (i === 0) {
+                    throw new Error(`withdrawItem: "${itemName}" no longer in bank at slot ${itemSlot}`);
+                }
+                break; // withdrew all available
+            }
+
+            this.player.lastItem = itemObjId;
+            this.player.lastSlot = itemSlot;
+
+            // inv_button1 = withdraw 1
+            const script = ScriptProvider.getByTrigger(ServerTriggerType.INV_BUTTON1, BANK_MAIN_INV_COM, -1);
+            if (!script) {
+                throw new Error('withdrawItem: no script found for [inv_button1,bank_main:inv]');
+            }
+
+            const com = Component.get(BANK_MAIN_INV_COM);
+            const root = Component.get(com.rootLayer);
+            this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
+            await this.waitForTick();
+        }
+    }
+
+    /**
+     * Close the bank interface.
+     */
+    closeBank(): void {
+        if (this.player.containsModalInterface()) {
+            this.player.closeModal();
+        }
+        this.log('ACTION', 'closeBank');
+    }
+
+    // --- Combat style methods ---
+
+    /**
+     * Set the combat attack style (com_mode varp).
+     * 0 = style 1 (Accurate for melee, Accurate for ranged)
+     * 1 = style 2 (Aggressive for melee, Rapid for ranged)
+     * 2 = style 3 (Defensive for melee, Longrange for ranged)
+     * 3 = style 4 (Controlled for melee, if available)
+     *
+     * For a bronze pickaxe (weapon_pickaxe category):
+     *   0 = Accurate (attack XP)
+     *   1 = Aggressive (strength XP) - Stab
+     *   2 = Aggressive (strength XP) - Crush
+     *   3 = Defensive (defence XP)
+     */
+    setCombatStyle(style: number): void {
+        if (style < 0 || style > 3) {
+            throw new Error(`setCombatStyle: style must be 0-3, got ${style}`);
+        }
+        this.player.vars[43] = style; // varp 43 = com_mode
+        this.log('ACTION', `setCombatStyle: ${style}`);
+    }
+
+    // --- Item action methods ---
+
+    /**
+     * Use (click) an inventory item with its op1 action (e.g. Bury for bones, Drop, etc.).
+     * Triggers [opheld1,item] which is the primary action for most items.
+     */
+    async useItemOp1(itemName: string): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`useItemOp1: "${itemName}" not found in inventory`);
+        }
+
+        const objType = ObjType.get(item.id);
+
+        this.player.lastItem = item.id;
+        this.player.lastSlot = item.slot;
+
+        const trigger = ServerTriggerType.OPHELD1;
+        const script = ScriptProvider.getByTrigger(trigger, objType.id, objType.category);
+        if (!script) {
+            throw new Error(`useItemOp1: no [opheld1] script found for "${itemName}" (${objType.debugname})`);
+        }
+
+        this.log('ACTION', `useItemOp1: ${itemName} (id=${item.id}, slot=${item.slot})`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Drop an inventory item. Triggers [opheld5,_] (Drop is typically op5).
+     */
+    async dropItem(itemName: string): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`dropItem: "${itemName}" not found in inventory`);
+        }
+
+        const objType = ObjType.get(item.id);
+
+        this.player.lastItem = item.id;
+        this.player.lastSlot = item.slot;
+
+        const trigger = ServerTriggerType.OPHELD5;
+        const script = ScriptProvider.getByTrigger(trigger, objType.id, objType.category);
+        if (!script) {
+            throw new Error(`dropItem: no [opheld5] script found for "${itemName}" (${objType.debugname})`);
+        }
+
+        this.log('ACTION', `dropItem: ${itemName} (id=${item.id}, slot=${item.slot})`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Cast a spell on an NPC by setting the spellCom and using APNPCT trigger.
+     * This simulates the client clicking a spell in the spellbook then clicking an NPC.
+     *
+     * @param npc The NPC to cast on
+     * @param spellComId The component ID of the spell (e.g. 1152 for magic:wind_strike)
+     */
+    async castSpellOnNpc(npc: import('../../src/engine/entity/Npc.ts').default, spellComId: number): Promise<void> {
+        const npcType = NpcType.get(npc.type);
+        this.log('ACTION', `castSpellOnNpc: spell com=${spellComId} on ${npcType.name} at (${npc.x},${npc.z})`);
+
+        this.player.clearPendingAction();
+        const success = this.player.setInteraction(Interaction.ENGINE, npc, ServerTriggerType.APNPCT, spellComId);
+        if (!success) {
+            throw new Error(`castSpellOnNpc: setInteraction APNPCT failed for NPC ${npcType.name} at (${npc.x},${npc.z})`);
+        }
+
+        // Wait for the engine to process the interaction
+        for (let i = 0; i < 15; i++) {
+            await this.waitForTick();
+            if (this.player.target === null) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Count total number of items with a given name in inventory.
+     * Unlike findItem which returns the first matching slot, this sums across all slots.
+     * Needed for unstackable items where each occupies a separate slot.
+     */
+    countItem(name: string): number {
+        const items = this.getInventory();
+        const lowerName = name.toLowerCase();
+        let total = 0;
+        for (const item of items) {
+            if (item.name.toLowerCase() === lowerName) {
+                total += item.count;
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Count free inventory slots.
+     */
+    freeSlots(): number {
+        return 28 - this.getInventory().length;
+    }
+
+    /**
+     * Click an item in the smithing interface to smith it.
+     * The smithing interface must already be open (via useItemOnLoc with a bar on an anvil).
+     *
+     * Triggers [inv_button1,smithing:column1] with last_item set to the target product.
+     * For bronze daggers: itemDebugName='bronze_dagger', column='column1', slot=0.
+     *
+     * @param itemDebugName The internal debug name of the item to smith (e.g. 'bronze_dagger')
+     * @param column Which smithing column ('column1' through 'column5', or 'column_claws')
+     * @param slot The slot index within that column (0-based)
+     */
+    async smithItem(itemDebugName: string, column: string = 'column1', slot: number = 0): Promise<void> {
+        const comName = `smithing:${column}`;
+        const comId = Component.getId(comName);
+        if (comId === -1) {
+            throw new Error(`smithItem: component "${comName}" not found`);
+        }
+
+        const objId = ObjType.getId(itemDebugName);
+        if (objId === -1) {
+            throw new Error(`smithItem: object "${itemDebugName}" not found`);
+        }
+
+        this.player.lastItem = objId;
+        this.player.lastSlot = slot;
+
+        const script = ScriptProvider.getByTrigger(ServerTriggerType.INV_BUTTON1, comId, -1);
+        if (!script) {
+            throw new Error(`smithItem: no script found for [inv_button1,${comName}]`);
+        }
+
+        const com = Component.get(comId);
+        const root = Component.get(com.rootLayer);
+        this.log('ACTION', `smithItem: ${itemDebugName} via ${comName} slot=${slot}`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
+        await this.waitForTick();
+    }
 }

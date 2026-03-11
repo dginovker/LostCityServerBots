@@ -20,6 +20,12 @@ export class BotController {
         this.player.lastConnected = World.currentTick;
         this.player.lastResponse = World.currentTick;
 
+        // Suppress random events (swarm, tree spirit, etc.) for bots.
+        // The engine sets afkEventReady every 500 ticks (~5 min) and the
+        // general_macro_events timer spawns hostile NPCs that can kill the bot.
+        // Bots can't handle random events, so prevent them from firing.
+        this.player.afkEventReady = false;
+
         if (this.tickResolver) {
             const resolve = this.tickResolver;
             this.tickResolver = null;
