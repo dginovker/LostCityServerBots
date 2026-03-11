@@ -36,6 +36,10 @@ import Environment from '#/util/Environment.js';
 import { printDebug } from '#/util/Logger.js';
 import { tryParseInt } from '#/util/TryParse.js';
 
+import BotManager from '../../../../../bots/runtime/manager.ts';
+import { getScriptFn, listScriptNames } from '../../../../../bots/runtime/registry.ts';
+import { skipTutorial } from '../../../../../bots/scripts/skip-tutorial.ts';
+
 export default class ClientCheatHandler extends ClientGameMessageHandler<ClientCheat> {
     handle(message: ClientCheat, player: Player): boolean {
         if (message.input.length > 80) {
@@ -545,6 +549,63 @@ export default class ClientCheatHandler extends ClientGameMessageHandler<ClientC
             } else if (cmd === 'snapshot') {
                 const heap = v8.writeHeapSnapshot();
                 printDebug(`Heap snapshot written to: ${heap}`);
+            } else if (cmd === 'bot') {
+                const sub = args.shift();
+                if (sub === 'spawn') {
+                    const scriptName = args.shift();
+                    if (!scriptName) {
+                        player.messageGame('Usage: ::bot spawn <script> <count>');
+                        player.messageGame(`Available scripts: ${listScriptNames().join(', ')}`);
+                        return false;
+                    }
+                    const count = Math.max(1, tryParseInt(args.shift(), 1));
+
+                    let scriptFn;
+                    try {
+                        scriptFn = getScriptFn(scriptName);
+                    } catch (err) {
+                        player.messageGame((err as Error).message);
+                        return false;
+                    }
+
+                    const startNum = BotManager.nextBotNumber(scriptName);
+                    for (let i = startNum; i < startNum + count; i++) {
+                        const username = `${scriptName}-${i}`;
+                        try {
+                            BotManager.spawnBot(username, async (bot) => {
+                                await bot.waitForTick();
+                                await bot.waitForTick();
+                                await skipTutorial(bot);
+                                await scriptFn(bot);
+                            });
+                        } catch (err) {
+                            player.messageGame(`Failed to spawn ${username}: ${(err as Error).message}`);
+                            continue;
+                        }
+                    }
+                    player.messageGame(`Spawned ${count} bot(s) running "${scriptName}"`);
+                } else if (sub === 'list') {
+                    const totalActive = BotManager.listBots().length;
+                    player.messageGame(`=== Bot Scripts (${totalActive} active) ===`);
+                    for (const scriptName2 of listScriptNames()) {
+                        const count2 = BotManager.countBotsByPrefix(scriptName2);
+                        player.messageGame(`  ${scriptName2} (${count2} active)`);
+                    }
+                } else if (sub === 'stop') {
+                    const name = args.shift();
+                    if (!name) {
+                        player.messageGame('Usage: ::bot stop <name>');
+                        return false;
+                    }
+                    try {
+                        BotManager.stopBot(name);
+                        player.messageGame(`Stopped bot "${name}".`);
+                    } catch (err) {
+                        player.messageGame((err as Error).message);
+                    }
+                } else {
+                    player.messageGame('Usage: ::bot spawn|list|stop');
+                }
             }
         }
 

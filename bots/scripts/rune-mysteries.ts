@@ -166,47 +166,16 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
     bot.log('STATE', `Found Duke Horacio at (${duke.x},${duke.z})`);
     await bot.interactNpc(duke, 1);
 
-    // Dialog: "Greetings. Welcome to my castle." → continue
-    await bot.waitForDialog(15);
-    await bot.continueDialog();
-
-    // Multi2: "Have you any quests for me?" (option 1), "Where can I find money?" (option 2)
-    await bot.waitForDialog(10);
+    // Dialog: greeting → choice "Have you any quests for me?"
+    await bot.continueDialogsUntilChoice();
     await bot.selectDialogOption(1); // "Have you any quests for me?"
 
-    // chatplayer "Have you any quests for me?" → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Well, it's not really a quest..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "It seems to be mystical..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "the Wizards' Tower for me?..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // Multi2: "Sure, no problem." (option 1), "Not right now." (option 2)
-    await bot.waitForDialog(10);
+    // Continue through dialog until choice "Sure, no problem."
+    await bot.continueDialogsUntilChoice();
     await bot.selectDialogOption(1); // "Sure, no problem."
 
-    // chatplayer "Sure, no problem." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // varp 0→1 happens here
-
-    // chatnpc "Thank you very much..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // mesbox "The Duke hands you an air talisman." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue through remaining dialog (varp set, talisman given)
+    await bot.continueRemainingDialogs();
 
     // Verify: air_talisman received
     await bot.waitForTicks(2);
@@ -280,107 +249,31 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
     // Talk to Sedridor (NPC name is "Sedridor")
     await bot.talkToNpc('Sedridor');
 
-    // chatnpc "Welcome adventurer, to the world renowned Wizards' Tower..." → continue
-    await bot.waitForDialog(30);
-    await bot.continueDialog();
-
-    // Since varp=1 (started), goes to @rune_mysteries label
+    // Welcome message → continue through to 3-option choice
+    await bot.continueDialogsUntilChoice();
     // Multi3: "Nothing thanks..." (1), "What are you doing down here?" (2), "I'm looking for the head wizard." (3)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(3); // "I'm looking for the head wizard."
+    await bot.selectDialogOption(3);
 
-    // chatplayer "I'm looking for the head wizard." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue through dialog until 2-option choice: "Ok, here you are." / "No..."
+    await bot.continueDialogsUntilChoice();
+    await bot.selectDialogOption(1);
 
-    // chatnpc "Oh you are, are you?..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue through mesbox + @head_wizard_incredible dialog until choice
+    // "Yes, certainly." / "No, I'm busy."
+    await bot.continueDialogsUntilChoice();
+    await bot.selectDialogOption(1);
 
-    // chatplayer "The Duke of Lumbridge sent me..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue through dialogs until Research package appears in inventory
+    for (let i = 0; i < 30; i++) {
+        const hasDialog = await bot.waitForDialog(10);
+        if (!hasDialog) break;
+        if (bot.isMultiChoiceOpen()) break;
+        await bot.continueDialog();
+        if (bot.findItem('Research package')) break;
+    }
 
-    // chatnpc "Did he now? HmmmMMMMMmmmmm..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // Multi2: "Ok, here you are." (1), "No, I'll only give it to the head wizard." (2)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "Ok, here you are."
-
-    // chatplayer "Ok, here you are." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // inv_del air_talisman, varp → 2
-    // mesbox "You hand the Talisman to the wizard." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // @head_wizard_incredible: many chatnpc pages
-    // chatnpc "Wow! This is... incredible!" → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Th-this talisman you brought me...!" → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "I need time to study this..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "is located North East of here..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "require somebody to take them..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "and if my suspicions are correct..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "original Wizards' Tower... I cannot believe the answer..." → continue
-    // (lines 118 in RS2: pipe-separated text, single chatnpc call)
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Do this thing for me..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // Multi2: "Yes, certainly." (1), "No, I'm busy." (2)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "Yes, certainly."
-
-    // chatplayer "Yes, certainly." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Take this package..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Once in Varrock..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "as Varrock can be a confusing place..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // mesbox "The head wizard gives you a package." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // varp → 3, research_package added
-
-    // chatnpc "Best of luck with your quest..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue remaining dialog pages (e.g. "Best of luck with your quest...")
+    await bot.continueRemainingDialogs();
 
     // Verify
     await bot.waitForTicks(2);
@@ -415,33 +308,13 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
     // Talk to Aubury — first conversation to deliver the package
     await bot.talkToNpc('Aubury');
 
-    // chatnpc "Do you want to buy some runes?" → continue
-    await bot.waitForDialog(15);
-    await bot.continueDialog();
-
+    // Continue through greeting to 3-option choice
+    await bot.continueDialogsUntilChoice();
     // Multi3: "Yes please!" (1), "Oh, it's a rune shop..." (2), "I have been sent here with a package for you." (3)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(3); // "I have been sent here with a package for you."
+    await bot.selectDialogOption(3);
 
-    // chatplayer "I have been sent here with a package for you..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Really? But... surely..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // mesbox "You hand Aubury the research package." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // inv_del research_package, varp → 4
-
-    // chatnpc "This... is incredible..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // Script ends. Now we need to talk again to get research_notes.
+    // Continue through remaining dialog (package delivery, mesbox, etc.)
+    await bot.continueRemainingDialogs();
     await bot.waitForTicks(3);
 
     // Verify package was removed
@@ -457,21 +330,8 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
     // Second talk to Aubury to get research notes (varp=4 → given_package)
     await bot.talkToNpc('Aubury');
 
-    // chatnpc × 3 pages: "My gratitude to you adventurer..." → continue each
-    await bot.waitForDialog(15);
-    await bot.continueDialog();
-
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // varp → 5, research_notes added
-
-    // mesbox "Aubury gives you his research notes." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue through all dialog pages until done
+    await bot.continueRemainingDialogs();
 
     // Verify
     await bot.waitForTicks(2);
@@ -507,128 +367,17 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
     await bot.walkToWithPathfinding(3103, 9571);
     bot.log('STATE', `In inner room: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Talk to Sedridor
+    // Talk to Sedridor — hand over research notes, long lore dialog
     await bot.talkToNpc('Sedridor');
 
-    // chatnpc "Welcome adventurer..." greeting → continue
-    await bot.waitForDialog(15);
-    await bot.continueDialog();
-
-    // varp=5 (received_notes) → goes to @head_wizard_notes
-    // chatnpc "Ah, <name>. How goes your quest?..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatplayer "Yes, I have. He gave me some research notes..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "May I have his notes then?" → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatplayer "Sure. I have them here." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // Long series of chatnpc pages explaining the lore
-    // chatnpc "Well, before you hand them over to me..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Now as you may or may not know..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "When this Tower was burnt down..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "I came upon a scroll..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "This rock was called the 'Rune Essence'..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "elemental altars that were scattered..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "or these elemental altars... Aubury discovered in a standard delivery..." → continue
-    // (RS2 line 160: pipe-separated text, single chatnpc call)
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "teleportation spell that he had never come across..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "As I'm sure you have now guessed..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "for if we could but find the elemental altars..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatplayer "I'm still not sure how I fit into..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "You haven't guessed? This talisman..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "the entrance to the long forgotten Air Altar!..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "And this is not all!..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "just as our ancestors did!..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "I will keep the teleport skill..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "This means that if any evil power..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "tragedy befalling this world. I know not where the temples..." → continue
-    // (RS2 line 171: pipe-separated text, single chatnpc call)
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "return your Air Talisman to you..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "you wish to visit the Rune Essence..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatplayer "So only you and Aubury know..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "No... there are others..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Use the Air Talisman to locate..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // mesbox "You hand the head wizard the research notes. He hands you back the Air Talisman." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    // Continue through all dialog pages (welcome, lore explanation, mesbox handover)
+    // This is a very long dialog (20+ pages), so use generous limits
+    for (let i = 0; i < 50; i++) {
+        const hasDialog = await bot.waitForDialog(10);
+        if (!hasDialog) break;
+        if (bot.isMultiChoiceOpen()) break;
+        await bot.continueDialog();
+    }
 
     // quest complete: inv_del research_notes, inv_add air_talisman, queue(rune_mysteries_complete)
 

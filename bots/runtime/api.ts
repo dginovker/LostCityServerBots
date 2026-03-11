@@ -600,6 +600,47 @@ export class BotAPI {
     }
 
     /**
+     * Check if the current dialog is a multi-choice dialog (multi2/multi3/multi4/multi5).
+     * Uses modalChat to check the interface component ID.
+     */
+    isMultiChoiceOpen(): boolean {
+        if (!this.isDialogOpen()) return false;
+        const multiIds = [
+            Component.getId('multi2'),
+            Component.getId('multi3'),
+            Component.getId('multi4'),
+            Component.getId('multi5')
+        ];
+        return multiIds.includes(this.player.modalChat);
+    }
+
+    /**
+     * Continue through dialog pages until a multi-choice dialog appears or dialog ends.
+     * Returns true if a multi-choice is now open, false if dialog ended.
+     */
+    async continueDialogsUntilChoice(maxPages: number = 30): Promise<boolean> {
+        for (let i = 0; i < maxPages; i++) {
+            const hasDialog = await this.waitForDialog(10);
+            if (!hasDialog) return false;
+            if (this.isMultiChoiceOpen()) return true;
+            await this.continueDialog();
+        }
+        return false;
+    }
+
+    /**
+     * Continue through remaining dialog pages until no more dialogs appear.
+     */
+    async continueRemainingDialogs(maxPages: number = 20): Promise<void> {
+        for (let i = 0; i < maxPages; i++) {
+            const hasDialog = await this.waitForDialog(3);
+            if (!hasDialog) return;
+            if (this.isMultiChoiceOpen()) return; // unexpected choice, stop
+            await this.continueDialog();
+        }
+    }
+
+    /**
      * Wait until a dialog is open (script paused on PAUSEBUTTON), or timeout.
      */
     async waitForDialog(timeoutTicks: number = 30): Promise<boolean> {
@@ -640,7 +681,12 @@ export class BotAPI {
      *
      * The dialog system uses components like multi2:com_1, multi2:com_2 for 2-choice,
      * multi3:com_1..com_3 for 3-choice, etc. The RS2 script checks `last_com` against
-     * the resumeButtons list to determine which option was selected.
+     * these components to determine which option was selected.
+     *
+     * We derive the button component ID from the current modalChat interface rather
+     * than from resumeButtons, because resumeButtons can contain stale entries from
+     * previous choices (openChatModal only clears them when the script is paused,
+     * not during execution).
      */
     async selectDialogOption(index: number): Promise<void> {
         if (!this.player.activeScript || this.player.activeScript.execution !== ScriptState.PAUSEBUTTON) {
@@ -650,15 +696,29 @@ export class BotAPI {
             throw new Error(`selectDialogOption: index must be 1-5, got ${index}`);
         }
 
-        // Find which component to click by checking resumeButtons.
-        // resumeButtons are set by if_setresumebuttons in order: com_1, com_2, com_3, com_4, com_5.
-        // We select the Nth valid (non -1) button.
-        const validButtons = this.player.resumeButtons.filter(id => id !== -1);
-        if (index > validButtons.length) {
-            throw new Error(`selectDialogOption: index ${index} out of range, only ${validButtons.length} options available (resumeButtons: [${this.player.resumeButtons.join(',')}])`);
+        // Determine the current multi-choice interface from modalChat and derive
+        // the correct button component ID. This avoids issues with stale resumeButtons.
+        const multiInterfaces: { root: number; prefix: string; maxOptions: number }[] = [
+            { root: Component.getId('multi2'), prefix: 'multi2', maxOptions: 2 },
+            { root: Component.getId('multi3'), prefix: 'multi3', maxOptions: 3 },
+            { root: Component.getId('multi4'), prefix: 'multi4', maxOptions: 4 },
+            { root: Component.getId('multi5'), prefix: 'multi5', maxOptions: 5 }
+        ];
+
+        const currentMulti = multiInterfaces.find(m => m.root === this.player.modalChat);
+        if (!currentMulti) {
+            throw new Error(`selectDialogOption: current modalChat ${this.player.modalChat} is not a multi-choice interface`);
         }
 
-        const comId = validButtons[index - 1]!;
+        if (index > currentMulti.maxOptions) {
+            throw new Error(`selectDialogOption: index ${index} out of range for ${currentMulti.prefix} (max ${currentMulti.maxOptions})`);
+        }
+
+        const comId = Component.getId(`${currentMulti.prefix}:com_${index}`);
+        if (comId === -1) {
+            throw new Error(`selectDialogOption: component ${currentMulti.prefix}:com_${index} not found`);
+        }
+
         this.player.lastCom = comId;
         this.log('ACTION', `selectDialogOption: index=${index}, comId=${comId}`);
 

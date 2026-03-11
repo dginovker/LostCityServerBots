@@ -9,6 +9,7 @@ import Environment from '#/util/Environment.js';
 import { printError, printInfo } from '#/util/Logger.js';
 import { startManagementWeb, startWeb } from '#/web.js';
 import OnDemand from '#/engine/OnDemand.js';
+import { autostartBots } from '../bots/runtime/autostart.ts';
 
 if (
     OnDemand.cache.count(0) !== 9 ||
@@ -37,6 +38,7 @@ if (Environment.EASY_STARTUP) {
 }
 
 await World.start();
+autostartBots();
 
 const tcpServer = new TcpServer();
 tcpServer.start();

@@ -99,5 +99,8 @@ export default {
     // used for unpacking/custom development
     BUILD_VERIFY_PACK: tryParseBoolean(process.env.BUILD_VERIFY_PACK, true),
     // used for unpacking/custom development
-    BUILD_SRC_DIR: tryParseString(process.env.BUILD_SRC_DIR, '../content')
+    BUILD_SRC_DIR: tryParseString(process.env.BUILD_SRC_DIR, '../content'),
+
+    /// bots
+    BOT_AUTOSTART: tryParseString(process.env.BOT_AUTOSTART, '')
 };

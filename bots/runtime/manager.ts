@@ -69,11 +69,33 @@ class BotManager {
         }
 
         World.botControllers.delete(bot.controller);
+        World.removePlayer(bot.player);
         this.activeBots.delete(username);
     }
 
     listBots(): string[] {
         return Array.from(this.activeBots.keys());
+    }
+
+    countBotsByPrefix(prefix: string): number {
+        let count = 0;
+        for (const name of this.activeBots.keys()) {
+            if (name.startsWith(prefix + '-')) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    nextBotNumber(prefix: string): number {
+        let max = 0;
+        for (const name of this.activeBots.keys()) {
+            if (name.startsWith(prefix + '-')) {
+                const num = parseInt(name.slice(prefix.length + 1), 10);
+                if (num > max) max = num;
+            }
+        }
+        return max + 1;
     }
 
     getBot(username: string): BotAPI | null {
