@@ -4,6 +4,7 @@ import InvType from '../../src/cache/config/InvType.ts';
 import LocType from '../../src/cache/config/LocType.ts';
 import NpcType from '../../src/cache/config/NpcType.ts';
 import ObjType from '../../src/cache/config/ObjType.ts';
+import VarPlayerType from '../../src/cache/config/VarPlayerType.ts';
 import World from '../../src/engine/World.ts';
 import { Interaction } from '../../src/engine/entity/Interaction.ts';
 import type Loc from '../../src/engine/entity/Loc.ts';
@@ -1175,5 +1176,51 @@ export class BotAPI {
         }
 
         return closest;
+    }
+
+    /**
+     * Equip (wield/wear) an inventory item by triggering OPHELD2.
+     * This simulates the client clicking "Wield" or "Wear" on an item in inventory.
+     *
+     * @param itemName Display name of the item to equip
+     */
+    async equipItem(itemName: string): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`equipItem: "${itemName}" not found in inventory`);
+        }
+
+        const objType = ObjType.get(item.id);
+
+        // Set lastItem and lastSlot (same as OpHeldHandler)
+        this.player.lastItem = item.id;
+        this.player.lastSlot = item.slot;
+
+        // Look up the [opheld2,_] script (Wield/Wear is always op 2)
+        const trigger = ServerTriggerType.OPHELD2;
+        const script = ScriptProvider.getByTrigger(trigger, objType.id, objType.category);
+        if (!script) {
+            throw new Error(`equipItem: no [opheld2] script found for "${itemName}" (${objType.debugname})`);
+        }
+
+        this.log('ACTION', `equipItem: ${itemName} (id=${item.id}, slot=${item.slot})`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Enable or disable running.
+     * Equivalent to clicking the run orb in the player controls interface.
+     * The run orb calls p_run(1) or p_run(0), which sets player.run and syncs the varp.
+     * Requires run energy >= 1% (100/10000) to enable.
+     */
+    enableRun(enabled: boolean = true): void {
+        const value = enabled ? 1 : 0;
+        if (enabled && this.player.runenergy < 100) {
+            throw new Error('enableRun: not enough run energy (need >= 1%)');
+        }
+        this.player.run = value;
+        this.player.setVar(VarPlayerType.RUN, value);
+        this.log('ACTION', `enableRun: ${enabled} (runenergy=${this.player.runenergy})`);
     }
 }
