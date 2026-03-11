@@ -38,6 +38,10 @@ class BotManager {
         player.lastConnected = World.currentTick;
         player.lastResponse = World.currentTick;
 
+        // Enable running — bots start with full run energy (10000)
+        player.runenergy = 10000;
+        player.run = 1;
+
         // Set tutorial complete BEFORE login so the login trigger doesn't open
         // the tutorial interface (which would make the player busy/inaccessible).
         player.vars[281] = 1000; // tutorial varp = tutorial_complete
