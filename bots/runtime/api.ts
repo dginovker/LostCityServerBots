@@ -5,7 +5,7 @@ import LocType from '../../src/cache/config/LocType.js';
 import NpcType from '../../src/cache/config/NpcType.js';
 import ObjType from '../../src/cache/config/ObjType.js';
 import VarPlayerType from '../../src/cache/config/VarPlayerType.js';
-import { changeNpcCollision } from '../../src/engine/GameMap.js';
+import { changeLocCollision, changeNpcCollision } from '../../src/engine/GameMap.js';
 import World from '../../src/engine/World.js';
 import { Interaction } from '../../src/engine/entity/Interaction.js';
 import type Loc from '../../src/engine/entity/Loc.js';
@@ -616,35 +616,103 @@ export class BotAPI {
             const result = findPathSegment(level, curX, curZ, targetX, targetZ);
 
             if (result.length === 0) {
-                // Path is blocked — try to find and open a nearby door/gate.
-                // Search near the bot's current position first, then near the target,
-                // then along the midpoint between them.
+                // Path is blocked — use ghost pathfinding to identify and open doors along the ideal path.
+                // 1. Collect all nearby openable doors/gates
                 const midX = Math.round((curX + targetX) / 2);
                 const midZ = Math.round((curZ + targetZ) / 2);
-                const searchPoints = [
+                const segmentDist = Math.max(Math.abs(targetX - curX), Math.abs(targetZ - curZ));
+                const searchRadius = Math.max(segmentDist, 15);
+
+                // Collect doors from multiple search points, dedup by position
+                const doorMap = new Map<string, Loc>();
+                for (const pt of [
                     { x: curX, z: curZ },
                     { x: targetX, z: targetZ },
                     { x: midX, z: midZ },
-                ];
+                ]) {
+                    for (const d of doorRegistry.findDoorsNear(pt.x, pt.z, level, searchRadius)) {
+                        const key = `${d.x},${d.z}`;
+                        if (!openedDoors.has(key)) {
+                            doorMap.set(key, d);
+                        }
+                    }
+                }
+                const nearbyDoors = [...doorMap.values()];
 
-                let door: Loc | null = null;
-                for (const pt of searchPoints) {
-                    door = this.findOpenableLocNear(pt.x, pt.z, level, 5);
-                    if (door && !openedDoors.has(`${door.x},${door.z}`)) break;
-                    door = null; // Skip already-opened doors
+                if (nearbyDoors.length === 0) {
+                    // No openable doors found — throw with diagnostics
+                    const nearbyLocs = this.describeNearbyLocs(curX, curZ, level, 5);
+                    const targetNearbyLocs = (curX !== targetX || curZ !== targetZ) ? this.describeNearbyLocs(targetX, targetZ, level, 5) : '';
+                    throw new Error(
+                        `Pathfinding failed: no path from (${curX},${curZ}) to (${targetX},${targetZ}) on level ${level} (final destination: (${x},${z}))\n` +
+                        'No openable door/gate found nearby.\n' +
+                        `Locs within 5 tiles of bot (${curX},${curZ}):\n${nearbyLocs}` +
+                        (targetNearbyLocs ? `\nLocs within 5 tiles of target (${targetX},${targetZ}):\n${targetNearbyLocs}` : '')
+                    );
                 }
 
-                if (door) {
-                    const doorKey = `${door.x},${door.z}`;
-                    openedDoors.add(doorKey);
-                    const doorType = LocType.get(door.type);
-                    this.log('ACTION', `openDoor (auto): ${doorType.debugname} at (${door.x},${door.z}) — path was blocked at (${curX},${curZ})->(${targetX},${targetZ})`);
+                // 2. Ghost pathfind: temporarily remove door collision, pathfind, restore
+                let ghostPath: Uint32Array;
+                const doorLocTypes = nearbyDoors.map(d => ({ loc: d, locType: LocType.get(d.type) }));
+                try {
+                    // Remove collision for all nearby doors
+                    for (const { loc: d, locType: lt } of doorLocTypes) {
+                        changeLocCollision(d.shape, d.angle, lt.blockrange, lt.length, lt.width, lt.active, d.x, d.z, level, false);
+                    }
+                    // Re-run pathfinding with doors removed
+                    ghostPath = findPathSegment(level, curX, curZ, targetX, targetZ);
+                } finally {
+                    // ALWAYS restore collision
+                    for (const { loc: d, locType: lt } of doorLocTypes) {
+                        changeLocCollision(d.shape, d.angle, lt.blockrange, lt.length, lt.width, lt.active, d.x, d.z, level, true);
+                    }
+                }
 
-                    await this.interactLoc(door, 1);
+                if (ghostPath.length === 0) {
+                    // No path even without doors — throw with diagnostics
+                    const nearbyLocs = this.describeNearbyLocs(curX, curZ, level, 5);
+                    const targetNearbyLocs = (curX !== targetX || curZ !== targetZ) ? this.describeNearbyLocs(targetX, targetZ, level, 5) : '';
+                    throw new Error(
+                        `Pathfinding failed: no path from (${curX},${curZ}) to (${targetX},${targetZ}) on level ${level} (final destination: (${x},${z}))\n` +
+                        `Ghost pathfinding also failed — no path even with ${nearbyDoors.length} door(s) collision removed.\n` +
+                        `Doors removed: ${nearbyDoors.map(d => `${LocType.get(d.type).debugname ?? d.type} at (${d.x},${d.z})`).join(', ')}\n` +
+                        `Locs within 5 tiles of bot (${curX},${curZ}):\n${nearbyLocs}` +
+                        (targetNearbyLocs ? `\nLocs within 5 tiles of target (${targetX},${targetZ}):\n${targetNearbyLocs}` : '')
+                    );
+                }
+
+                // 3. Open all nearby doors that were blocking the path.
+                // We know removing their collision allowed the ghost path to succeed,
+                // so open them all (sorted by distance from bot — nearbyDoors is already sorted).
+                // Note: waypoints are sparse turning points, NOT every tile, so scanning
+                // waypoints for doors would miss doors on straight segments.
+                for (const doorLoc of nearbyDoors) {
+                    const doorKey = `${doorLoc.x},${doorLoc.z}`;
+                    if (openedDoors.has(doorKey)) continue;
+
+                    // Verify door is still closeable (live loc still has op='Open')
+                    const liveDoors = doorRegistry.findDoorsNear(doorLoc.x, doorLoc.z, level, 0);
+                    if (liveDoors.length === 0) continue;
+
+                    const doorType = LocType.get(doorLoc.type);
+                    this.log('ACTION', `openDoor (ghost): ${doorType.debugname ?? doorLoc.type} at (${doorLoc.x},${doorLoc.z}) — path was blocked at (${curX},${curZ})->(${targetX},${targetZ})`);
+
+                    // Walk toward the door (pathfind to get adjacent)
+                    const pathToDoor = findPathSegment(level, this.player.x, this.player.z, doorLoc.x, doorLoc.z);
+                    if (pathToDoor.length > 0) {
+                        this.player.queueWaypoints(pathToDoor);
+                        for (let tick = 0; tick < 35; tick++) {
+                            await this.waitForTick();
+                            if (!this.player.hasWaypoints()) break;
+                        }
+                    }
+
+                    // Open the door
+                    await this.interactLoc(doorLoc, 1);
                     await this.waitForTicks(1);
+                    openedDoors.add(doorKey);
 
-                    // After opening the door, immediately try to walk toward the target
-                    // before the door auto-closes
+                    // After opening, immediately try to walk toward the target
                     const throughResult = findPathSegment(level, this.player.x, this.player.z, targetX, targetZ);
                     if (throughResult.length > 0) {
                         this.player.queueWaypoints(throughResult);
@@ -654,19 +722,9 @@ export class BotAPI {
                             if (!this.player.hasWaypoints()) break;
                         }
                     }
-                    // Resume the loop — next iteration will re-pathfind from current position
-                    continue;
                 }
-
-                // No openable loc found — throw with diagnostic info
-                const nearbyLocs = this.describeNearbyLocs(curX, curZ, level, 5);
-                const targetNearbyLocs = (curX !== targetX || curZ !== targetZ) ? this.describeNearbyLocs(targetX, targetZ, level, 5) : '';
-                throw new Error(
-                    `Pathfinding failed: no path from (${curX},${curZ}) to (${targetX},${targetZ}) on level ${level} (final destination: (${x},${z}))\n` +
-                    'No openable door/gate found nearby.\n' +
-                    `Locs within 5 tiles of bot (${curX},${curZ}):\n${nearbyLocs}` +
-                    (targetNearbyLocs ? `\nLocs within 5 tiles of target (${targetX},${targetZ}):\n${targetNearbyLocs}` : '')
-                );
+                // Resume the loop — next iteration will re-pathfind from current position
+                continue;
             }
 
             this.player.queueWaypoints(result);
