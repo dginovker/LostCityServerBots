@@ -71,24 +71,66 @@ Omit `--timeout` — let each script's `ScriptMeta.maxTicks` handle it.
 
 ## Single-state iteration with --state=
 
-Full E2E runs are expensive. Use `--state=` to test independant parts in parallel in seconds:
+Full E2E runs are expensive. Use `--state=` to test independent states in
+parallel in seconds. Snapshots are captured automatically during E2E runs, or
+you can handcraft them.
 
 ```bash
-# Make a state for the smithing component
-bun engine/bots/test/run.ts f2pskills --state="f2p-skills/smithing"
+# Run states in parallel against the persistent server:
+bun engine/bots/test/run.ts f2pskills --state="f2p-skills/smithing" &
+bun engine/bots/test/run.ts f2pskills --state="f2p-skills/woodcutting" &
+wait
+# Each process exits 0 (PASS) or 1 (FAIL) and prints a [RESULT] line.
 
-# Make a state for the woodcutting component
-bun engine/bots/test/run.ts f2pskills --state="f2p-skills/woodcutting"
-
-# Run them all in parallel
-Todo
-
-# View the results
-todo
-
-# Once you have all the states working, run an E2E and do something else while it completes
+# Once all states pass individually, do a full E2E:
 bun engine/bots/test/run.ts f2pskills
 ```
+
+### Where snapshots come from
+
+Snapshots live in `bots/test/snapshots/<root-state-name>.json`. They are
+generated automatically during full E2E runs (saved incrementally, so partial
+runs produce snapshots for every state the bot entered). You can also write
+them by hand.
+
+### Handcrafting snapshots
+
+The file must be named after the root state name returned by `buildStates()`
+(e.g. `sheep-shearer.json` for a root with `name: 'sheep-shearer'`). Format:
+
+```json
+{
+  "test": "sheep-shearer",
+  "states": [
+    {
+      "path": "sheep-shearer/deliver-wool",
+      "snapshot": {
+        "position": { "x": 3191, "z": 3273, "level": 0 },
+        "skills": {
+          "ATTACK": 1, "DEFENCE": 1, "STRENGTH": 1, "HITPOINTS": 10,
+          "RANGED": 1, "PRAYER": 1, "MAGIC": 1, "COOKING": 1,
+          "WOODCUTTING": 1, "FLETCHING": 1, "FISHING": 1, "FIREMAKING": 1,
+          "CRAFTING": 1, "SMITHING": 1, "MINING": 1, "HERBLORE": 1,
+          "AGILITY": 1, "THIEVING": 1, "STAT18": 1, "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": { "179": 1 },
+        "items": [
+          { "id": 1265, "name": "Bronze pickaxe", "count": 1 },
+          { "id": 995, "name": "Coins", "count": 5 },
+          { "id": 1735, "name": "Shears", "count": 1 }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Look up values in:
+- **Positions**: existing snapshots, scripts, or the game map
+- **Item IDs/names**: `content/pack/obj.pack`
+- **Varp IDs/values**: `content/pack/varp.pack` and quest scripts in `content/scripts/`
+- **Skill names**: use the uppercase keys shown above (match `PlayerStatMap`)
 
 ---
 
