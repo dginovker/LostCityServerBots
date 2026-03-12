@@ -1,5 +1,8 @@
+import path from 'path';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
+import { type BotState, runStateMachine } from '../runtime/state-machine.js';
+import type { ScriptMeta } from '../runtime/script-meta.js';
 
 // Varp ID for Cook's Assistant quest progress (from content/pack/varp.pack: 29=cookquest)
 const COOK_QUEST_VARP = 29;
@@ -346,49 +349,16 @@ async function getGrain(bot: BotAPI): Promise<void> {
 async function millFlour(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Milling grain into flour ===');
 
-    // Walk toward the windmill. First go to a spot near the windmill to find the door.
-    // The windmill is at approximately (3166, 3306). It has walls surrounding it.
-    // We need to find the door entrance. Try approaching from different directions.
-    // First try approaching from the east side to scout.
+    // Walk to the windmill entrance. The windmill has double doors at (3166-3167, 3302).
     await bot.walkToWithPathfinding(3168, 3302);
     bot.log('STATE', `Near windmill: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Log nearby locs to understand the windmill layout
-    const locs = bot.findAllNearbyLocs(8);
-    const interestingLocs = locs.filter(l => l.displayName.includes('Door') || l.displayName.includes('door')
-        || l.debugname.includes('door') || l.displayName === 'Ladder'
-        || l.debugname.includes('mill'));
-    bot.log('STATE', `Nearby windmill locs: ${interestingLocs.map(l => `${l.debugname}=${l.displayName}@(${l.x},${l.z})`).join(', ')}`);
-
-    // Open the windmill door
-    await bot.openDoor('poordooropen');
+    // Open the double doors (openbankdoor_l at east side)
+    await bot.openDoor('openbankdoor_l');
     await bot.waitForTicks(1);
 
-    // Try to enter from east
-    try {
-        await bot.walkToWithPathfinding(3166, 3305);
-    } catch {
-        // Try from different directions
-        bot.log('STATE', 'Cannot enter windmill from east, trying north');
-        try {
-            await bot.walkToWithPathfinding(3166, 3309);
-            await bot.openDoor('poordooropen');
-            await bot.waitForTicks(1);
-            await bot.walkToWithPathfinding(3166, 3306);
-        } catch {
-            bot.log('STATE', 'Cannot enter windmill from north, trying west');
-            try {
-                await bot.walkToWithPathfinding(3163, 3306);
-                await bot.openDoor('poordooropen');
-                await bot.waitForTicks(1);
-                await bot.walkToWithPathfinding(3166, 3306);
-            } catch {
-                const allLocs = bot.findAllNearbyLocs(10);
-                bot.log('STATE', `All locs near windmill: ${allLocs.map(l => `${l.debugname}=${l.displayName}@(${l.x},${l.z})`).join(', ')}`);
-                throw new Error(`Cannot enter windmill from (${bot.player.x},${bot.player.z})`);
-            }
-        }
-    }
+    // Walk through the door into the windmill
+    await bot.walkToWithPathfinding(3166, 3305);
     bot.log('STATE', `At windmill: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
     // The windmill has ladders connecting floors:
@@ -681,7 +651,7 @@ async function completeQuest(bot: BotAPI): Promise<void> {
  * The kitchen is surrounded by walls. The Cook wanders in the kitchen area.
  * We enter through the castle entrance and navigate through the interior.
  */
-async function walkToKitchen(bot: BotAPI): Promise<void> {
+export async function walkToKitchen(bot: BotAPI): Promise<void> {
     if (bot.player.level !== 0) {
         throw new Error(`Cannot walk to kitchen from level ${bot.player.level} -- must be on ground floor`);
     }
@@ -717,6 +687,101 @@ async function walkToKitchen(bot: BotAPI): Promise<void> {
     bot.log('STATE', `At kitchen: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 }
 
+/**
+ * Build the Cook's Assistant state machine.
+ * States: earn-coins, buy-supplies, start-quest, get-egg, get-milk, get-flour, deliver-to-cook
+ */
+export function buildCooksAssistantStates(bot: BotAPI): BotState {
+    return {
+        name: 'cooks-assistant',
+        isComplete: () => bot.getQuestProgress(COOK_QUEST_VARP) === STAGE_COMPLETE,
+        run: async () => { throw new Error('Composite state should not be called directly'); },
+        children: [
+            {
+                name: 'earn-coins',
+                stuckThreshold: 3000,
+                isComplete: () => {
+                    const coins = bot.findItem('Coins');
+                    return coins !== null && coins.count >= 10;
+                },
+                run: async () => {
+                    await earnCoins(bot, 10);
+                }
+            },
+            {
+                name: 'buy-supplies',
+                isComplete: () => bot.findItem('Pot') !== null && bot.findItem('Bucket') !== null,
+                run: async () => {
+                    await buyFromGeneralStore(bot, [
+                        { name: 'Pot', qty: 1 },
+                        { name: 'Bucket', qty: 1 }
+                    ]);
+                }
+            },
+            {
+                name: 'start-quest',
+                isComplete: () => bot.getQuestProgress(COOK_QUEST_VARP) >= STAGE_STARTED,
+                run: async () => {
+                    await startQuest(bot);
+                }
+            },
+            {
+                name: 'get-egg',
+                isComplete: () => bot.findItem('Egg') !== null,
+                run: async () => {
+                    await getEgg(bot);
+                }
+            },
+            {
+                name: 'get-milk',
+                isComplete: () => bot.findItem('Bucket of milk') !== null,
+                run: async () => {
+                    await getMilk(bot);
+                }
+            },
+            {
+                name: 'get-flour',
+                isComplete: () => bot.findItem('Pot of flour') !== null,
+                run: async () => {
+                    await getGrain(bot);
+                    await millFlour(bot);
+                }
+            },
+            {
+                name: 'deliver-to-cook',
+                isComplete: () => bot.getQuestProgress(COOK_QUEST_VARP) === STAGE_COMPLETE,
+                run: async () => {
+                    // Verify we have all 3 items
+                    const egg = bot.findItem('Egg');
+                    const milk = bot.findItem('Bucket of milk');
+                    const flour = bot.findItem('Pot of flour');
+                    if (!egg) throw new Error('Missing egg before quest completion');
+                    if (!milk) throw new Error('Missing bucket of milk before quest completion');
+                    if (!flour) throw new Error('Missing pot of flour before quest completion');
+                    bot.log('EVENT', 'All 3 quest items collected!');
+
+                    await completeQuest(bot);
+
+                    await bot.waitForTicks(5);
+                    bot.dismissModals();
+
+                    const finalVarp = bot.getQuestProgress(COOK_QUEST_VARP);
+                    const cookingSkill = bot.getSkill('Cooking');
+
+                    if (finalVarp !== STAGE_COMPLETE) {
+                        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
+                    }
+                    if (cookingSkill.exp <= 0) {
+                        throw new Error('No cooking XP gained during quest');
+                    }
+
+                    bot.log('SUCCESS', `Cook's Assistant quest complete! varp=${finalVarp}, cooking_xp=${cookingSkill.exp}`);
+                }
+            }
+        ]
+    };
+}
+
 export async function cooksAssistant(bot: BotAPI): Promise<void> {
     // === Setup: skip tutorial, start in Lumbridge ===
     await skipTutorial(bot);
@@ -729,78 +794,17 @@ export async function cooksAssistant(bot: BotAPI): Promise<void> {
         throw new Error(`Quest varp is ${initialVarp}, expected ${STAGE_NOT_STARTED} (not started)`);
     }
 
-    // ================================================================
-    // Step 1: Earn coins by pickpocketing men
-    // Need to buy: 1 bucket (2gp) + 1 pot (1gp) = 3gp minimum.
-    // Get a few extra for safety.
-    // ================================================================
-    bot.log('STATE', '=== Step 1: Earn coins ===');
-    await earnCoins(bot, 10);
-
-    // ================================================================
-    // Step 2: Buy bucket and pot from the General Store
-    // ================================================================
-    bot.log('STATE', '=== Step 2: Buy supplies ===');
-    await buyFromGeneralStore(bot, [
-        { name: 'Pot', qty: 1 },
-        { name: 'Bucket', qty: 1 }
-    ]);
-
-    // ================================================================
-    // Step 3: Start the quest by talking to Cook
-    // ================================================================
-    bot.log('STATE', '=== Step 3: Start quest ===');
-    await startQuest(bot);
-
-    // ================================================================
-    // Step 4: Gather the 3 ingredients
-    // ================================================================
-
-    // 4a: Get an egg from the chicken area
-    bot.log('STATE', '=== Step 4a: Get egg ===');
-    await getEgg(bot);
-
-    // 4b: Milk a cow with the bucket
-    bot.log('STATE', '=== Step 4b: Get milk ===');
-    await getMilk(bot);
-
-    // 4c: Get grain and mill it into flour
-    bot.log('STATE', '=== Step 4c: Get grain ===');
-    await getGrain(bot);
-
-    bot.log('STATE', '=== Step 4d: Mill flour ===');
-    await millFlour(bot);
-
-    // Verify we have all 3 items
-    const egg = bot.findItem('Egg');
-    const milk = bot.findItem('Bucket of milk');
-    const flour = bot.findItem('Pot of flour');
-    if (!egg) throw new Error('Missing egg before quest completion');
-    if (!milk) throw new Error('Missing bucket of milk before quest completion');
-    if (!flour) throw new Error('Missing pot of flour before quest completion');
-    bot.log('EVENT', 'All 3 quest items collected!');
-
-    // ================================================================
-    // Step 5: Return to Cook and complete the quest
-    // ================================================================
-    bot.log('STATE', '=== Step 5: Complete quest ===');
-    await completeQuest(bot);
-
-    // ================================================================
-    // Step 6: Verify quest completion
-    // ================================================================
-    await bot.waitForTicks(5);
-    bot.dismissModals();
-
-    const finalVarp = bot.getQuestProgress(COOK_QUEST_VARP);
-    const cookingSkill = bot.getSkill('Cooking');
-
-    if (finalVarp !== STAGE_COMPLETE) {
-        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
-    }
-    if (cookingSkill.exp <= 0) {
-        throw new Error('No cooking XP gained during quest');
-    }
-
-    bot.log('SUCCESS', `Cook's Assistant quest complete! varp=${finalVarp}, cooking_xp=${cookingSkill.exp}`);
+    const root = buildCooksAssistantStates(bot);
+    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
+    await runStateMachine(bot, { root, varpIds: [COOK_QUEST_VARP], captureSnapshots: true, snapshotDir });
 }
+
+export const metadata: ScriptMeta = {
+    name: 'cooksassistant',
+    type: 'quest',
+    varpId: COOK_QUEST_VARP,
+    varpComplete: STAGE_COMPLETE,
+    maxTicks: 15000,
+    run: cooksAssistant,
+    buildStates: buildCooksAssistantStates,
+};

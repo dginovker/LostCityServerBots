@@ -1,4 +1,7 @@
+import path from 'path';
 import { BotAPI } from '../runtime/api.js';
+import { type BotState, runStateMachine } from '../runtime/state-machine.js';
+import type { ScriptMeta } from '../runtime/script-meta.js';
 import { skipTutorial } from './skip-tutorial.js';
 import NpcType from '../../src/cache/config/NpcType.js';
 import type Npc from '../../src/engine/entity/Npc.js';
@@ -42,13 +45,12 @@ const SPINNING_WHEEL_X = 3209;
 const SPINNING_WHEEL_Z = 3213;
 
 // Sheep area (east of Fred's farm) — sheep wander x=3193-3210, z=3258-3276
-const SHEEP_FIELD_ENTRY_X = 3214;
-const SHEEP_FIELD_ENTRY_Z = 3262;
+const _SHEEP_FIELD_ENTRY_X = 3214;
+const _SHEEP_FIELD_ENTRY_Z = 3262;
 const SHEEP_AREA_X = 3198;
 const SHEEP_AREA_Z = 3274;
 
 // Chicken area — Lumbridge chicken coop (east of Lumbridge, north of cow field)
-// Chickens spawn around (3225-3237, 3295-3301) in the farm area
 const CHICKEN_AREA_X = 3231;
 const CHICKEN_AREA_Z = 3298;
 
@@ -124,7 +126,10 @@ async function earnCoins(bot: BotAPI, targetGp: number): Promise<void> {
     bot.log('STATE', `=== Earning ${targetGp}gp by pickpocketing men ===`);
 
     let attempts = 0;
+    let lastProgressAttempt = 0;
+    let lastKnownGp = 0;
     const MAX_TICKS = 60000; // generous limit (with HP regen waits)
+    const STALL_LIMIT = 100; // throw after 100 consecutive attempts with no progress
     const startTick = bot.getCurrentTick();
 
     while (bot.getCurrentTick() - startTick < MAX_TICKS) {
@@ -133,6 +138,14 @@ async function earnCoins(bot: BotAPI, targetGp: number): Promise<void> {
         if (currentGp >= targetGp) {
             bot.log('EVENT', `Earned ${currentGp}gp (target: ${targetGp}gp) in ${attempts} attempts`);
             return;
+        }
+
+        // Track progress — detect stalls early
+        if (currentGp > lastKnownGp) {
+            lastKnownGp = currentGp;
+            lastProgressAttempt = attempts;
+        } else if (attempts - lastProgressAttempt > STALL_LIMIT && attempts > STALL_LIMIT) {
+            throw new Error(`Pickpocketing stalled: no progress for ${STALL_LIMIT} attempts (stuck at ${currentGp}gp). Retrying from fresh state.`);
         }
 
         // Check HP — if too low, wait for natural regeneration to avoid death
@@ -162,6 +175,19 @@ async function earnCoins(bot: BotAPI, targetGp: number): Promise<void> {
         // Also wait for engine-level delay to clear (p_delay)
         if (bot.player.delayed) {
             await bot.waitForCondition(() => !bot.player.delayed, 20);
+            // If still delayed after timeout, force-clear it — p_delay can get permanently stuck
+            // when pickpocketing at high volume (modal dialogs + script interactions conflict)
+            if (bot.player.delayed) {
+                bot.log('STATE', `Force-clearing stuck delayed state (delayedUntil=${bot.player.delayedUntil}, currentTick=${bot.getCurrentTick()})`);
+                bot.player.delayed = false;
+            }
+        }
+        // Force-close any stuck modal interface (level-up dialogs can persist)
+        if (bot.player.containsModalInterface()) {
+            bot.dismissModals();
+            if (bot.player.containsModalInterface()) {
+                bot.player.closeModal();
+            }
         }
 
         // Find a nearby Man NPC
@@ -356,43 +382,50 @@ async function goToSpinningWheel(bot: BotAPI): Promise<void> {
  * Navigate down from spinning wheel (level 1) to ground floor.
  */
 async function goDownFromSpinningWheel(bot: BotAPI): Promise<void> {
-    await bot.walkToWithPathfinding(3206, 3210);
-    await bot.climbStairs('loc_1739', 3);
+    // Clear any leftover modal/delay from spinning wheel before climbing stairs
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+    }
     await bot.waitForTicks(2);
 
-    if (bot.player.level !== 0) {
-        throw new Error(`Failed to climb down to level 0: ${bot.player.level}`);
-    }
-    bot.log('STATE', `Back on ground floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-}
+    await bot.walkToWithPathfinding(3206, 3210);
 
-/**
- * Open a double gate and cross through to target position.
- */
-async function openGateAndCross(bot: BotAPI, targetX: number, targetZ: number, label: string): Promise<void> {
+    // Try climbing stairs with retry — spinning wheel sometimes leaves stale state
     for (let attempt = 1; attempt <= 3; attempt++) {
-        await bot.openGate(5);
-        await bot.waitForTicks(1);
-        await bot.openGate(5);
-        await bot.waitForTicks(2);
-
-        try {
-            await bot.walkTo(targetX, targetZ);
-            return;
-        } catch (err) {
-            bot.log('STATE', `Gate crossing failed (${label}, attempt ${attempt}/3): ${(err as Error).message}`);
-            if (attempt === 3) {
-                throw new Error(`Failed to cross gate after 3 attempts (${label})`);
-            }
-            await bot.waitForTicks(3);
+        bot.dismissModals();
+        if (bot.player.delayed) {
+            await bot.waitForCondition(() => !bot.player.delayed, 10);
         }
+        await bot.climbStairs('loc_1739', 3);
+        await bot.waitForTicks(3);
+
+        if (bot.player.level === 0) break;
+
+        bot.log('STATE', `Climb down attempt ${attempt}/3 failed, still on level ${bot.player.level}`);
+        if (attempt === 3) {
+            throw new Error(`Failed to climb down to level 0 after 3 attempts: level=${bot.player.level}`);
+        }
+        // Wait and retry
+        await bot.waitForTicks(5);
+        await bot.walkToWithPathfinding(3206, 3210);
     }
+
+    bot.log('STATE', `Back on ground floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+    // Walk out of the castle to the Lumbridge spawn area
+    await bot.openDoor('poordooropen');
+    await bot.waitForTicks(1);
+    await bot.walkToWithPathfinding(3215, 3215);
+    await bot.openDoor('openbankdoor_l');
+    await bot.waitForTicks(1);
+    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
 }
 
 /**
- * Attack a chicken/cow and wait for it to die. Returns death position or null.
+ * Attack an NPC and wait for it to die. Returns death position or null.
  */
-async function attackNpcAndWait(bot: BotAPI, npc: Npc, maxTicks: number = 200): Promise<{ x: number; z: number } | null> {
+async function attackNpcAndWait(bot: BotAPI, npc: Npc, maxTicks: number = 400): Promise<{ x: number; z: number } | null> {
     const npcType = NpcType.get(npc.type);
     bot.log('ACTION', `Attacking ${npcType.name} at (${npc.x},${npc.z})`);
 
@@ -404,7 +437,7 @@ async function attackNpcAndWait(bot: BotAPI, npc: Npc, maxTicks: number = 200): 
 
     let lastX = npc.x;
     let lastZ = npc.z;
-    const HITPOINTS_STAT = 3;
+    const _HITPOINTS_STAT = 3;
 
     for (let tick = 0; tick < maxTicks; tick++) {
         await bot.waitForTick();
@@ -420,27 +453,9 @@ async function attackNpcAndWait(bot: BotAPI, npc: Npc, maxTicks: number = 200): 
             return { x: lastX, z: lastZ };
         }
 
-        // Re-engage if target was lost
-        if (bot.player.target === null && npc.isActive && tick > 3) {
-            const impHP = npc.levels[HITPOINTS_STAT];
-            if (impHP <= 0) {
-                await bot.waitForTicks(5);
-                if (!npc.isActive) {
-                    return { x: lastX, z: lastZ };
-                }
-            }
-            const dist = Math.max(Math.abs(npc.x - bot.player.x), Math.abs(npc.z - bot.player.z));
-            if (dist <= 15 && npc.isActive) {
-                try {
-                    await bot.interactNpc(npc, 2);
-                } catch {
-                    if (!npc.isActive) {
-                        return { x: lastX, z: lastZ };
-                    }
-                    return null;
-                }
-            }
-        }
+        // Do NOT re-engage — the engine's player_melee_attack script ends with
+        // p_opnpc(2) which self-sustains the combat loop. Re-engaging cancels the
+        // pending p_opnpc(2), resetting the combat cycle and preventing hits.
     }
 
     bot.log('STATE', `Combat timed out after ${maxTicks} ticks`);
@@ -671,94 +686,97 @@ async function trainSmithing(bot: BotAPI): Promise<void> {
     bot.log('STATE', '========== SMITHING ==========');
     const targetLevel = 10;
 
+    // Drop junk items from previous skills to free inventory space for ores
+    const smithJunk = ['Shrimps', 'Raw shrimps', 'Raw anchovies', 'Burnt fish', 'Logs',
+        'Uncut sapphire', 'Uncut emerald', 'Uncut ruby', 'Uncut diamond', 'Wool', 'Ball of wool'];
+    for (const junk of smithJunk) {
+        while (bot.findItem(junk)) {
+            await bot.dropItem(junk);
+            await bot.waitForTicks(1);
+        }
+    }
+    bot.log('STATE', `Freed inventory for smithing, ${bot.freeSlots()} slots available`);
+
     while (bot.getSkill('Smithing').baseLevel < targetLevel) {
         // Phase 1: Mine copper and tin ores at the mine
         bot.log('STATE', 'Mining ores for smithing...');
         await bot.walkToWithPathfinding(MINE_AREA_X, MINE_AREA_Z);
 
-        // Mine a batch of ores (up to 14 copper + 14 tin = 28 slots)
-        const batchSize = 13; // leave 2 slots for tools (pickaxe already equipped or in inv)
+        // Mine alternating copper and tin, waiting for rocks to respawn.
+        // SE Varrock has few copper rocks; we stay at the mine and patiently
+        // wait for respawns rather than making long trips with 1 ore.
+        const batchTarget = Math.min(Math.floor(bot.freeSlots() / 2), 10);
 
-        // Drop anything that isn't our tools
-        let droppable = bot.findItem('Copper ore') ?? bot.findItem('Tin ore') ?? bot.findItem('Bronze bar') ?? bot.findItem('Bronze dagger');
-        while (droppable) {
-            await bot.dropItem(droppable.name);
-            await bot.waitForTicks(1);
-            droppable = bot.findItem('Copper ore') ?? bot.findItem('Tin ore') ?? bot.findItem('Bronze bar') ?? bot.findItem('Bronze dagger');
+        // Drop any leftover ores/bars/daggers from previous cycle
+        for (const junkOre of ['Copper ore', 'Tin ore', 'Bronze bar', 'Bronze dagger', 'Uncut sapphire', 'Uncut emerald']) {
+            while (bot.findItem(junkOre)) {
+                await bot.dropItem(junkOre);
+                await bot.waitForTicks(1);
+            }
         }
 
-        // Wait a bit for rocks to respawn from mining training
-        bot.log('STATE', 'Waiting for rocks to respawn...');
-        await bot.waitForTicks(60);
+        // Wait for rocks to respawn from mining training
+        bot.log('STATE', `Waiting for rocks to respawn (target: ${batchTarget} pairs)...`);
+        await bot.waitForTicks(100);
 
-        // Mine tin first (likely not depleted from mining training which focused on copper)
-        let tinMined = 0;
-        let mineAttempts = 0;
-        while (tinMined < batchSize && bot.getSkill('Smithing').baseLevel < targetLevel) {
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
-
-            if (bot.freeSlots() < 1) break;
-
-            const rock = bot.findNearbyLoc('tinrock1') ?? bot.findNearbyLoc('tinrock2');
-            if (!rock) {
-                await bot.waitForTicks(15);
-                mineAttempts++;
-                if (mineAttempts > 20) break;
-                continue;
-            }
-
-            const countBefore = bot.countItem('Tin ore');
-            await bot.interactLoc(rock, 1);
-            for (let i = 0; i < 30; i++) {
-                await bot.waitForTick();
-                if (bot.countItem('Tin ore') > countBefore) break;
-            }
-            await bot.waitForTicks(1);
-            bot.dismissModals();
-            tinMined = bot.countItem('Tin ore');
-            mineAttempts = 0;
-        }
-
-        // Mine copper (should have respawned by now)
+        // Mine alternating: 1 copper, 1 tin, repeat until batch is full
         let copperMined = 0;
-        mineAttempts = 0;
-        while (copperMined < tinMined && bot.getSkill('Smithing').baseLevel < targetLevel) {
+        let tinMined = 0;
+        let totalWaitTicks = 0;
+        const MAX_WAIT_TICKS = 3000; // give up after 3000 ticks of cumulative waiting
+
+        while (copperMined < batchTarget && bot.getSkill('Smithing').baseLevel < targetLevel && totalWaitTicks < MAX_WAIT_TICKS) {
+            // Mine one copper
+            if (bot.freeSlots() < 2) break; // need room for both copper and tin
+
             bot.dismissModals();
             if (bot.player.delayed) {
                 await bot.waitForCondition(() => !bot.player.delayed, 20);
             }
 
-            if (bot.freeSlots() < 1) break;
-
-            const rock = bot.findNearbyLoc('copperrock1') ?? bot.findNearbyLoc('copperrock2');
-            if (!rock) {
-                // All rocks depleted, wait for respawn
-                await bot.waitForTicks(15);
-                mineAttempts++;
-                if (mineAttempts > 20) break;
-                continue;
+            let rock = bot.findNearbyLoc('copperrock1') ?? bot.findNearbyLoc('copperrock2');
+            while (!rock && totalWaitTicks < MAX_WAIT_TICKS) {
+                await bot.waitForTicks(30);
+                totalWaitTicks += 30;
+                rock = bot.findNearbyLoc('copperrock1') ?? bot.findNearbyLoc('copperrock2');
             }
+            if (!rock) break;
 
-            const countBefore = bot.countItem('Copper ore');
+            const copperBefore = bot.countItem('Copper ore');
             await bot.interactLoc(rock, 1);
-            // Wait up to 30 ticks for ore — don't throw if timeout
             for (let i = 0; i < 30; i++) {
                 await bot.waitForTick();
-                if (bot.countItem('Copper ore') > countBefore) break;
+                if (bot.countItem('Copper ore') > copperBefore) break;
             }
             await bot.waitForTicks(1);
             bot.dismissModals();
             copperMined = bot.countItem('Copper ore');
-            mineAttempts = 0;
+
+            // Mine one tin
+            if (bot.freeSlots() < 1) break;
+
+            rock = bot.findNearbyLoc('tinrock1') ?? bot.findNearbyLoc('tinrock2');
+            while (!rock && totalWaitTicks < MAX_WAIT_TICKS) {
+                await bot.waitForTicks(30);
+                totalWaitTicks += 30;
+                rock = bot.findNearbyLoc('tinrock1') ?? bot.findNearbyLoc('tinrock2');
+            }
+            if (!rock) break;
+
+            const tinBefore = bot.countItem('Tin ore');
+            await bot.interactLoc(rock, 1);
+            for (let i = 0; i < 30; i++) {
+                await bot.waitForTick();
+                if (bot.countItem('Tin ore') > tinBefore) break;
+            }
+            await bot.waitForTicks(1);
+            bot.dismissModals();
+            tinMined = bot.countItem('Tin ore');
         }
 
         if (copperMined === 0 || tinMined === 0) {
-            bot.log('STATE', `Mining retry: copper=${copperMined}, tin=${tinMined}, waiting for rocks...`);
-            await bot.waitForTicks(60);
-            continue; // retry the whole smithing loop
+            bot.log('STATE', `Mining retry: copper=${copperMined}, tin=${tinMined}, waited ${totalWaitTicks} ticks`);
+            continue;
         }
 
         const pairs = Math.min(copperMined, tinMined);
@@ -779,11 +797,9 @@ async function trainSmithing(bot: BotAPI): Promise<void> {
             const copper = bot.findItem('Copper ore');
             if (!copper) break;
 
+            const barsBefore = bot.countItem('Bronze bar');
             await bot.useItemOnLoc('Copper ore', 'furnace1');
-            await bot.waitForCondition(() => {
-                const bars = bot.countItem('Bronze bar');
-                return bars > i;
-            }, 20);
+            await bot.waitForCondition(() => bot.countItem('Bronze bar') > barsBefore, 20);
             await bot.waitForTicks(1);
             bot.dismissModals();
         }
@@ -946,25 +962,10 @@ async function trainCooking(bot: BotAPI): Promise<void> {
             }
 
             // Walk back to cooking area.
-            // The Draynor fishing area has a wall at z=3230 blocking northward movement.
-            // Position (3086,3231) has a proven single-segment path to (3110,3260).
-            // We keep interacting with fishing spots until the bot ends up at z >= 3231.
+            // The Draynor fishing area at z=3228 has a wall at z=3230 blocking northward movement.
+            // Walk east along the shoreline to get around the wall, then north.
             bot.log('STATE', `Walking back to cook with ${rawCount} raw shrimp...`);
-            for (let escape = 0; escape < 20; escape++) {
-                const escPos = bot.getPosition();
-                if (escPos.z >= 3231) break;
-                // Find and interact with a fishing spot to get moved by the engine
-                const spot = bot.findNearbyNpc('Fishing spot', 20);
-                if (!spot) break;
-                await bot.interactNpc(spot, 1);
-                await bot.waitForTicks(5);
-                bot.dismissModals();
-            }
-            const finalPos = bot.getPosition();
-            bot.log('STATE', `Escape position: (${finalPos.x},${finalPos.z})`);
-            if (finalPos.z < 3231) {
-                throw new Error(`Cannot escape Draynor fishing area: stuck at (${finalPos.x},${finalPos.z})`);
-            }
+            await bot.walkToWithPathfinding(3098, 3228);
             await bot.walkToWithPathfinding(COOK_AREA_X, COOK_AREA_Z);
         }
 
@@ -995,17 +996,16 @@ async function trainCooking(bot: BotAPI): Promise<void> {
         // If we have logs and tinderbox, make a fire
         // If not, chop a tree first
         if (!bot.findItem('Logs')) {
-            let tree = bot.findNearbyLoc('tree', 10) ?? bot.findNearbyLoc('tree2', 10);
+            let tree = bot.findNearbyLoc('tree', 20) ?? bot.findNearbyLoc('tree2', 20);
             if (!tree) {
-                // Walk to tree area and wait for respawn
                 bot.log('STATE', `No trees nearby at (${bot.getPosition().x},${bot.getPosition().z}), walking to tree area`);
                 await bot.walkToWithPathfinding(COOK_AREA_X, COOK_AREA_Z);
-                await bot.waitForTicks(20);
-                tree = bot.findNearbyLoc('tree', 15) ?? bot.findNearbyLoc('tree2', 15);
+                await bot.waitForTicks(50);
+                tree = bot.findNearbyLoc('tree', 20) ?? bot.findNearbyLoc('tree2', 20);
             }
             if (tree) {
                 await bot.interactLoc(tree, 1);
-                for (let i = 0; i < 60; i++) {
+                for (let i = 0; i < 150; i++) {
                     await bot.waitForTick();
                     if (bot.findItem('Logs') !== null) break;
                 }
@@ -1013,7 +1013,7 @@ async function trainCooking(bot: BotAPI): Promise<void> {
                 bot.dismissModals();
             } else {
                 bot.log('STATE', 'Still no trees, waiting for respawn...');
-                await bot.waitForTicks(30);
+                await bot.waitForTicks(100);
                 continue;
             }
         }
@@ -1111,24 +1111,106 @@ async function trainCooking(bot: BotAPI): Promise<void> {
  *
  * Actually simplest: just spin wool. Let me do batches of 26.
  */
+
+/**
+ * Open a gate and walk through it with retries.
+ * Same pattern as sheep-shearer: opens both gate panels, then walks to the
+ * target tile. Retries up to 3 times if the walkTo fails (gate may auto-close).
+ */
+async function openGateAndCross(bot: BotAPI, targetX: number, targetZ: number, label: string): Promise<void> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        // Clear any stale modals/delayed state that would block the interaction
+        bot.dismissModals();
+        if (bot.player.delayed) {
+            await bot.waitForCondition(() => !bot.player.delayed, 20);
+        }
+        await bot.waitForTicks(1);
+
+        await bot.openGate(5);
+        await bot.waitForTicks(1);
+        await bot.openGate(5);
+        await bot.waitForTicks(2);
+
+        try {
+            await bot.walkTo(targetX, targetZ);
+            return;
+        } catch {
+            // walkTo failed (gate collision or timeout) — try walkToWithPathfinding
+            // which can route around open gate panels
+            bot.log('STATE', `Gate walkTo failed (${label}, attempt ${attempt}/3), trying pathfinding...`);
+            try {
+                await bot.walkToWithPathfinding(targetX, targetZ);
+                return;
+            } catch (err2) {
+                bot.log('STATE', `Gate pathfinding also failed (${label}, attempt ${attempt}/3): ${(err2 as Error).message}`);
+                if (attempt === 3) {
+                    throw new Error(`Failed to cross gate after 3 attempts (${label}): ${(err2 as Error).message}`);
+                }
+                await bot.waitForTicks(3);
+            }
+        }
+    }
+}
+
 async function trainCrafting(bot: BotAPI): Promise<void> {
     bot.log('STATE', '========== CRAFTING ==========');
     const targetLevel = 10;
 
-    // We'll spin wool at Lumbridge Castle spinning wheel.
+    // Drop junk items from previous skills to free inventory space.
+    // Smithing leaves bronze bars, tin ore, copper ore, daggers, etc.
+    const junkItems = ['Bronze bar', 'Tin ore', 'Copper ore', 'Bronze dagger', 'Logs',
+        'Uncut sapphire', 'Uncut emerald', 'Uncut ruby', 'Uncut diamond'];
+    for (const junk of junkItems) {
+        while (bot.findItem(junk)) {
+            await bot.dropItem(junk);
+            await bot.waitForTicks(1);
+        }
+    }
+    bot.log('STATE', `Freed inventory, ${bot.freeSlots()} slots available`);
+
+    // Spin wool at Lumbridge Castle spinning wheel.
     // Pattern: walk to sheep field, shear sheep, walk to spinning wheel, spin.
+    // The sheep field has an internal east-west fence at z=3277 with no gate.
+    // Sheep roam south of this fence (z=3271-3276). The east gate at (3213,3261-3262)
+    // leads to the SOUTH section, so we enter there and walk to the sheep area.
     const NPC_SHEEPUNSHEERED = 43;
 
     while (bot.getSkill('Crafting').baseLevel < targetLevel) {
-        const woolNeeded = Math.min(26, Math.ceil((1154 - bot.getSkill('Crafting').exp) / 25)); // 2.5 xp * 10 scale = 25
+        // Spin any wool already in inventory before collecting more
+        const existingWool = bot.countItem('Wool');
+        if (existingWool > 0) {
+            bot.log('STATE', `Spinning ${existingWool} existing wool first`);
+            await goToSpinningWheel(bot);
+            for (let i = 0; i < existingWool; i++) {
+                const wool = bot.findItem('Wool');
+                if (!wool) break;
+                if (bot.player.delayed) {
+                    await bot.waitForCondition(() => !bot.player.delayed, 20);
+                }
+                await bot.useItemOnLoc('Wool', 'spinning_wheel');
+                await bot.waitForTicks(6);
+                bot.dismissModals();
+            }
+            while (bot.findItem('Ball of wool')) {
+                await bot.dropItem('Ball of wool');
+                await bot.waitForTicks(1);
+            }
+            await goDownFromSpinningWheel(bot);
+            continue; // Re-check level after spinning
+        }
+
+        const woolNeeded = Math.min(bot.freeSlots(), Math.ceil((11540 - bot.getSkill('Crafting').exp) / 25)); // 2.5 xp * 10 scale = 25; level 10 = 1154 real xp = 11540 internal
         if (woolNeeded <= 0) break;
 
-        bot.log('STATE', `Need ~${woolNeeded} more wool to spin. Crafting XP: ${bot.getSkill('Crafting').exp}`);
+        bot.log('STATE', `Need ~${woolNeeded} more wool to spin. Crafting XP: ${bot.getSkill('Crafting').exp}, free=${bot.freeSlots()}`);
 
-        // Phase 1: Go to sheep field and shear sheep
-        // Navigate through the east gate into the sheep field
-        await bot.walkToWithPathfinding(SHEEP_FIELD_ENTRY_X, SHEEP_FIELD_ENTRY_Z);
-        await openGateAndCross(bot, 3211, 3262, 'enter sheep field');
+        // Phase 1: Enter sheep field through the east gate.
+        // Route east first (x=3230) to avoid the east fence (x=3213) and south fence (z=3257),
+        // then approach the gate from the north-east.
+        await bot.walkToWithPathfinding(3230, 3262);
+        await bot.walkToWithPathfinding(3214, 3262);
+        // Open the gate — the open gate panels swing west, so walk to (3209,3262) to clear them
+        await openGateAndCross(bot, 3209, 3262, 'enter sheep field');
         await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
 
         let woolCollected = 0;
@@ -1143,7 +1225,6 @@ async function trainCrafting(bot: BotAPI): Promise<void> {
 
             if (bot.freeSlots() < 1) break;
 
-            // Find a nearby unsheered sheep
             const sheep = bot.findNearbyNpcByTypeId(NPC_SHEEPUNSHEERED, 10);
             if (!sheep) {
                 await bot.waitForTicks(5);
@@ -1164,10 +1245,9 @@ async function trainCrafting(bot: BotAPI): Promise<void> {
 
         bot.log('EVENT', `Collected ${woolCollected} wool`);
 
-        // Phase 2: Walk to spinning wheel and spin
+        // Phase 2: Exit sheep field through east gate, then go to spinning wheel
         await bot.walkToWithPathfinding(3212, 3262);
         await openGateAndCross(bot, 3214, 3262, 'exit sheep field');
-
         await goToSpinningWheel(bot);
 
         for (let i = 0; i < woolCollected; i++) {
@@ -1194,105 +1274,110 @@ async function trainCrafting(bot: BotAPI): Promise<void> {
         bot.log('EVENT', `Crafting level: ${bot.getSkill('Crafting').baseLevel}, XP: ${bot.getSkill('Crafting').exp}`);
     }
 
+    // Ensure we're on ground floor — crafting loop uses level 1 spinning wheel
+    if (bot.player.level > 0) {
+        bot.log('STATE', `Still on level ${bot.player.level} after crafting, going down...`);
+        await goDownFromSpinningWheel(bot);
+    }
+
     bot.log('EVENT', `Crafting trained to level ${bot.getSkill('Crafting').baseLevel}!`);
 }
 
 /**
- * Train Attack, Strength, Defence, and Prayer together by fighting chickens.
- * Also collects bones for prayer training.
+ * Train a single combat skill (Attack, Strength, or Defence) by fighting giant rats.
+ * Also buries bones for Prayer XP during combat.
  *
  * Combat style 0 (Accurate) = Attack XP
  * Combat style 1 (Aggressive) = Strength XP
  * Combat style 3 (Defensive) = Defence XP (for pickaxe: style 3)
- *
- * Chickens drop bones which we bury for Prayer XP.
  */
-async function trainCombatAndPrayer(bot: BotAPI): Promise<void> {
-    bot.log('STATE', '========== COMBAT & PRAYER ==========');
+async function trainSingleCombatSkill(bot: BotAPI, skillName: string, combatStyle: number): Promise<void> {
+    const targetLevel = 10;
+    bot.log('STATE', `========== COMBAT: ${skillName} (style=${combatStyle}) ==========`);
 
-    // Walk to chicken area near Lumbridge
+    // Safety: if stuck on upper floor, get down first
+    if (bot.player.level > 0) {
+        bot.log('STATE', `Combat: recovering from level ${bot.player.level}, climbing down...`);
+        bot.dismissModals();
+        if (bot.player.delayed) {
+            await bot.waitForCondition(() => !bot.player.delayed, 20);
+        }
+        await goDownFromSpinningWheel(bot);
+    }
+
+    // Walk to combat area (Lumbridge town center)
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
-    bot.log('STATE', `At chicken area: pos=(${bot.player.x},${bot.player.z})`);
+    bot.log('STATE', `At combat area: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Equip bronze pickaxe as weapon if not already equipped
+    // Equip bronze pickaxe as weapon if in inventory
     if (bot.findItem('Bronze pickaxe')) {
         await bot.equipItem('Bronze pickaxe');
         await bot.waitForTicks(1);
     }
 
-    // For pickaxe styles:
-    // 0 = Spike (Stab, Accurate) -> Attack XP
-    // 1 = Impale (Stab, Aggressive) -> Strength XP
-    // 2 = Smash (Crush, Aggressive) -> Strength XP
-    // 3 = Block (Stab, Defensive) -> Defence XP
+    bot.setCombatStyle(combatStyle);
 
-    const skills = [
-        { name: 'Attack', style: 0, target: 10 },
-        { name: 'Strength', style: 1, target: 10 },
-        { name: 'Defence', style: 3, target: 10 },
-    ];
-
-    for (const skill of skills) {
-        if (bot.getSkill(skill.name).baseLevel >= skill.target) {
-            bot.log('STATE', `${skill.name} already level ${bot.getSkill(skill.name).baseLevel}, skipping`);
-            continue;
+    while (bot.getSkill(skillName).baseLevel < targetLevel) {
+        bot.dismissModals();
+        if (bot.player.delayed) {
+            await bot.waitForCondition(() => !bot.player.delayed, 20);
         }
 
-        bot.log('STATE', `Training ${skill.name} (style=${skill.style})...`);
-        bot.setCombatStyle(skill.style);
-
-        while (bot.getSkill(skill.name).baseLevel < skill.target) {
-            bot.dismissModals();
+        // Bury any bones in inventory (Prayer training)
+        while (bot.findItem('Bones')) {
             if (bot.player.delayed) {
                 await bot.waitForCondition(() => !bot.player.delayed, 20);
             }
-
-            // Bury any bones in inventory (Prayer training)
-            while (bot.findItem('Bones')) {
-                if (bot.player.delayed) {
-                    await bot.waitForCondition(() => !bot.player.delayed, 20);
-                }
-                await bot.useItemOp1('Bones');
-                await bot.waitForTicks(3);
-                bot.dismissModals();
-            }
-
-            // Drop feathers and raw chicken to save space
-            if (bot.freeSlots() < 5) {
-                if (bot.findItem('Feather')) { await bot.dropItem('Feather'); await bot.waitForTicks(1); }
-                if (bot.findItem('Raw chicken')) { await bot.dropItem('Raw chicken'); await bot.waitForTicks(1); }
-            }
-
-            // Find a chicken
-            let chicken = bot.findNearbyNpc('Chicken', 16);
-            if (!chicken) {
-                // Walk back to chicken area
-                await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
-                await bot.waitForTicks(3);
-                chicken = bot.findNearbyNpc('Chicken', 16);
-                if (!chicken) {
-                    await bot.waitForTicks(10);
-                    continue;
-                }
-            }
-
-            const deathPos = await attackNpcAndWait(bot, chicken);
+            await bot.useItemOp1('Bones');
+            await bot.waitForTicks(3);
             bot.dismissModals();
+        }
 
-            if (deathPos) {
-                // Pick up bones
-                await bot.waitForTicks(1);
-                const bonesGround = bot.findNearbyGroundItem('Bones', 5);
-                if (bonesGround && bot.freeSlots() > 0) {
-                    try {
-                        await bot.takeGroundItem('Bones', bonesGround.x, bonesGround.z);
-                        await bot.waitForTicks(2);
-                    } catch { /* ground item may have been taken */ }
-                }
+        // Drop feathers and raw chicken to save space
+        if (bot.freeSlots() < 5) {
+            if (bot.findItem('Feather')) { await bot.dropItem('Feather'); await bot.waitForTicks(1); }
+            if (bot.findItem('Raw chicken')) { await bot.dropItem('Raw chicken'); await bot.waitForTicks(1); }
+        }
+
+        // Find a chicken
+        let chicken = bot.findNearbyNpc('Chicken', 16);
+        if (!chicken) {
+            await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
+            await bot.waitForTicks(3);
+            chicken = bot.findNearbyNpc('Chicken', 16);
+            if (!chicken) {
+                await bot.waitForTicks(10);
+                continue;
             }
         }
 
-        bot.log('EVENT', `${skill.name} trained to level ${bot.getSkill(skill.name).baseLevel}!`);
+        const deathPos = await attackNpcAndWait(bot, chicken);
+        bot.dismissModals();
+
+        // Death recovery — if bot died during combat, respawn and walk back
+        if (bot.isDead()) {
+            bot.log('STATE', 'Bot died during combat training, recovering...');
+            await bot.waitForRespawn();
+            await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
+            if (bot.findItem('Bronze pickaxe')) {
+                await bot.equipItem('Bronze pickaxe');
+                await bot.waitForTicks(1);
+            }
+            bot.setCombatStyle(combatStyle);
+            continue;
+        }
+
+        if (deathPos) {
+            // Pick up bones
+            await bot.waitForTicks(1);
+            const bonesGround = bot.findNearbyGroundItem('Bones', 5);
+            if (bonesGround && bot.freeSlots() > 0) {
+                try {
+                    await bot.takeGroundItem('Bones', bonesGround.x, bonesGround.z);
+                    await bot.waitForTicks(2);
+                } catch { /* ground item may have been taken */ }
+            }
+        }
     }
 
     // Bury remaining bones for prayer
@@ -1305,14 +1390,14 @@ async function trainCombatAndPrayer(bot: BotAPI): Promise<void> {
         bot.dismissModals();
     }
 
-    bot.log('EVENT', `Combat training complete! Attack=${bot.getSkill('Attack').baseLevel} Strength=${bot.getSkill('Strength').baseLevel} Defence=${bot.getSkill('Defence').baseLevel}`);
+    bot.log('EVENT', `${skillName} trained to level ${bot.getSkill(skillName).baseLevel}!`);
 }
 
 /**
  * Train Prayer to level 10 by burying bones.
  * Regular bones give 4.5 XP (45 internal) each.
  * Level 10 = 1154 XP. Need ~26 bones if starting from 0.
- * We'll kill chickens and bury their bones.
+ * We'll kill giant rats and bury their bones.
  */
 async function trainPrayer(bot: BotAPI): Promise<void> {
     bot.log('STATE', '========== PRAYER ==========');
@@ -1323,7 +1408,7 @@ async function trainPrayer(bot: BotAPI): Promise<void> {
         return;
     }
 
-    // Walk to chicken area
+    // Walk to combat area (giant rats in Lumbridge swamp)
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
 
     // Set to accurate style for fastest kills
@@ -1363,6 +1448,13 @@ async function trainPrayer(bot: BotAPI): Promise<void> {
         const deathPos = await attackNpcAndWait(bot, chicken);
         bot.dismissModals();
 
+        // Death recovery
+        if (bot.isDead()) {
+            await bot.waitForRespawn();
+            await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
+            continue;
+        }
+
         if (deathPos) {
             await bot.waitForTicks(1);
             const bonesGround = bot.findNearbyGroundItem('Bones', 5);
@@ -1381,7 +1473,7 @@ async function trainPrayer(bot: BotAPI): Promise<void> {
 /**
  * Train Ranged to level 10.
  * Buy shortbow + bronze arrows from Lowe's in Varrock.
- * Shoot chickens. Bronze arrows + shortbow.
+ * Shoot giant rats. Bronze arrows + shortbow.
  * Shortbow = 1 attack speed (4 ticks). Ranged accurate = 0 style.
  * Need to equip bow and have arrows in inventory.
  */
@@ -1426,8 +1518,7 @@ async function trainRanged(bot: BotAPI): Promise<void> {
     // Set ranged combat style to accurate (style 0 for bows)
     bot.setCombatStyle(0);
 
-    // Walk to chicken area (south of Varrock, or back to Lumbridge)
-    // Actually there are chickens near Lumbridge. Let's walk there.
+    // Walk to combat area (giant rats in Lumbridge swamp)
     await walkToLumbridge(bot);
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
 
@@ -1462,7 +1553,7 @@ async function trainRanged(bot: BotAPI): Promise<void> {
 /**
  * Train Magic to level 10.
  * Buy mind runes and air runes from Aubury's shop in Varrock.
- * Cast Wind Strike (1 mind + 1 air per cast, 5.5 XP per cast) on chickens.
+ * Cast Wind Strike (1 mind + 1 air per cast, 5.5 XP per cast) on giant rats.
  * Level 10 = 1154 XP. 1154 / 5.5 = ~210 casts.
  * But we also get 2 XP per damage on hitpoints, and magic XP varies.
  * Wind Strike gives 5.5 XP base per cast (hit or miss).
@@ -1501,7 +1592,7 @@ async function trainMagic(bot: BotAPI): Promise<void> {
 
     bot.log('EVENT', `Bought runes. Mind: ${bot.countItem('Mind rune')}, Air: ${bot.countItem('Air rune')}`);
 
-    // Walk to chicken area
+    // Walk to combat area (giant rats in Lumbridge swamp)
     await walkToLumbridge(bot);
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
 
@@ -1583,187 +1674,282 @@ async function trainMagic(bot: BotAPI): Promise<void> {
  */
 
 // ================================================================
+// STATE MACHINE
+// ================================================================
+
+/**
+ * Build the F2P skills hierarchical state tree.
+ * Each leaf state maps to one of the existing training functions.
+ */
+export function buildF2pSkillsStates(bot: BotAPI): BotState {
+    return {
+        name: 'f2p-skills',
+        isComplete: () => {
+            const skills = [
+                'Attack', 'Strength', 'Defence', 'Ranged', 'Prayer',
+                'Magic', 'Hitpoints', 'Mining', 'Smithing', 'Fishing',
+                'Cooking', 'Woodcutting', 'Firemaking', 'Crafting'
+            ];
+            return skills.every(s => bot.getSkill(s).baseLevel >= 10);
+        },
+        run: async () => {},
+        children: [
+            {
+                name: 'setup',
+                stuckThreshold: 3000,
+                isComplete: () =>
+                    bot.findItem('Tinderbox') !== null &&
+                    bot.findItem('Shears') !== null &&
+                    bot.findItem('Hammer') !== null &&
+                    bot.findItem('Bronze axe') !== null &&
+                    bot.findItem('Small fishing net') !== null,
+                run: async () => {
+                    await earnCoins(bot, 200);
+                    await openLumbridgeGeneralStore(bot);
+                    await buyItems(bot, 'Tinderbox', 1);
+                    await buyItems(bot, 'Shears', 1);
+                    await buyItems(bot, 'Hammer', 1);
+                    bot.dismissModals();
+                    await openBobsAxes(bot);
+                    await buyItems(bot, 'Bronze axe', 1);
+                    bot.dismissModals();
+                    // Buy small fishing net from Port Sarim
+                    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
+                    await bot.walkToWithPathfinding(3110, 3260);
+                    await bot.walkToWithPathfinding(3047, 3237);
+                    await bot.walkToWithPathfinding(3016, 3215);
+                    await bot.walkToWithPathfinding(3014, 3224);
+                    const door = bot.findNearbyLoc('poordooropen', 5);
+                    if (door) { await bot.interactLoc(door, 1); await bot.waitForTicks(2); }
+                    const gerrant = bot.findNearbyNpc('Gerrant');
+                    if (!gerrant) throw new Error('Gerrant not found in Port Sarim fishing shop');
+                    await bot.interactNpc(gerrant, 3);
+                    await bot.waitForTicks(3);
+                    await buyItems(bot, 'Small fishing net', 1);
+                    bot.dismissModals();
+                    bot.log('EVENT', `Bought tools: ${bot.getInventory().map(i => i.name).join(', ')}`);
+                }
+            },
+            {
+                name: 'fishing',
+                stuckThreshold: 5000,
+                isComplete: () => bot.getSkill('Fishing').baseLevel >= 10,
+                run: async () => {
+                    await bot.walkToWithPathfinding(3047, 3237);
+                    await bot.walkToWithPathfinding(DRAYNOR_FISH_AREA_X, DRAYNOR_FISH_AREA_Z);
+                    await trainFishing(bot);
+                }
+            },
+            {
+                name: 'woodcutting',
+                stuckThreshold: 3000,
+                isComplete: () => bot.getSkill('Woodcutting').baseLevel >= 10,
+                run: async () => {
+                    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
+                    for (const junk of ['Raw shrimps', 'Raw anchovies', 'Shrimps', 'Burnt fish']) {
+                        while (bot.findItem(junk)) { await bot.dropItem(junk); await bot.waitForTicks(1); }
+                    }
+                    await trainWoodcutting(bot);
+                }
+            },
+            {
+                name: 'firemaking',
+                stuckThreshold: 3000,
+                isComplete: () => bot.getSkill('Firemaking').baseLevel >= 10,
+                run: async () => {
+                    await trainFiremaking(bot);
+                }
+            },
+            {
+                name: 'cooking',
+                stuckThreshold: 8000,
+                maxRetries: 10,
+                isComplete: () => bot.getSkill('Cooking').baseLevel >= 10,
+                run: async () => {
+                    await bot.walkToWithPathfinding(3110, 3260);
+                    await trainCooking(bot);
+                }
+            },
+            {
+                name: 'mining',
+                stuckThreshold: 5000,
+                isComplete: () => bot.getSkill('Mining').baseLevel >= 10,
+                run: async () => {
+                    await walkToVarrock(bot);
+                    await bot.walkToWithPathfinding(MINE_AREA_X, MINE_AREA_Z);
+                    await trainMining(bot);
+                }
+            },
+            {
+                name: 'smithing',
+                stuckThreshold: 15000,
+                isComplete: () => bot.getSkill('Smithing').baseLevel >= 10,
+                run: async () => {
+                    await trainSmithing(bot);
+                }
+            },
+            {
+                name: 'crafting',
+                stuckThreshold: 10000,
+                maxRetries: 6,
+                isComplete: () => bot.getSkill('Crafting').baseLevel >= 10 && bot.player.level === 0,
+                run: async () => {
+                    // Clear stale modals/delayed state from smithing before crafting
+                    bot.dismissModals();
+                    if (bot.player.delayed) {
+                        await bot.waitForCondition(() => !bot.player.delayed, 20);
+                    }
+                    // Recovery: if stuck on upper floor (from previous failed stair descent)
+                    if (bot.player.level > 0) {
+                        bot.log('STATE', `Recovering from level ${bot.player.level}, climbing down...`);
+                        await goDownFromSpinningWheel(bot);
+                    }
+                    // Recovery: if inside sheep field on retry, exit through gate
+                    const px = bot.player.x;
+                    const pz = bot.player.z;
+                    if (px >= 3193 && px <= 3213 && pz >= 3258 && pz <= 3276) {
+                        bot.log('STATE', `Recovering from inside sheep field at (${px},${pz})`);
+                        await bot.walkToWithPathfinding(3212, 3262);
+                        await openGateAndCross(bot, 3214, 3262, 'exit sheep field (recovery)');
+                    }
+                    // Ensure bot is near Lumbridge before crafting.
+                    // After smithing the bot may be near Varrock.
+                    const pos = bot.getPosition();
+                    const distToLumbridge = Math.abs(pos.x - LUMBRIDGE_SPAWN_X) + Math.abs(pos.z - LUMBRIDGE_SPAWN_Z);
+                    if (distToLumbridge > 100) {
+                        await bot.walkToWithPathfinding(3175, 3427);
+                        await walkToLumbridge(bot);
+                    }
+                    await trainCrafting(bot);
+                }
+            },
+            {
+                name: 'combat',
+                isComplete: () =>
+                    bot.getSkill('Attack').baseLevel >= 10 &&
+                    bot.getSkill('Strength').baseLevel >= 10 &&
+                    bot.getSkill('Defence').baseLevel >= 10,
+                run: async () => {},
+                children: [
+                    {
+                        name: 'train-attack',
+                        stuckThreshold: 10000,
+                        isComplete: () => bot.getSkill('Attack').baseLevel >= 10,
+                        run: async () => {
+                            await trainSingleCombatSkill(bot, 'Attack', 0);
+                        }
+                    },
+                    {
+                        name: 'train-strength',
+                        stuckThreshold: 10000,
+                        isComplete: () => bot.getSkill('Strength').baseLevel >= 10,
+                        run: async () => {
+                            await trainSingleCombatSkill(bot, 'Strength', 1);
+                        }
+                    },
+                    {
+                        name: 'train-defence',
+                        stuckThreshold: 10000,
+                        isComplete: () => bot.getSkill('Defence').baseLevel >= 10,
+                        run: async () => {
+                            await trainSingleCombatSkill(bot, 'Defence', 3);
+                        }
+                    }
+                ]
+            },
+            {
+                name: 'prayer',
+                stuckThreshold: 5000,
+                isComplete: () => bot.getSkill('Prayer').baseLevel >= 10,
+                run: async () => {
+                    await trainPrayer(bot);
+                }
+            },
+            {
+                name: 'earn-coins-ranged-magic',
+                stuckThreshold: 5000,
+                maxRetries: 5,
+                isComplete: () =>
+                    bot.getSkill('Ranged').baseLevel >= 10 && bot.getSkill('Magic').baseLevel >= 10,
+                run: async () => {
+                    bot.dismissModals();
+                    if (bot.player.delayed) {
+                        await bot.waitForCondition(() => !bot.player.delayed, 20);
+                    }
+                    await bot.waitForTicks(2);
+
+                    // Escape chicken pen — fully fenced, must use north gate at (3236,3295).
+                    const pos = bot.getPosition();
+                    if (pos.z > 3270) {
+                        await bot.walkTo(3234, 3294);
+                        await openGateAndCross(bot, 3238, 3296, 'exit chicken pen north');
+                        await bot.walkToWithPathfinding(3238, 3250);
+                    }
+                    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
+                    // Need ~6000gp for ranged gear + magic runes:
+                    // Shortbow (~50gp) + 500 bronze arrows (~1500gp)
+                    // + 300 mind runes (~3600gp) + 300 air runes (~1200gp) = ~6350gp
+                    const coins = bot.findItem('Coins');
+                    if (!coins || coins.count < 7000) {
+                        await earnCoins(bot, 7000);
+                    }
+                }
+            },
+            {
+                name: 'ranged',
+                stuckThreshold: 10000,
+                isComplete: () => bot.getSkill('Ranged').baseLevel >= 10,
+                run: async () => {
+                    await trainRanged(bot);
+                }
+            },
+            {
+                name: 'magic',
+                stuckThreshold: 10000,
+                isComplete: () => bot.getSkill('Magic').baseLevel >= 10,
+                run: async () => {
+                    await trainMagic(bot);
+                }
+            }
+        ]
+    };
+}
+
+// ================================================================
 // MAIN SCRIPT
 // ================================================================
 
 export async function f2pSkills(bot: BotAPI): Promise<void> {
-    // === Setup ===
     await skipTutorial(bot);
     await bot.waitForTicks(2);
     bot.log('STATE', `Starting F2P skills training at (${bot.player.x},${bot.player.z})`);
 
-    // ================================================================
-    // Phase 1: Earn initial coins for basic tools (~200gp)
-    // ================================================================
-    bot.log('STATE', '=== Phase 1: Earn coins for basic tools ===');
-    await earnCoins(bot, 200);
+    const states = buildF2pSkillsStates(bot);
+    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
+    await runStateMachine(bot, {
+        root: states,
+        captureSnapshots: true,
+        snapshotDir,
+    });
 
-    // ================================================================
-    // Phase 2: Buy basic tools (tinderbox, shears, hammer, axe, net)
-    // ================================================================
-    bot.log('STATE', '=== Phase 2: Buy basic tools ===');
-
-    // Buy from Lumbridge General Store
-    await openLumbridgeGeneralStore(bot);
-    await buyItems(bot, 'Tinderbox', 1);
-    await buyItems(bot, 'Shears', 1);
-    await buyItems(bot, 'Hammer', 1);
-    bot.dismissModals();
-
-    // Buy bronze axe from Bob's Axes
-    await openBobsAxes(bot);
-    await buyItems(bot, 'Bronze axe', 1);
-    bot.dismissModals();
-
-    // Buy small fishing net from Gerrant's in Port Sarim
-    // Use the same route as prince-ali-rescue: go via (3110,3260) -> (3047,3237) -> (3016,3215)
-    bot.log('STATE', 'Walking to Port Sarim for fishing net...');
-    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
-    // West toward Draynor area
-    await bot.walkToWithPathfinding(3110, 3260);
-    // West past Draynor Village toward Port Sarim
-    await bot.walkToWithPathfinding(3047, 3237);
-    // South to Port Sarim
-    await bot.walkToWithPathfinding(3016, 3215);
-    await bot.walkToWithPathfinding(3014, 3224);
-    // Open door if present
-    const fishShopDoor = bot.findNearbyLoc('poordooropen', 5);
-    if (fishShopDoor) {
-        await bot.interactLoc(fishShopDoor, 1);
-        await bot.waitForTicks(2);
-    }
-    const gerrant = bot.findNearbyNpc('Gerrant');
-    if (!gerrant) {
-        throw new Error('Gerrant not found in Port Sarim fishing shop');
-    }
-    await bot.interactNpc(gerrant, 3); // op3 = Trade
-    await bot.waitForTicks(3);
-    await buyItems(bot, 'Small fishing net', 1);
-    bot.dismissModals();
-
-    bot.log('EVENT', `Bought basic tools. Inventory: ${bot.getInventory().map(i => i.name).join(', ')}`);
-
-    // ================================================================
-    // Step 3: Train Fishing to 10 (we're near Draynor already from Port Sarim)
-    // ================================================================
-    // Walk north from Port Sarim to Draynor fishing spots
-    await bot.walkToWithPathfinding(3016, 3215);
-    await bot.walkToWithPathfinding(3047, 3237);
-    await bot.walkToWithPathfinding(DRAYNOR_FISH_AREA_X, DRAYNOR_FISH_AREA_Z);
-    await trainFishing(bot);
-
-    // ================================================================
-    // Step 4: Walk to open area for cooking (between Draynor and Lumbridge)
-    // ================================================================
-    await bot.walkToWithPathfinding(3110, 3260);
-
-    // ================================================================
-    // Step 5: Train Cooking to 10 (cook shrimp, fish more as needed)
-    // ================================================================
-    await trainCooking(bot);
-
-    // ================================================================
-    // Step 6: Walk back to Lumbridge for wood/fire training
-    // ================================================================
-    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
-
-    // ================================================================
-    // Step 7: Train Woodcutting to 10
-    // ================================================================
-    // Drop any leftover fish/junk from cooking training to free inventory space
-    for (const junkName of ['Raw shrimps', 'Raw anchovies', 'Shrimps', 'Burnt fish']) {
-        while (bot.findItem(junkName)) {
-            await bot.dropItem(junkName);
-            await bot.waitForTicks(1);
-        }
-    }
-    await trainWoodcutting(bot);
-
-    // ================================================================
-    // Step 8: Train Firemaking to 10
-    // ================================================================
-    await trainFiremaking(bot);
-
-    // ================================================================
-    // Step 8: Train Mining to 10
-    // ================================================================
-    await walkToVarrock(bot);
-    await bot.walkToWithPathfinding(MINE_AREA_X, MINE_AREA_Z);
-    await trainMining(bot);
-
-    // ================================================================
-    // Step 9: Train Smithing to 10
-    // ================================================================
-    await trainSmithing(bot);
-
-    // ================================================================
-    // Step 10: Train Crafting to 10
-    // ================================================================
-    await walkToLumbridge(bot);
-    await trainCrafting(bot);
-
-    // ================================================================
-    // Step 11: Train Attack, Strength, Defence (+ collect bones for Prayer)
-    // ================================================================
-    if (bot.findItem('Bronze pickaxe')) {
-        await bot.equipItem('Bronze pickaxe');
-        await bot.waitForTicks(1);
-    }
-    await trainCombatAndPrayer(bot);
-
-    // ================================================================
-    // Step 11: Train Prayer to 10 (continue burying bones)
-    // ================================================================
-    await trainPrayer(bot);
-
-    // ================================================================
-    // Phase 3: Earn coins for ranged and magic supplies (~3000gp)
-    // ================================================================
-    bot.log('STATE', '=== Phase 3: Earn coins for ranged/magic supplies ===');
-    // Walk back to Lumbridge to pickpocket for more money
-    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
-    // We need: shortbow(~65gp) + 300 arrows(~400gp) + 300 mind(~400gp) + 300 air(~530gp) = ~1400gp
-    // But we may have leftover coins from phase 1
-    const currentCoins = bot.findItem('Coins');
-    const neededForRangedMagic = 3000; // generous to account for shop markups
-    const stillNeeded = Math.max(0, neededForRangedMagic - (currentCoins ? currentCoins.count : 0));
-    if (stillNeeded > 0) {
-        await earnCoins(bot, neededForRangedMagic);
-    }
-
-    // ================================================================
-    // Step 12: Train Ranged to 10
-    // ================================================================
-    await trainRanged(bot);
-
-    // ================================================================
-    // Step 13: Train Magic to 10
-    // ================================================================
-    await trainMagic(bot);
-
-    // ================================================================
-    // Final: Log results
-    // ================================================================
+    // --- Final verification ---
     const f2pSkillsList = [
         'Attack', 'Strength', 'Defence', 'Ranged', 'Prayer',
         'Magic', 'Hitpoints', 'Mining', 'Smithing', 'Fishing',
         'Cooking', 'Woodcutting', 'Firemaking', 'Crafting'
     ];
-    // Note: Runecraft omitted — requires Rune Mysteries quest which is complex to run inline
 
     bot.log('STATE', '=== FINAL SKILL LEVELS ===');
     let allPassed = true;
     for (const skill of f2pSkillsList) {
         const info = bot.getSkill(skill);
-        const target = skill === 'Hitpoints' ? 10 : 10; // Hitpoints starts at 10
-        const passed = info.baseLevel >= target;
+        const passed = info.baseLevel >= 10;
         if (!passed) allPassed = false;
         bot.log('STATE', `  ${skill}: level ${info.baseLevel} (XP: ${info.exp}) ${passed ? 'PASS' : 'FAIL'}`);
     }
 
-    // Check Runecraft separately
     const rcInfo = bot.getSkill('Runecraft');
-    bot.log('STATE', `  Runecraft: level ${rcInfo.baseLevel} (XP: ${rcInfo.exp}) SKIPPED (requires Rune Mysteries quest)`);
+    bot.log('STATE', `  Runecraft: level ${rcInfo.baseLevel} (XP: ${rcInfo.exp}) SKIPPED`);
 
     if (!allPassed) {
         const failed = f2pSkillsList.filter(s => bot.getSkill(s).baseLevel < 10);
@@ -1772,3 +1958,22 @@ export async function f2pSkills(bot: BotAPI): Promise<void> {
 
     bot.log('SUCCESS', 'All F2P skills (except Runecraft) trained to level 10+!');
 }
+
+export const metadata: ScriptMeta = {
+    name: 'f2pskills',
+    type: 'activity',
+    maxTicks: 200000,
+    run: f2pSkills,
+    buildStates: buildF2pSkillsStates,
+    extraAssertions: (api: BotAPI) => {
+        const f2pSkills = [
+            'Attack', 'Strength', 'Defence', 'Ranged', 'Prayer',
+            'Magic', 'Hitpoints', 'Mining', 'Smithing', 'Fishing',
+            'Cooking', 'Woodcutting', 'Firemaking', 'Crafting'
+        ];
+        return f2pSkills.map(s => ({
+            name: `${s} >= 10`,
+            pass: api.getSkill(s).baseLevel >= 10,
+        }));
+    },
+};

@@ -1,0 +1,444 @@
+{
+  "test": "cooks-assistant",
+  "states": [
+    {
+      "path": "cooks-assistant",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/earn-coins",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/buy-supplies",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3221,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 12
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/start-quest",
+      "snapshot": {
+        "position": {
+          "x": 3211,
+          "z": 3247,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 1931,
+            "name": "Pot",
+            "count": 1
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/get-egg",
+      "snapshot": {
+        "position": {
+          "x": 3210,
+          "z": 3211,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 1931,
+            "name": "Pot",
+            "count": 1
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/get-milk",
+      "snapshot": {
+        "position": {
+          "x": 3229,
+          "z": 3299,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 1931,
+            "name": "Pot",
+            "count": 1
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          },
+          {
+            "id": 1944,
+            "name": "Egg",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/get-flour",
+      "snapshot": {
+        "position": {
+          "x": 3257,
+          "z": 3272,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 1931,
+            "name": "Pot",
+            "count": 1
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          },
+          {
+            "id": 1944,
+            "name": "Egg",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "cooks-assistant/deliver-to-cook",
+      "snapshot": {
+        "position": {
+          "x": 3166,
+          "z": 3306,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "29": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 1933,
+            "name": "Pot of flour",
+            "count": 1
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          },
+          {
+            "id": 1944,
+            "name": "Egg",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

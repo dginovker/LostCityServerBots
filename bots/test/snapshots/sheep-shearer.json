@@ -1,0 +1,245 @@
+{
+  "test": "sheep-shearer",
+  "states": [
+    {
+      "path": "sheep-shearer",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "179": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "sheep-shearer/earn-coins",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "179": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "sheep-shearer/buy-shears",
+      "snapshot": {
+        "position": {
+          "x": 3219,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "179": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 6
+          }
+        ]
+      }
+    },
+    {
+      "path": "sheep-shearer/start-quest",
+      "snapshot": {
+        "position": {
+          "x": 3210,
+          "z": 3249,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "179": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 5
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "sheep-shearer/deliver-wool",
+      "snapshot": {
+        "position": {
+          "x": 3189,
+          "z": 3274,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "179": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 5
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

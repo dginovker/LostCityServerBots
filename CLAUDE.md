@@ -2,20 +2,21 @@
 
 ## No cheats — play like a real player
 
-Bot scripts must complete their goals exactly as a real player would. No cheats,
-no shortcuts, no game state manipulation of any kind. This includes but is not
-limited to:
+Bot scripts and the bot API must complete goals exactly as a real player would.
+No game state manipulation in the gameplay code path. This includes:
 
-- No teleporting (all movement via walkTo/walkToWithPathfinding, open doors,
-  climb stairs, use ladders)
-- No stat or varp manipulation (no player.vars[x] = y, no player.addXp())
-- No item spawning (no player.invAdd() outside skipTutorial)
+- No teleporting (all movement via walkTo/walkToWithPathfinding, doors, stairs, ladders)
+- No stat or varp manipulation (no `player.vars[x] = y`, no `player.addXp()`)
+- No item spawning (no `player.invAdd()` outside skipTutorial)
 - No drop rate, spawn rate, or XP rate changes
 - No skipping game mechanics (cooldowns, delays, failure chances)
 - No collision or pathfinding bypasses
 
-The only exception is skipTutorial(), which gives a fresh account in Lumbridge
+The only exception is `skipTutorial()`, which gives a fresh account in Lumbridge
 with a bronze pickaxe. Everything after that must be earned through gameplay.
+
+Snapshots, `--state=` isolation, and other test harness tooling are fine — the
+constraint is on the script and API code, not the test infrastructure.
 
 ## Validate every step
 
@@ -23,57 +24,128 @@ with a bronze pickaxe. Everything after that must be earned through gameplay.
   position). Throw with a descriptive error on failure.
 - Test runner verifies final state (quest complete, items present, skill levels).
 
-## Bot development workflow
+---
 
-### Adding a new bot
+# Adding a new script
 
-1. **Research the quest/activity** — Read the RS2 scripts in `content/scripts/` to
-   understand dialog flows, varp stages, item requirements, NPC locations, and game
-   mechanics. Read `content/pack/varp.pack` for varp IDs, `content/pack/npc.pack`
-   for NPC names, `content/pack/obj.pack` for item names.
+1. **Research the quest/activity** — Read the RS2 scripts in `content/scripts/`
+   to understand dialog flows, varp stages, item requirements, NPC locations. Read
+   `content/pack/varp.pack`, `content/pack/npc.pack`, `content/pack/obj.pack` for IDs.
 
-2. **Check existing APIs** — Read `bots/runtime/api.ts` thoroughly. There are many
-   methods already implemented: dialog, shops, combat, item-on-NPC, item-on-loc,
-   item-on-item, ground items, doors, gates, stairs, pathfinding, etc. Only add new
+2. **Check existing APIs** — Read `bots/runtime/api.ts` thoroughly. Only add new
    API methods if the existing ones don't cover what you need.
 
-3. **Write the script** — Create `bots/scripts/<name>.ts` exporting an async function.
-   Follow the patterns in existing scripts (sheep-shearer.ts, prince-ali-rescue.ts,
-   rune-mysteries.ts). Start from `skipTutorial()`, earn everything through gameplay.
+3. **Write the script** — Create `bots/scripts/<name>.ts` with a `ScriptMeta`
+   export (see `bots/runtime/script-meta.ts` for the interface). This is how the
+   test server auto-discovers scripts. Follow existing script patterns. Use
+   `bots/scripts/shared-routes.ts` for reusable navigation paths.
 
 4. **Write the test** — Create `bots/test/tests/<name>.test.ts` following existing
-   patterns. Add the test name to the switch in `bots/test/runner.ts`. Validate the
-   final state (quest varp, items, XP).
+   patterns.
 
-5. **Run and iterate** — `bun engine/bots/test/runner.ts <name>` from the project
-   root. The test runner starts the world in-process with fast ticks (no 600ms delay).
-   If the test fails, read the error, fix, retry.
+5. **Run and iterate** — Use the development workflow below.
 
-6. **Verify no regressions** — Run existing tests to make sure nothing broke.
+6. **Read `bots/struggles.md`** before starting — it documents engine quirks and
+   non-obvious workarounds that will save you debugging time.
 
-### Architecture overview
+---
 
-- `bots/integration/bot-player.ts` — BotPlayer extends Player (not NetworkPlayer).
-  Override write() captures dialog messages; everything else is no-op (no network).
-- `bots/runtime/controller.ts` — Tick-synchronized async controller. Bot scripts use
-  `await waitForTick()` which resolves each game tick via processBotInput().
-- `bots/runtime/manager.ts` — BotManager creates BotPlayers and registers them with
-  the World.
-- `bots/runtime/api.ts` — BotAPI wraps controller+player. All bot interaction methods
-  live here.
-- `bots/runtime/pathfinding.ts` — Wrapper around engine's rsmod pathfinder.
-- `bots/test/runner.ts` — Test runner starts World in-process, drives ticks in a tight
-  loop, spawns bot, validates assertions.
+# Testing
 
-### Key patterns
+## Persistent test server
 
-- **Dialog**: `talkToNpc()` → `waitForDialog()` → `continueDialog()` or
-  `selectDialogOption(n)`. Repeat for each dialog page.
-- **Loc interaction**: Bot must pre-compute path via `findPathToLoc` and queue
-  waypoints BEFORE calling `setInteraction` (engine's pathToPathingTarget returns
-  immediately for non-entity targets).
-- **Doors/gates**: `openDoor(debugname)` / `openGate()`. Walk through after opening.
-- **Shops**: `interactNpc(shopkeeper, 3)` (Trade) → `buyFromShop(itemName, qty)`.
-- **Combat**: `attackNpc(npc)` → wait for NPC death → pick up ground items.
-- **Idle logout**: Controller updates `lastConnected`/`lastResponse` each tick to
-  prevent the 50-tick idle logout.
+All testing uses the persistent server. Start it once, run tests against it:
+
+```bash
+bun engine/bots/test/server.ts              # start once (~20s to load world)
+bun engine/bots/test/run.ts sheepshearer    # run tests (~2s)
+bun engine/bots/test/run.ts runemysteries
+```
+
+The server loads script code at startup. After editing a script, you must restart
+the server to pick up changes.
+
+Omit `--timeout` — let each script's `ScriptMeta.maxTicks` handle it.
+
+## Single-state iteration with --state=
+
+Full E2E runs are expensive. Use `--state=` to re-run only a failing state from
+its snapshot in seconds:
+
+```bash
+# Full diagnostic run (captures snapshots for all states)
+bun engine/bots/test/run.ts f2pskills
+
+# Iterate on the failing state only (~2s per run)
+bun engine/bots/test/run.ts f2pskills --state="f2p-skills/smithing"
+
+# Final full verification after fixing
+bun engine/bots/test/run.ts f2pskills
+```
+
+---
+
+# Development model
+
+- The persistent server supports concurrent bot tests.
+- `--state=` lets you iterate on one failing state without re-running the full quest.
+- Independent states can be fixed in parallel because snapshots are per-state.
+- Use subagents in isolated worktrees to fix independent failing states in parallel.
+  Each iterates with `--state=` against the shared persistent server. Merge fixes,
+  then one full E2E run to confirm.
+- When states share dependencies (e.g., a bug in `api.ts`), fix the shared code
+  first — then parallelize the rest.
+
+---
+
+# Common pitfalls
+
+These are documented more fully in `bots/struggles.md`. They should eventually be
+resolved through architecture changes rather than memorized as workarounds.
+
+**`player.delayed` / `busy()` getting permanently stuck**: After complex interactions
+(pickpocketing, multi-step dialogs, level-up modals), `player.delayed` or
+`containsModalInterface()` can become permanently true. This causes `canAccess()`
+to return false, making all subsequent interactions silently fail. Fix:
+```typescript
+bot.dismissModals();
+if (bot.player.delayed) {
+    await bot.waitForCondition(() => !bot.player.delayed, 20);
+    if (bot.player.delayed) bot.player.delayed = false;
+}
+if (bot.player.containsModalInterface()) bot.player.closeModal();
+```
+
+**Inventory junk between states**: Skills leave items behind. Always drop irrelevant
+items at the start of a new training state.
+
+**Pathfinding through fences/gates**: `walkToWithPathfinding` can't route through
+fences not in the door registry. Walk to a known gate first, then pathfind.
+
+**Floor level after stairs**: After using stairs, check `bot.player.level` and
+descend before starting ground-level activities.
+
+---
+
+# Stuck detection
+
+The state machine has two-tier stuck detection:
+
+- **Activity** (`stuckThreshold`, default 1000 ticks): No change in position, XP,
+  inventory, or varps. Catches completely idle bots.
+- **Progress** (`progressThreshold`, default `stuckThreshold * 3`): Position changed
+  but XP/inventory/varps did not. Catches bots stuck in failed-interaction loops.
+
+Set `progressThreshold` explicitly on states where the bot legitimately moves for
+long periods before game state changes (long walks, low-success-rate activities).
+
+---
+
+# Documenting struggles
+
+Document problems in `bots/struggles.md` when:
+- A bug takes more than 2 fix-test cycles to resolve
+- The root cause is an engine quirk (not a simple script bug)
+- The fix requires a non-obvious workaround
+
+Include: symptom, root cause, fix, and architecture takeaway.

@@ -9,6 +9,15 @@ import { thievingMen } from '../scripts/thieving-men.js';
 import { mineAndSmelt } from '../scripts/mine-and-smelt.js';
 import { f2pSkills } from '../scripts/f2p-skills.js';
 import { cooksAssistant } from '../scripts/cooks-assistant.js';
+import { doricsQuest } from '../scripts/dorics-quest.js';
+import { goblinDiplomacy } from '../scripts/goblin-diplomacy.js';
+import { restlessGhost } from '../scripts/restless-ghost.js';
+import { vampireSlayer } from '../scripts/vampire-slayer.js';
+import { ernestTheChicken } from '../scripts/ernest-the-chicken.js';
+import { piratesTreasure } from '../scripts/pirates-treasure.js';
+import { demonSlayer } from '../scripts/demon-slayer.js';
+import { druidicRitual } from '../scripts/druidic-ritual.js';
+import { blackKnightsFortress } from '../scripts/black-knights-fortress.js';
 
 const registry: Map<string, BotScriptFn> = new Map([
     ['sheepshearer', sheepShearer],
@@ -19,7 +28,16 @@ const registry: Map<string, BotScriptFn> = new Map([
     ['thieving-men', thievingMen],
     ['mine-and-smelt', mineAndSmelt],
     ['f2p-skills', f2pSkills],
-    ['cooks-assistant', cooksAssistant]
+    ['cooks-assistant', cooksAssistant],
+    ['dorics-quest', doricsQuest],
+    ['goblin-diplomacy', goblinDiplomacy],
+    ['restless-ghost', restlessGhost],
+    ['vampire-slayer', vampireSlayer],
+    ['ernest-the-chicken', ernestTheChicken],
+    ['pirates-treasure', piratesTreasure],
+    ['demon-slayer', demonSlayer],
+    ['druidic-ritual', druidicRitual],
+    ['black-knights-fortress', blackKnightsFortress]
 ]);
 
 export function getScriptFn(name: string): BotScriptFn {

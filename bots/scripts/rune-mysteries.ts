@@ -1,5 +1,8 @@
+import path from 'path';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
+import { type BotState, runStateMachine } from '../runtime/state-machine.js';
+import type { ScriptMeta } from '../runtime/script-meta.js';
 
 
 // Varp ID for Rune Mysteries quest progress (from content/pack/varp.pack: 63=runemysteries)
@@ -97,6 +100,255 @@ async function exitWizardTowerBasement(bot: BotAPI): Promise<void> {
     bot.log('STATE', `Back on surface from basement: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 }
 
+/**
+ * Navigate from Lumbridge Castle level 1 (Duke's floor) back down to ground floor
+ * and exit through the castle doors.
+ */
+async function exitCastleFromLevel1(bot: BotAPI): Promise<void> {
+    await bot.walkToWithPathfinding(3206, 3218);
+    await bot.walkToWithPathfinding(3206, 3210);
+
+    await bot.climbStairs('loc_1739', 3);
+    await bot.waitForTicks(2);
+
+    if (bot.player.level as number !== 0) {
+        throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    }
+    bot.log('STATE', `Back on ground floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+    await bot.walkToWithPathfinding(3215, 3210);
+    await bot.openDoor('poordooropen');
+    await bot.walkToWithPathfinding(3215, 3215);
+    await bot.walkToWithPathfinding(3217, 3218);
+    await bot.openDoor('openbankdoor_l');
+    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
+}
+
+/**
+ * Navigate to Sedridor's inner room in the Wizard Tower basement.
+ * Assumes the bot is at the tower entrance or has just descended.
+ */
+async function navigateToSedridor(bot: BotAPI): Promise<void> {
+    await bot.walkToWithPathfinding(3108, 9575);
+    await bot.walkToWithPathfinding(3108, 9571);
+    bot.log('STATE', `Near basement door: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+    await bot.openDoor('inaccastledoubledoorropen');
+
+    await bot.walkToWithPathfinding(3103, 9571);
+    bot.log('STATE', `In inner room: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+}
+
+/**
+ * Build the Rune Mysteries state machine.
+ * States: talk-to-duke, visit-sedridor, visit-aubury, return-to-sedridor
+ */
+export function buildRuneMysteriesStates(bot: BotAPI): BotState {
+    return {
+        name: 'rune-mysteries',
+        isComplete: () => bot.getQuestProgress(RUNE_MYSTERIES_VARP) === STAGE_COMPLETE,
+        run: async () => { throw new Error('Composite state should not be called directly'); },
+        children: [
+            {
+                name: 'talk-to-duke',
+                isComplete: () => bot.getQuestProgress(RUNE_MYSTERIES_VARP) >= STAGE_STARTED,
+                run: async () => {
+                    // Navigate from Lumbridge spawn through castle doors to the stairwell.
+                    await bot.walkToWithPathfinding(3218, 3218);
+                    bot.log('STATE', `At castle entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+                    await bot.openDoor('openbankdoor_l');
+
+                    await bot.walkToWithPathfinding(3215, 3215);
+                    bot.log('STATE', `Inside castle hall: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+                    await bot.openDoor('poordooropen');
+
+                    await bot.walkToWithPathfinding(3206, 3210);
+                    bot.log('STATE', `Near stairwell: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+                    await bot.climbStairs('loc_1738', 1);
+                    await bot.waitForTicks(2);
+
+                    if (bot.player.level !== 1) {
+                        throw new Error(`Failed to climb to level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+                    }
+                    bot.log('STATE', `On Duke's floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+                    await bot.walkToWithPathfinding(3207, 3222);
+                    await bot.openDoor('poordooropen');
+
+                    await bot.walkToWithPathfinding(3210, 3220);
+
+                    const duke = bot.findNearbyNpc('Duke Horacio', 16);
+                    if (!duke) {
+                        throw new Error(`Duke Horacio not found near (${bot.player.x},${bot.player.z},${bot.player.level})`);
+                    }
+                    bot.log('STATE', `Found Duke Horacio at (${duke.x},${duke.z})`);
+                    await bot.interactNpc(duke, 1);
+
+                    await bot.continueDialogsUntilChoice();
+                    await bot.selectDialogOption(1); // "Have you any quests for me?"
+
+                    await bot.continueDialogsUntilChoice();
+                    await bot.selectDialogOption(1); // "Sure, no problem."
+
+                    await bot.continueRemainingDialogs();
+
+                    await bot.waitForTicks(2);
+                    const talisman = bot.findItem('Air talisman');
+                    if (!talisman) {
+                        throw new Error('Did not receive Air talisman from Duke Horacio');
+                    }
+                    const varpAfterDuke = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
+                    if (varpAfterDuke !== STAGE_STARTED) {
+                        throw new Error(`Quest varp after Duke is ${varpAfterDuke}, expected ${STAGE_STARTED}`);
+                    }
+                    bot.log('EVENT', `Step 1 complete: received Air talisman, varp=${varpAfterDuke}`);
+                }
+            },
+            {
+                name: 'visit-sedridor',
+                isComplete: () => bot.getQuestProgress(RUNE_MYSTERIES_VARP) >= STAGE_RECEIVED_PACKAGE,
+                run: async () => {
+                    // Navigate down from Duke's floor and out of castle
+                    await exitCastleFromLevel1(bot);
+
+                    await bot.walkToWithPathfinding(WIZARD_TOWER_ENTRANCE_X, WIZARD_TOWER_ENTRANCE_Z);
+
+                    await enterWizardTowerBasement(bot);
+
+                    await navigateToSedridor(bot);
+
+                    await bot.talkToNpc('Sedridor');
+
+                    // Welcome message -> 3-option choice
+                    await bot.continueDialogsUntilChoice();
+                    await bot.selectDialogOption(3); // "I'm looking for the head wizard."
+
+                    await bot.continueDialogsUntilChoice();
+                    await bot.selectDialogOption(1); // "Ok, here you are."
+
+                    await bot.continueDialogsUntilChoice();
+                    await bot.selectDialogOption(1); // "Yes, certainly."
+
+                    // Continue through dialogs until Research package appears
+                    for (let i = 0; i < 30; i++) {
+                        const hasDialog = await bot.waitForDialog(10);
+                        if (!hasDialog) break;
+                        if (bot.isMultiChoiceOpen()) break;
+                        await bot.continueDialog();
+                        if (bot.findItem('Research package')) break;
+                    }
+
+                    await bot.continueRemainingDialogs();
+
+                    await bot.waitForTicks(2);
+                    const researchPackage = bot.findItem('Research package');
+                    if (!researchPackage) {
+                        throw new Error('Did not receive Research package from Sedridor');
+                    }
+                    const varpAfterSedridor1 = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
+                    if (varpAfterSedridor1 !== STAGE_RECEIVED_PACKAGE) {
+                        throw new Error(`Quest varp after Sedridor is ${varpAfterSedridor1}, expected ${STAGE_RECEIVED_PACKAGE}`);
+                    }
+                    bot.log('EVENT', `Step 2 complete: received Research package, varp=${varpAfterSedridor1}`);
+                }
+            },
+            {
+                name: 'visit-aubury',
+                isComplete: () => bot.getQuestProgress(RUNE_MYSTERIES_VARP) >= STAGE_RECEIVED_NOTES,
+                run: async () => {
+                    // Climb the ladder back up from the basement to the surface
+                    await exitWizardTowerBasement(bot);
+
+                    // Walk north-east to Varrock (Aubury's rune shop)
+                    await bot.walkToWithPathfinding(3105, 3250);
+                    await bot.walkToWithPathfinding(3082, 3336);
+                    await bot.walkToWithPathfinding(3080, 3400);
+                    await bot.walkToWithPathfinding(3175, 3427);
+                    await bot.walkToWithPathfinding(AUBURY_AREA_X, AUBURY_AREA_Z);
+
+                    // Talk to Aubury — deliver the package
+                    await bot.talkToNpc('Aubury');
+
+                    await bot.continueDialogsUntilChoice();
+                    await bot.selectDialogOption(3); // "I have been sent here with a package for you."
+
+                    await bot.continueRemainingDialogs();
+                    await bot.waitForTicks(3);
+
+                    if (bot.findItem('Research package') !== null) {
+                        throw new Error('Research package should have been removed after delivery to Aubury');
+                    }
+                    const varpAfterAubury1 = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
+                    if (varpAfterAubury1 !== STAGE_GIVEN_PACKAGE) {
+                        throw new Error(`Quest varp after Aubury delivery is ${varpAfterAubury1}, expected ${STAGE_GIVEN_PACKAGE}`);
+                    }
+                    bot.log('EVENT', `Delivered package to Aubury, varp=${varpAfterAubury1}`);
+
+                    // Second talk to Aubury to get research notes
+                    await bot.talkToNpc('Aubury');
+
+                    await bot.continueRemainingDialogs();
+
+                    await bot.waitForTicks(2);
+                    const researchNotes = bot.findItem('Notes');
+                    if (!researchNotes) {
+                        throw new Error('Did not receive Notes from Aubury');
+                    }
+                    const varpAfterAubury2 = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
+                    if (varpAfterAubury2 !== STAGE_RECEIVED_NOTES) {
+                        throw new Error(`Quest varp after Aubury research notes is ${varpAfterAubury2}, expected ${STAGE_RECEIVED_NOTES}`);
+                    }
+                    bot.log('EVENT', `Step 3 complete: received Notes, varp=${varpAfterAubury2}`);
+                }
+            },
+            {
+                name: 'return-to-sedridor',
+                isComplete: () => bot.getQuestProgress(RUNE_MYSTERIES_VARP) === STAGE_COMPLETE,
+                run: async () => {
+                    // Walk south-west back to Wizards' Tower entrance
+                    await bot.walkToWithPathfinding(3175, 3427);
+                    await bot.walkToWithPathfinding(3080, 3400);
+                    await bot.walkToWithPathfinding(3082, 3336);
+                    await bot.walkToWithPathfinding(3105, 3250);
+                    await bot.walkToWithPathfinding(WIZARD_TOWER_ENTRANCE_X, WIZARD_TOWER_ENTRANCE_Z);
+
+                    await enterWizardTowerBasement(bot);
+
+                    await navigateToSedridor(bot);
+
+                    await bot.talkToNpc('Sedridor');
+
+                    // Continue through all dialog pages (long lore dialog)
+                    for (let i = 0; i < 50; i++) {
+                        const hasDialog = await bot.waitForDialog(10);
+                        if (!hasDialog) break;
+                        if (bot.isMultiChoiceOpen()) break;
+                        await bot.continueDialog();
+                    }
+
+                    await bot.waitForTicks(5);
+
+                    bot.dismissModals();
+
+                    const finalVarp = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
+                    const finalTalisman = bot.findItem('Air talisman');
+
+                    if (finalVarp !== STAGE_COMPLETE) {
+                        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
+                    }
+                    if (!finalTalisman) {
+                        throw new Error('Air talisman not in inventory after quest completion');
+                    }
+
+                    bot.log('SUCCESS', `Rune Mysteries quest complete! varp=${finalVarp}, Air talisman in inventory`);
+                }
+            }
+        ]
+    };
+}
+
 export async function runeMysteries(bot: BotAPI): Promise<void> {
     // === Setup: skip tutorial, start in Lumbridge ===
     await skipTutorial(bot);
@@ -109,294 +361,21 @@ export async function runeMysteries(bot: BotAPI): Promise<void> {
         throw new Error(`Quest varp is ${initialVarp}, expected ${STAGE_NOT_STARTED} (not started)`);
     }
 
-    // ================================================================
-    // Step 1: Duke Horacio (Lumbridge Castle, 1st floor)
-    // ================================================================
-    bot.log('STATE', '=== Step 1: Duke Horacio ===');
-
-    // Navigate from Lumbridge spawn (3222, 3218) through castle doors to the stairwell.
-    //
-    // Castle layout (level 0):
-    //   - Castle entrance double doors at x=3217: openbankdoor_l (3217,3218) + openthickpoordoor (3217,3219)
-    //   - Interior door at (3215,3211): poordooropen (separates main hall from south corridor)
-    //   - Stairwell room accessible from east via the south corridor
-    //   - Staircase loc_1738 at (3204,3207), 2x2
-
-    // Step 1: Walk to the castle entrance doors and open them.
-    await bot.walkToWithPathfinding(3218, 3218);
-    bot.log('STATE', `At castle entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    await bot.openDoor('openbankdoor_l');
-
-    // Step 2: Walk through into the castle hall.
-    await bot.walkToWithPathfinding(3215, 3215);
-    bot.log('STATE', `Inside castle hall: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Step 3: Open the interior door leading south to the stairwell corridor.
-    await bot.openDoor('poordooropen');
-
-    // Step 4: Walk south through the door into the south corridor, then west to the stairwell.
-    await bot.walkToWithPathfinding(3206, 3210);
-    bot.log('STATE', `Near stairwell: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Climb the ground floor staircase up to level 1.
-    // loc_1738: op1=Climb-up. Player lands at (3205, 3209, level 1).
-    await bot.climbStairs('loc_1738', 1);
-    await bot.waitForTicks(2);
-
-    if (bot.player.level !== 1) {
-        throw new Error(`Failed to climb to level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    bot.log('STATE', `On Duke's floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Level 1 has a north-south wall at x=3207 with doors:
-    //   - poordooropen at (3207, 3214) angle=2 (east wall)
-    //   - poordooropen at (3207, 3222) angle=2 (east wall)
-    // We need to open one to reach the Duke's room (east side).
-    // Walk north to the door at (3207, 3222), open it, then go east.
-    await bot.walkToWithPathfinding(3207, 3222);
-    await bot.openDoor('poordooropen');
-
-    // Walk east through the door to near the Duke.
-    await bot.walkToWithPathfinding(3210, 3220);
-
-    const duke = bot.findNearbyNpc('Duke Horacio', 16);
-    if (!duke) {
-        throw new Error(`Duke Horacio not found near (${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    bot.log('STATE', `Found Duke Horacio at (${duke.x},${duke.z})`);
-    await bot.interactNpc(duke, 1);
-
-    // Dialog: greeting → choice "Have you any quests for me?"
-    await bot.continueDialogsUntilChoice();
-    await bot.selectDialogOption(1); // "Have you any quests for me?"
-
-    // Continue through dialog until choice "Sure, no problem."
-    await bot.continueDialogsUntilChoice();
-    await bot.selectDialogOption(1); // "Sure, no problem."
-
-    // Continue through remaining dialog (varp set, talisman given)
-    await bot.continueRemainingDialogs();
-
-    // Verify: air_talisman received
-    await bot.waitForTicks(2);
-    const talisman = bot.findItem('Air talisman');
-    if (!talisman) {
-        throw new Error('Did not receive Air talisman from Duke Horacio');
-    }
-    const varpAfterDuke = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
-    if (varpAfterDuke !== STAGE_STARTED) {
-        throw new Error(`Quest varp after Duke is ${varpAfterDuke}, expected ${STAGE_STARTED}`);
-    }
-    bot.log('EVENT', `Step 1 complete: received Air talisman, varp=${varpAfterDuke}`);
-
-    // ================================================================
-    // Step 2: Sedridor (Wizards' Tower basement)
-    // ================================================================
-    bot.log('STATE', '=== Step 2: Sedridor ===');
-
-    // Walk back to the south stairwell on level 1 (near 3205, 3209).
-    // The south loc_1739 is at (3204, 3207); the north one is at (3204, 3229).
-    // We must walk close to the south one so findNearbyLoc picks the right stairs.
-    //
-    // Level 1 has a wall at x=3207. The Duke's room is on the east side.
-    // There are doors at (3207, 3214) and (3207, 3222) (angle=2, east wall).
-    // We already opened the door at (3207, 3222). We can walk through there to go west.
-    // Then walk south from the west corridor to the stairwell.
-    await bot.walkToWithPathfinding(3206, 3218);
-    await bot.walkToWithPathfinding(3206, 3210);
-
-    // Climb the south staircase back down from level 1 to ground floor.
-    // loc_1739 on level 1: op3=Climb-down. Player lands at (3205, 3209, level 0).
-    await bot.climbStairs('loc_1739', 3);
-    await bot.waitForTicks(2);
-
-    if (bot.player.level as number !== 0) {
-        throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    bot.log('STATE', `Back on ground floor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Walk out of the stairwell room through the castle interior.
-    // From (3205, 3209, 0) walk east/north through the south corridor,
-    // then through the doors to exit the castle.
-    await bot.walkToWithPathfinding(3215, 3210);
-    await bot.openDoor('poordooropen');
-    await bot.walkToWithPathfinding(3215, 3215);
-    await bot.walkToWithPathfinding(3217, 3218);
-    await bot.openDoor('openbankdoor_l');
-    await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
-    await bot.walkToWithPathfinding(WIZARD_TOWER_ENTRANCE_X, WIZARD_TOWER_ENTRANCE_Z);
-
-    // Enter the tower and climb ladder down to basement
-    await enterWizardTowerBasement(bot);
-
-    // The basement has a circular layout:
-    //   - Ladder drops at (3104, 9576) in the NE alcove
-    //   - Inner room (Sedridor's area) is ~(3097-3107, 9569-9574)
-    //   - A wall at x=3108 separates the inner room from the outer ring
-    //   - Door: inaccastledoubledoorropen at (3108, 9570), shape=0 angle=0 (west wall)
-    //   - Route: east to outer ring → south to door → open door → west into inner room
-    await bot.walkToWithPathfinding(3108, 9575);
-    await bot.walkToWithPathfinding(3108, 9571);
-    bot.log('STATE', `Near basement door: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Open the inner room door
-    await bot.openDoor('inaccastledoubledoorropen');
-
-    // Walk west through the door into the inner room
-    await bot.walkToWithPathfinding(3103, 9571);
-    bot.log('STATE', `In inner room: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Talk to Sedridor (NPC name is "Sedridor")
-    await bot.talkToNpc('Sedridor');
-
-    // Welcome message → continue through to 3-option choice
-    await bot.continueDialogsUntilChoice();
-    // Multi3: "Nothing thanks..." (1), "What are you doing down here?" (2), "I'm looking for the head wizard." (3)
-    await bot.selectDialogOption(3);
-
-    // Continue through dialog until 2-option choice: "Ok, here you are." / "No..."
-    await bot.continueDialogsUntilChoice();
-    await bot.selectDialogOption(1);
-
-    // Continue through mesbox + @head_wizard_incredible dialog until choice
-    // "Yes, certainly." / "No, I'm busy."
-    await bot.continueDialogsUntilChoice();
-    await bot.selectDialogOption(1);
-
-    // Continue through dialogs until Research package appears in inventory
-    for (let i = 0; i < 30; i++) {
-        const hasDialog = await bot.waitForDialog(10);
-        if (!hasDialog) break;
-        if (bot.isMultiChoiceOpen()) break;
-        await bot.continueDialog();
-        if (bot.findItem('Research package')) break;
-    }
-
-    // Continue remaining dialog pages (e.g. "Best of luck with your quest...")
-    await bot.continueRemainingDialogs();
-
-    // Verify
-    await bot.waitForTicks(2);
-    const researchPackage = bot.findItem('Research package');
-    if (!researchPackage) {
-        throw new Error('Did not receive Research package from Sedridor');
-    }
-    const varpAfterSedridor1 = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
-    if (varpAfterSedridor1 !== STAGE_RECEIVED_PACKAGE) {
-        throw new Error(`Quest varp after Sedridor is ${varpAfterSedridor1}, expected ${STAGE_RECEIVED_PACKAGE}`);
-    }
-    bot.log('EVENT', `Step 2 complete: received Research package, varp=${varpAfterSedridor1}`);
-
-    // ================================================================
-    // Step 3: Aubury (Varrock rune shop)
-    // ================================================================
-    bot.log('STATE', '=== Step 3: Aubury ===');
-
-    // Climb the ladder back up from the basement to the surface
-    await exitWizardTowerBasement(bot);
-
-    // Walk north-east to Varrock (Aubury's rune shop).
-    // The full route is ~230 tiles through Draynor Village, past Barbarian Village,
-    // then east to Varrock. We use intermediate waypoints because fences, gates,
-    // and rivers can block the pathfinder when aiming at a distant point directly.
-    await bot.walkToWithPathfinding(3105, 3250); // North past Draynor Village
-    await bot.walkToWithPathfinding(3082, 3336); // North-west to Barbarian Village area
-    await bot.walkToWithPathfinding(3080, 3400); // North along west side of Varrock wall
-    await bot.walkToWithPathfinding(3175, 3427); // East to Varrock west gate area
-    await bot.walkToWithPathfinding(AUBURY_AREA_X, AUBURY_AREA_Z); // East to Aubury's rune shop
-
-    // Talk to Aubury — first conversation to deliver the package
-    await bot.talkToNpc('Aubury');
-
-    // Continue through greeting to 3-option choice
-    await bot.continueDialogsUntilChoice();
-    // Multi3: "Yes please!" (1), "Oh, it's a rune shop..." (2), "I have been sent here with a package for you." (3)
-    await bot.selectDialogOption(3);
-
-    // Continue through remaining dialog (package delivery, mesbox, etc.)
-    await bot.continueRemainingDialogs();
-    await bot.waitForTicks(3);
-
-    // Verify package was removed
-    if (bot.findItem('Research package') !== null) {
-        throw new Error('Research package should have been removed after delivery to Aubury');
-    }
-    const varpAfterAubury1 = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
-    if (varpAfterAubury1 !== STAGE_GIVEN_PACKAGE) {
-        throw new Error(`Quest varp after Aubury delivery is ${varpAfterAubury1}, expected ${STAGE_GIVEN_PACKAGE}`);
-    }
-    bot.log('EVENT', `Delivered package to Aubury, varp=${varpAfterAubury1}`);
-
-    // Second talk to Aubury to get research notes (varp=4 → given_package)
-    await bot.talkToNpc('Aubury');
-
-    // Continue through all dialog pages until done
-    await bot.continueRemainingDialogs();
-
-    // Verify
-    await bot.waitForTicks(2);
-    const researchNotes = bot.findItem('Notes');
-    if (!researchNotes) {
-        throw new Error('Did not receive Notes from Aubury');
-    }
-    const varpAfterAubury2 = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
-    if (varpAfterAubury2 !== STAGE_RECEIVED_NOTES) {
-        throw new Error(`Quest varp after Aubury research notes is ${varpAfterAubury2}, expected ${STAGE_RECEIVED_NOTES}`);
-    }
-    bot.log('EVENT', `Step 3 complete: received Notes, varp=${varpAfterAubury2}`);
-
-    // ================================================================
-    // Step 4: Return to Sedridor (Wizards' Tower basement)
-    // ================================================================
-    bot.log('STATE', '=== Step 4: Return to Sedridor ===');
-
-    // Walk south-west back to Wizards' Tower entrance (reverse of the route above)
-    await bot.walkToWithPathfinding(3175, 3427); // West to Varrock west gate area
-    await bot.walkToWithPathfinding(3080, 3400); // West past Varrock wall
-    await bot.walkToWithPathfinding(3082, 3336); // South to Barbarian Village area
-    await bot.walkToWithPathfinding(3105, 3250); // South past Draynor Village
-    await bot.walkToWithPathfinding(WIZARD_TOWER_ENTRANCE_X, WIZARD_TOWER_ENTRANCE_Z);
-
-    // Enter the tower and climb ladder down to basement (same as Step 2)
-    await enterWizardTowerBasement(bot);
-
-    // Navigate to Sedridor's inner room (same route as Step 2)
-    await bot.walkToWithPathfinding(3108, 9575);
-    await bot.walkToWithPathfinding(3108, 9571);
-    await bot.openDoor('inaccastledoubledoorropen');
-    await bot.walkToWithPathfinding(3103, 9571);
-    bot.log('STATE', `In inner room: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Talk to Sedridor — hand over research notes, long lore dialog
-    await bot.talkToNpc('Sedridor');
-
-    // Continue through all dialog pages (welcome, lore explanation, mesbox handover)
-    // This is a very long dialog (20+ pages), so use generous limits
-    for (let i = 0; i < 50; i++) {
-        const hasDialog = await bot.waitForDialog(10);
-        if (!hasDialog) break;
-        if (bot.isMultiChoiceOpen()) break;
-        await bot.continueDialog();
-    }
-
-    // quest complete: inv_del research_notes, inv_add air_talisman, queue(rune_mysteries_complete)
-
-    // Wait for the queued script to set varp to 6
-    await bot.waitForTicks(5);
-
-    // Dismiss any quest complete interface that might be open
-    bot.dismissModals();
-
-    // Verify quest completion
-    const finalVarp = bot.getQuestProgress(RUNE_MYSTERIES_VARP);
-    const finalTalisman = bot.findItem('Air talisman');
-
-    if (finalVarp !== STAGE_COMPLETE) {
-        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
-    }
-    if (!finalTalisman) {
-        throw new Error('Air talisman not in inventory after quest completion');
-    }
-
-    bot.log('SUCCESS', `Rune Mysteries quest complete! varp=${finalVarp}, Air talisman in inventory`);
+    const root = buildRuneMysteriesStates(bot);
+    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
+    await runStateMachine(bot, { root, varpIds: [RUNE_MYSTERIES_VARP], captureSnapshots: true, snapshotDir });
 }
+
+export const metadata: ScriptMeta = {
+    name: 'runemysteries',
+    type: 'quest',
+    varpId: RUNE_MYSTERIES_VARP,
+    varpComplete: STAGE_COMPLETE,
+    maxTicks: 25000,
+    run: runeMysteries,
+    buildStates: buildRuneMysteriesStates,
+    extraAssertions: (api: BotAPI) => [{
+        name: 'Air talisman in inventory',
+        pass: api.findItem('Air talisman') !== null,
+    }],
+};

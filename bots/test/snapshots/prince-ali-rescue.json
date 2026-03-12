@@ -1,0 +1,931 @@
+{
+  "test": "prince-ali-rescue",
+  "states": [
+    {
+      "path": "prince-ali-rescue",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 0,
+          "274": 0
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/earn-coins",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 0,
+          "274": 0
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/start-quest",
+      "snapshot": {
+        "position": {
+          "x": 3214,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 0,
+          "274": 0
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 152
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/speak-osman",
+      "snapshot": {
+        "position": {
+          "x": 3302,
+          "z": 3165,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 10,
+          "274": 0
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 142
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/gather-and-prepare",
+      "snapshot": {
+        "position": {
+          "x": 3286,
+          "z": 3183,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 20,
+          "274": 0
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 142
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/get-joe-drunk",
+      "snapshot": {
+        "position": {
+          "x": 3115,
+          "z": 3262,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 30,
+          "274": 2
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 62
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 2418,
+            "name": "Bronze key",
+            "count": 1
+          },
+          {
+            "id": 2424,
+            "name": "Paste",
+            "count": 1
+          },
+          {
+            "id": 2419,
+            "name": "Wig",
+            "count": 1
+          },
+          {
+            "id": 954,
+            "name": "Rope",
+            "count": 1
+          },
+          {
+            "id": 1013,
+            "name": "Pink skirt",
+            "count": 1
+          },
+          {
+            "id": 1917,
+            "name": "Beer",
+            "count": 1
+          },
+          {
+            "id": 1917,
+            "name": "Beer",
+            "count": 1
+          },
+          {
+            "id": 1917,
+            "name": "Beer",
+            "count": 1
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/tie-up-keli",
+      "snapshot": {
+        "position": {
+          "x": 3125,
+          "z": 3244,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 40,
+          "274": 2
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 62
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 2418,
+            "name": "Bronze key",
+            "count": 1
+          },
+          {
+            "id": 2424,
+            "name": "Paste",
+            "count": 1
+          },
+          {
+            "id": 2419,
+            "name": "Wig",
+            "count": 1
+          },
+          {
+            "id": 954,
+            "name": "Rope",
+            "count": 1
+          },
+          {
+            "id": 1013,
+            "name": "Pink skirt",
+            "count": 1
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/rescue-prince",
+      "snapshot": {
+        "position": {
+          "x": 3129,
+          "z": 3244,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 50,
+          "274": 2
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 62
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 2418,
+            "name": "Bronze key",
+            "count": 1
+          },
+          {
+            "id": 2424,
+            "name": "Paste",
+            "count": 1
+          },
+          {
+            "id": 2419,
+            "name": "Wig",
+            "count": 1
+          },
+          {
+            "id": 1013,
+            "name": "Pink skirt",
+            "count": 1
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "prince-ali-rescue/return-to-hassan",
+      "snapshot": {
+        "position": {
+          "x": 3123,
+          "z": 3243,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 17,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 8,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 3,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 3,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "273": 100,
+          "274": 2
+        },
+        "items": [
+          {
+            "id": 1478,
+            "name": "Amulet of accuracy",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 62
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

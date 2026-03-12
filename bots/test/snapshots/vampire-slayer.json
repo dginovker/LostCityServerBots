@@ -1,0 +1,404 @@
+{
+  "test": "vampire-slayer",
+  "states": [
+    {
+      "path": "vampire-slayer",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/earn-coins",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/buy-hammer",
+      "snapshot": {
+        "position": {
+          "x": 3225,
+          "z": 3219,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 131
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/train-combat",
+      "snapshot": {
+        "position": {
+          "x": 3209,
+          "z": 3247,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 130
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/talk-to-morgan",
+      "snapshot": {
+        "position": {
+          "x": 3236,
+          "z": 3293,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 15,
+          "DEFENCE": 1,
+          "STRENGTH": 20,
+          "HITPOINTS": 18,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 0
+        },
+        "items": [
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 130
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/get-garlic",
+      "snapshot": {
+        "position": {
+          "x": 3097,
+          "z": 3267,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 15,
+          "DEFENCE": 1,
+          "STRENGTH": 20,
+          "HITPOINTS": 18,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 1
+        },
+        "items": [
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 130
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/get-stake-and-sword",
+      "snapshot": {
+        "position": {
+          "x": 3098,
+          "z": 3266,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 15,
+          "DEFENCE": 1,
+          "STRENGTH": 20,
+          "HITPOINTS": 18,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 1
+        },
+        "items": [
+          {
+            "id": 1550,
+            "name": "Garlic",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 130
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "vampire-slayer/kill-vampire",
+      "snapshot": {
+        "position": {
+          "x": 3203,
+          "z": 3395,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 15,
+          "DEFENCE": 1,
+          "STRENGTH": 20,
+          "HITPOINTS": 18,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "178": 2
+        },
+        "items": [
+          {
+            "id": 1550,
+            "name": "Garlic",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 37
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1549,
+            "name": "Stake",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

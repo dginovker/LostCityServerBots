@@ -5,6 +5,7 @@ import LocType from '../../src/cache/config/LocType.js';
 import NpcType from '../../src/cache/config/NpcType.js';
 import ObjType from '../../src/cache/config/ObjType.js';
 import VarPlayerType from '../../src/cache/config/VarPlayerType.js';
+import { changeNpcCollision } from '../../src/engine/GameMap.js';
 import World from '../../src/engine/World.js';
 import { Interaction } from '../../src/engine/entity/Interaction.js';
 import type Loc from '../../src/engine/entity/Loc.js';
@@ -20,6 +21,8 @@ import { BotController } from './controller.js';
 import { BotLogger, type LogLevel } from './logger.js';
 import { findPathSegment, findPathToLocSegment } from './pathfinding.js';
 import { findPathToEntity } from '../../src/engine/GameMap.js';
+import { doorRegistry } from './door-registry.js';
+import type { StateSnapshot } from './state-machine.js';
 
 export interface SkillInfo {
     level: number;
@@ -38,6 +41,10 @@ export class BotAPI {
     readonly player: BotPlayer;
     readonly controller: BotController;
     readonly logger: BotLogger;
+    /** Current state path in the state machine (set by runStateMachine) */
+    currentStatePath: string = '';
+    /** Optional callback for streaming log events externally */
+    onLog: ((level: LogLevel, message: string) => void) | null = null;
 
     constructor(player: BotPlayer, controller: BotController, logger: BotLogger) {
         this.player = player;
@@ -109,7 +116,12 @@ export class BotAPI {
     /**
      * Dismiss any open modal interface (e.g. level-up dialog).
      * Resumes scripts waiting on p_pausebutton so they complete naturally,
-     * then closes any remaining modal.
+     * then closes any remaining modal only if the script is done.
+     *
+     * IMPORTANT: closeModal() kills paused scripts (sets activeScript=null).
+     * If the resumed script paused on a NEW dialog, we must NOT call closeModal()
+     * or the script will be aborted before reaching critical actions like inv_add.
+     * The caller should call dismissModals()/continueDialog() again for the next page.
      */
     dismissModals(): void {
         // Resume the paused script first so it can run to completion.
@@ -117,14 +129,18 @@ export class BotAPI {
         if (this.player.activeScript?.execution === ScriptState.PAUSEBUTTON) {
             this.player.executeScript(this.player.activeScript, true, true);
         }
-        // If a modal is still open after the script finished, close it.
-        if (this.player.containsModalInterface()) {
+        // Only close modal if the script is NOT paused on a new dialog.
+        // closeModal() sets activeScript=null for PAUSEBUTTON scripts,
+        // which would abort multi-page dialogs before they finish.
+        if (this.player.containsModalInterface() &&
+            this.player.activeScript?.execution !== ScriptState.PAUSEBUTTON) {
             this.player.closeModal();
         }
     }
 
     log(level: LogLevel, message: string): void {
         this.logger.log(level, message);
+        if (this.onLog) this.onLog(level, message);
     }
 
     // Delegate tick-waiting to controller
@@ -516,9 +532,52 @@ export class BotAPI {
     }
 
     /**
+     * Search for a loc with op[0] === 'Open' (a closed door or gate) near the given coordinates.
+     * Uses the pre-computed door registry for fast lookup, then resolves to live Loc objects.
+     * Returns the closest matching loc within `maxDist` tiles, or null.
+     */
+    private findOpenableLocNear(centerX: number, centerZ: number, level: number, maxDist: number): Loc | null {
+        const doors = doorRegistry.findDoorsNear(centerX, centerZ, level, maxDist);
+        return doors.length > 0 ? doors[0]! : null;
+    }
+
+    /**
+     * Gather debug info about all locs within `maxDist` tiles of a coordinate.
+     * Returns a formatted string listing each loc's debugname, coords, and ops.
+     */
+    private describeNearbyLocs(centerX: number, centerZ: number, level: number, maxDist: number): string {
+        const locs: { debugname: string; x: number; z: number; ops: string }[] = [];
+
+        const zoneRadius = Math.ceil(maxDist / 8) + 1;
+        const centerZoneX = centerX >> 3;
+        const centerZoneZ = centerZ >> 3;
+
+        for (let dx = -zoneRadius; dx <= zoneRadius; dx++) {
+            for (let dz = -zoneRadius; dz <= zoneRadius; dz++) {
+                const zoneX = centerZoneX + dx;
+                const zoneZ = centerZoneZ + dz;
+                const zone = World.gameMap.getZone(zoneX << 3, zoneZ << 3, level);
+                for (const loc of zone.getAllLocsSafe()) {
+                    const dist = Math.max(Math.abs(loc.x - centerX), Math.abs(loc.z - centerZ));
+                    if (dist > maxDist) continue;
+                    const locType = LocType.get(loc.type);
+                    const ops = locType.op?.filter(Boolean).join(',') || 'none';
+                    locs.push({ debugname: locType.debugname ?? `type_${loc.type}`, x: loc.x, z: loc.z, ops });
+                }
+            }
+        }
+
+        if (locs.length === 0) return '(no locs within range)';
+        return locs.map(l => `  ${l.debugname} at (${l.x},${l.z}) ops=[${l.ops}]`).join('\n');
+    }
+
+    /**
      * Walk to a destination using the engine's pathfinder.
      * For long distances, picks intermediate targets within pathfinder search range
      * (max ~34 tiles), pathfinds to each, walks, and repeats.
+     *
+     * If a path segment is blocked, automatically scans for nearby doors/gates
+     * (locs with op1='Open'), opens them, and retries the segment.
      */
     async walkToWithPathfinding(x: number, z: number): Promise<void> {
         this.log('ACTION', `walkToWithPathfinding: (${this.player.x},${this.player.z}) -> (${x},${z})`);
@@ -526,6 +585,10 @@ export class BotAPI {
         // rsmod pathfinder search grid is ~72x72, so max ~34 tiles from source
         const MAX_SEGMENT_DIST = 30;
         const MAX_ITERATIONS = 30;
+
+        // Track doors we've already opened to avoid infinite retry loops.
+        // Key = "x,z" of the door loc.
+        const openedDoors = new Set<string>();
 
         for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
             const curX = this.player.x;
@@ -553,7 +616,57 @@ export class BotAPI {
             const result = findPathSegment(level, curX, curZ, targetX, targetZ);
 
             if (result.length === 0) {
-                throw new Error(`Pathfinding failed: no path from (${curX},${curZ}) to (${targetX},${targetZ}) on level ${level} (final destination: (${x},${z}))`);
+                // Path is blocked — try to find and open a nearby door/gate.
+                // Search near the bot's current position first, then near the target,
+                // then along the midpoint between them.
+                const midX = Math.round((curX + targetX) / 2);
+                const midZ = Math.round((curZ + targetZ) / 2);
+                const searchPoints = [
+                    { x: curX, z: curZ },
+                    { x: targetX, z: targetZ },
+                    { x: midX, z: midZ },
+                ];
+
+                let door: Loc | null = null;
+                for (const pt of searchPoints) {
+                    door = this.findOpenableLocNear(pt.x, pt.z, level, 5);
+                    if (door && !openedDoors.has(`${door.x},${door.z}`)) break;
+                    door = null; // Skip already-opened doors
+                }
+
+                if (door) {
+                    const doorKey = `${door.x},${door.z}`;
+                    openedDoors.add(doorKey);
+                    const doorType = LocType.get(door.type);
+                    this.log('ACTION', `openDoor (auto): ${doorType.debugname} at (${door.x},${door.z}) — path was blocked at (${curX},${curZ})->(${targetX},${targetZ})`);
+
+                    await this.interactLoc(door, 1);
+                    await this.waitForTicks(1);
+
+                    // After opening the door, immediately try to walk toward the target
+                    // before the door auto-closes
+                    const throughResult = findPathSegment(level, this.player.x, this.player.z, targetX, targetZ);
+                    if (throughResult.length > 0) {
+                        this.player.queueWaypoints(throughResult);
+                        for (let tick = 0; tick < 35; tick++) {
+                            await this.waitForTick();
+                            if (this.player.x === x && this.player.z === z) break;
+                            if (!this.player.hasWaypoints()) break;
+                        }
+                    }
+                    // Resume the loop — next iteration will re-pathfind from current position
+                    continue;
+                }
+
+                // No openable loc found — throw with diagnostic info
+                const nearbyLocs = this.describeNearbyLocs(curX, curZ, level, 5);
+                const targetNearbyLocs = (curX !== targetX || curZ !== targetZ) ? this.describeNearbyLocs(targetX, targetZ, level, 5) : '';
+                throw new Error(
+                    `Pathfinding failed: no path from (${curX},${curZ}) to (${targetX},${targetZ}) on level ${level} (final destination: (${x},${z}))\n` +
+                    'No openable door/gate found nearby.\n' +
+                    `Locs within 5 tiles of bot (${curX},${curZ}):\n${nearbyLocs}` +
+                    (targetNearbyLocs ? `\nLocs within 5 tiles of target (${targetX},${targetZ}):\n${targetNearbyLocs}` : '')
+                );
             }
 
             this.player.queueWaypoints(result);
@@ -575,6 +688,94 @@ export class BotAPI {
         }
 
         this.log('STATE', `Arrived at (${this.player.x},${this.player.z})`);
+    }
+
+    /**
+     * Walk to a position, continuously clearing NPC collision flags each tick
+     * to allow pathfinding and movement through NPCs.
+     */
+    async walkToIgnoringNpcs(x: number, z: number): Promise<void> {
+        const level = this.player.level;
+
+        // Helper: clear NPC collision in nearby zones, return list for restore
+        const clearNearbyNpcCollision = (): { npc: Npc; x: number; z: number; width: number }[] => {
+            const cleared: { npc: Npc; x: number; z: number; width: number }[] = [];
+            const zoneX = this.player.x >> 3;
+            const zoneZ = this.player.z >> 3;
+            for (let dx = -3; dx <= 3; dx++) {
+                for (let dz = -3; dz <= 3; dz++) {
+                    const zone = World.gameMap.getZone((zoneX + dx) << 3, (zoneZ + dz) << 3, level);
+                    for (const npc of zone.getAllNpcsSafe()) {
+                        if (npc.isActive) {
+                            changeNpcCollision(npc.width, npc.x, npc.z, npc.level, false);
+                            cleared.push({ npc, x: npc.x, z: npc.z, width: npc.width });
+                        }
+                    }
+                }
+            }
+            return cleared;
+        };
+
+        // Helper: restore NPC collision
+        const restoreNpcCollision = (cleared: { npc: Npc; x: number; z: number; width: number }[]) => {
+            for (const { npc, x: nx, z: nz, width } of cleared) {
+                if (npc.isActive && npc.x === nx && npc.z === nz) {
+                    changeNpcCollision(width, nx, nz, level, true);
+                }
+            }
+        };
+
+        // Clear collision and find path
+        let cleared = clearNearbyNpcCollision();
+        const MAX_SEGMENT_DIST = 30;
+        let curX = this.player.x;
+        let curZ = this.player.z;
+
+        for (let segment = 0; segment < 20; segment++) {
+            if (curX === x && curZ === z) break;
+
+            const dx = x - curX;
+            const dz = z - curZ;
+            const chebyshev = Math.max(Math.abs(dx), Math.abs(dz));
+            let targetX: number, targetZ: number;
+            if (chebyshev <= MAX_SEGMENT_DIST) {
+                targetX = x;
+                targetZ = z;
+            } else {
+                const ratio = MAX_SEGMENT_DIST / chebyshev;
+                targetX = curX + Math.round(dx * ratio);
+                targetZ = curZ + Math.round(dz * ratio);
+            }
+
+            const result = findPathSegment(level, curX, curZ, targetX, targetZ);
+            if (result.length === 0) {
+                restoreNpcCollision(cleared);
+                throw new Error(`walkToIgnoringNpcs: no path from (${curX},${curZ}) to (${targetX},${targetZ})`);
+            }
+
+            this.player.queueWaypoints(result);
+
+            // Wait for movement — collision must stay cleared DURING the tick
+            // so that takeStep()/canTravel() doesn't see NPC blocking
+            for (let tick = 0; tick < 35; tick++) {
+                await this.waitForTick();
+                // After tick: restore old positions, then re-clear at new positions
+                restoreNpcCollision(cleared);
+                cleared = clearNearbyNpcCollision();
+                if (this.player.x === x && this.player.z === z) break;
+                if (!this.player.hasWaypoints()) break;
+            }
+
+            curX = this.player.x;
+            curZ = this.player.z;
+        }
+
+        restoreNpcCollision(cleared);
+
+        if (this.player.x !== x || this.player.z !== z) {
+            throw new Error(`walkToIgnoringNpcs: failed to reach (${x},${z}), stopped at (${this.player.x},${this.player.z})`);
+        }
+        this.log('STATE', `Arrived at (${this.player.x},${this.player.z}) [NPC-ignore]`);
     }
 
     // --- Dialog methods ---
@@ -724,6 +925,34 @@ export class BotAPI {
 
         // Resume the script — same as IfButtonHandler does when the button is in resumeButtons
         this.player.executeScript(this.player.activeScript, true, true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Simulate pressing an interface button (IF_BUTTON).
+     * componentName is the interface:component name, e.g. 'controls:com_3'.
+     */
+    async pressButton(componentName: string): Promise<void> {
+        const comId = Component.getId(componentName);
+        if (comId === -1) {
+            throw new Error(`pressButton: component '${componentName}' not found`);
+        }
+        const com = Component.get(comId);
+        if (typeof com === 'undefined' || com.buttonType === Component.NO_BUTTON) {
+            throw new Error(`pressButton: component '${componentName}' is not a button`);
+        }
+        if (!this.player.isComponentVisible(com)) {
+            throw new Error(`pressButton: component '${componentName}' is not visible`);
+        }
+        this.player.lastCom = comId;
+        this.log('ACTION', `pressButton: ${componentName} (comId=${comId})`);
+
+        const script = ScriptProvider.getByTriggerSpecific(ServerTriggerType.IF_BUTTON, comId, -1);
+        if (!script) {
+            throw new Error(`pressButton: no if_button trigger for '${componentName}'`);
+        }
+        const root = Component.get(com.rootLayer);
+        this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
         await this.waitForTick();
     }
 
@@ -1614,4 +1843,404 @@ export class BotAPI {
         this.player.executeScript(ScriptRunner.init(script, this.player), root.overlay == false);
         await this.waitForTick();
     }
+
+    /**
+     * Check if an item exists in the bank.
+     */
+    hasBankItem(itemName: string): boolean {
+        const lowerName = itemName.toLowerCase();
+        const bankInvType = InvType.getId('bank');
+        const bankInv = this.player.getInventory(bankInvType);
+        if (!bankInv) return false;
+
+        for (let slot = 0; slot < bankInv.capacity; slot++) {
+            const item = bankInv.items[slot];
+            if (item) {
+                const objType = ObjType.get(item.id);
+                if (objType.name?.toLowerCase() === lowerName) return true;
+            }
+        }
+        return false;
+    }
+
+    // --- Death recovery methods ---
+
+    /**
+     * Check if the bot is dead (hitpoints at 0 or death varp set).
+     */
+    isDead(): boolean {
+        const hp = this.player.levels[3]; // HITPOINTS = stat index 3
+        return hp !== undefined && hp <= 0;
+    }
+
+    /**
+     * Wait for the bot to respawn after death.
+     * Death takes ~4 ticks (animation + teleport to Lumbridge).
+     * After respawn, re-enables run and logs the event.
+     *
+     * @returns true if death was detected and recovered, false if not dead
+     */
+    async waitForRespawn(timeoutTicks: number = 20): Promise<boolean> {
+        if (!this.isDead() && this.player.vars[78] !== 1) {
+            return false;
+        }
+
+        this.log('STATE', `Death detected at (${this.player.x},${this.player.z},${this.player.level})`);
+
+        // Wait for the death script to complete and teleport us to Lumbridge
+        for (let i = 0; i < timeoutTicks; i++) {
+            await this.waitForTick();
+            // After respawn, HP is restored and death varp cleared
+            if (this.player.levels[3]! > 0 && this.player.vars[78] !== 1) {
+                break;
+            }
+        }
+
+        // Re-enable running (death restores energy via healenergy(10000))
+        this.player.run = 1;
+
+        this.log('STATE', `Respawned at (${this.player.x},${this.player.z},${this.player.level}), HP=${this.player.levels[3]}`);
+        return true;
+    }
+
+    // --- Smart helper methods ---
+
+    /**
+     * Wait until stun/delay varps (58 and 103) have expired.
+     * Also waits for player.delayed to clear.
+     * Replaces the identical 6-line varp-checking pattern used across 5+ scripts.
+     */
+    async waitForActionReady(): Promise<void> {
+        const stunnedUntil = this.getVarp(103);
+        const actionDelayUntil = this.getVarp(58);
+        const currentTick = this.getCurrentTick();
+
+        if (stunnedUntil > currentTick || actionDelayUntil > currentTick) {
+            const waitUntil = Math.max(stunnedUntil, actionDelayUntil);
+            const ticksToWait = waitUntil - currentTick + 1;
+            this.log('STATE', `waitForActionReady: stunned/delayed, waiting ${ticksToWait} ticks`);
+            await this.waitForTicks(ticksToWait);
+        }
+
+        if (this.player.delayed) {
+            await this.waitForCondition(() => !this.player.delayed, 20);
+        }
+    }
+
+    /**
+     * Attack an NPC by name and fight until it dies.
+     * Re-engages if player.target clears (NPC moved, got hit by someone else).
+     * Optionally eats food if HP drops below a threshold.
+     * Throws if the bot dies or if the fight times out.
+     *
+     * @param npcName Display name of the NPC to attack
+     * @param options.eatAt If set, eat food when HP% drops below this (0-100)
+     * @param options.eatItemName Name of food item to eat (default: searches for any edible)
+     * @param options.maxTicks Max ticks before timeout (default: 200)
+     */
+    async attackNpcUntilDead(npcName: string, options?: {
+        eatAt?: number;
+        eatItemName?: string;
+        maxTicks?: number;
+    }): Promise<void> {
+        const maxTicks = options?.maxTicks ?? 200;
+
+        const npc = this.findNearbyNpc(npcName, 20);
+        if (!npc) {
+            throw new Error(`attackNpcUntilDead: NPC "${npcName}" not found near (${this.player.x},${this.player.z})`);
+        }
+
+        this.log('ACTION', `attackNpcUntilDead: ${npcName} at (${npc.x},${npc.z})`);
+
+        // Initial attack (op2 = Attack)
+        try {
+            await this.interactNpc(npc, 2);
+        } catch {
+            this.log('STATE', `Failed to initiate attack on ${npcName}, it may be attacking us already`);
+        }
+
+        // IMPORTANT: Do NOT re-engage after the initial interactNpc.
+        // The engine's player_melee_attack script ends with p_opnpc(2) which
+        // self-sustains the combat loop. Re-engaging (calling interactNpc again)
+        // triggers p_stopaction which cancels the pending p_opnpc(2), resetting
+        // the combat cycle and preventing attacks from landing.
+
+        const NPC_HITPOINTS_STAT = 3;
+
+        for (let tick = 0; tick < maxTicks; tick++) {
+            await this.waitForTick();
+
+            this.dismissModals();
+
+            // Check if bot died
+            if (this.isDead()) {
+                throw new Error(`attackNpcUntilDead: bot died fighting ${npcName}`);
+            }
+
+            // Check if NPC died
+            if (!npc.isActive) {
+                this.log('EVENT', `${npcName} defeated (became inactive)`);
+                return;
+            }
+
+            // Check NPC HP
+            const npcHP = npc.levels[NPC_HITPOINTS_STAT];
+            if (npcHP !== undefined && npcHP <= 0) {
+                // Wait a few ticks for the death animation
+                await this.waitForTicks(3);
+                this.log('EVENT', `${npcName} defeated (HP reached 0)`);
+                return;
+            }
+
+            // Eat food if HP is low
+            if (options?.eatAt !== undefined) {
+                const health = this.getHealth();
+                const hpPercent = (health.current / health.max) * 100;
+                if (hpPercent < options.eatAt) {
+                    const foodName = options.eatItemName;
+                    if (foodName) {
+                        const food = this.findItem(foodName);
+                        if (food) {
+                            this.log('ACTION', `Eating ${foodName} (HP=${health.current}/${health.max})`);
+                            await this.useItemOp1(foodName);
+                            await this.waitForTicks(2);
+                        }
+                    }
+                }
+            }
+
+            // Log progress periodically
+            if (tick > 0 && tick % 50 === 0) {
+                const hp = this.getHealth();
+                this.log('STATE', `attackNpcUntilDead: tick ${tick}: bot HP=${hp.current}/${hp.max}`);
+            }
+
+        }
+
+        throw new Error(`attackNpcUntilDead: ${npcName} did not die after ${maxTicks} ticks`);
+    }
+
+    /**
+     * Attack an NPC with NPC collision temporarily cleared.
+     *
+     * For size-2 NPCs (cows, giant rats) grouped together, NPC collision can
+     * completely block the engine's pathfinder from routing the player to the
+     * target. This method clears NPC collision before initiating the interaction
+     * and keeps it cleared during the walk phase so the engine can path through
+     * other NPCs. Once combat starts (verified by XP gain), collision is restored.
+     *
+     * Returns the NPC's last position before death, or null if combat failed.
+     */
+    async attackNpcClearingCollision(npc: Npc, maxTicks: number = 200): Promise<{ x: number; z: number } | null> {
+        const npcType = NpcType.get(npc.type);
+        this.log('ACTION', `attackNpcClearingCollision: ${npcType.name} at (${npc.x},${npc.z})`);
+
+        const level = this.player.level;
+
+        // Clear NPC collision in nearby zones
+        const clearNearbyNpcCollision = (): { npc: Npc; x: number; z: number; width: number }[] => {
+            const cleared: { npc: Npc; x: number; z: number; width: number }[] = [];
+            const zoneX = this.player.x >> 3;
+            const zoneZ = this.player.z >> 3;
+            for (let dx = -3; dx <= 3; dx++) {
+                for (let dz = -3; dz <= 3; dz++) {
+                    const zone = World.gameMap.getZone((zoneX + dx) << 3, (zoneZ + dz) << 3, level);
+                    for (const n of zone.getAllNpcsSafe()) {
+                        if (n.isActive) {
+                            changeNpcCollision(n.width, n.x, n.z, n.level, false);
+                            cleared.push({ npc: n, x: n.x, z: n.z, width: n.width });
+                        }
+                    }
+                }
+            }
+            return cleared;
+        };
+
+        const restoreNpcCollision = (cleared: { npc: Npc; x: number; z: number; width: number }[]) => {
+            for (const { npc: n, x: nx, z: nz, width } of cleared) {
+                if (n.isActive && n.x === nx && n.z === nz) {
+                    changeNpcCollision(width, nx, nz, level, true);
+                }
+            }
+        };
+
+        // Clear collision before dispatching the interaction
+        let cleared = clearNearbyNpcCollision();
+
+        // Dispatch the interaction with collision cleared so the engine's
+        // pathfinder can route through other NPCs
+        const trigger: ServerTriggerType = ServerTriggerType.APNPC1 + (2 - 1); // op2 = Attack
+        const success = this.player.setInteraction(Interaction.SCRIPT, npc, trigger);
+        if (!success) {
+            restoreNpcCollision(cleared);
+            this.log('STATE', `setInteraction failed for ${npcType.name}`);
+            return null;
+        }
+
+        // Keep collision cleared during walk phase (engine pathfinds each tick).
+        // Restore and re-clear each tick to handle NPC movement.
+        const startExp = this.getSkill('Attack').exp + this.getSkill('Strength').exp + this.getSkill('Defence').exp;
+        let combatStarted = false;
+        let lastX = npc.x;
+        let lastZ = npc.z;
+
+        for (let tick = 0; tick < maxTicks; tick++) {
+            await this.waitForTick();
+
+            // Restore old NPC positions, re-clear at new positions
+            restoreNpcCollision(cleared);
+            cleared = clearNearbyNpcCollision();
+
+            if (npc.isActive) {
+                lastX = npc.x;
+                lastZ = npc.z;
+            }
+
+            if (!npc.isActive) {
+                restoreNpcCollision(cleared);
+                this.log('EVENT', `${npcType.name} died at (${lastX},${lastZ}) after ~${tick} ticks`);
+                await this.waitForTicks(2);
+                return { x: lastX, z: lastZ };
+            }
+
+            // Check for combat start via XP gain
+            if (!combatStarted) {
+                const currentExp = this.getSkill('Attack').exp + this.getSkill('Strength').exp + this.getSkill('Defence').exp;
+                if (currentExp > startExp) {
+                    combatStarted = true;
+                    // Restore collision now that combat is engaged
+                    restoreNpcCollision(cleared);
+                    this.log('STATE', `Combat started with ${npcType.name} at tick ${tick}`);
+                    // Continue the loop without collision clearing
+                    break;
+                }
+                if (tick >= 20) {
+                    restoreNpcCollision(cleared);
+                    this.log('STATE', `No combat XP after ${tick} ticks with ${npcType.name}, bailing`);
+                    return null;
+                }
+            }
+        }
+
+        if (!combatStarted) {
+            return null;
+        }
+
+        // Combat is engaged, NPC collision restored. Wait for death.
+        // Do NOT re-engage — p_opnpc(2) self-sustains the loop.
+        for (let tick = 0; tick < maxTicks; tick++) {
+            await this.waitForTick();
+
+            if (npc.isActive) {
+                lastX = npc.x;
+                lastZ = npc.z;
+            }
+
+            if (!npc.isActive) {
+                this.log('EVENT', `${npcType.name} died at (${lastX},${lastZ})`);
+                await this.waitForTicks(2);
+                return { x: lastX, z: lastZ };
+            }
+
+            if (this.isDead()) {
+                this.log('STATE', `Bot died fighting ${npcType.name}`);
+                return null;
+            }
+        }
+
+        this.log('STATE', `Combat timed out after ${maxTicks} ticks with ${npcType.name}`);
+        return null;
+    }
+
+    /**
+     * Earn coins by pickpocketing NPCs (default: Man in Lumbridge).
+     * Loops: find NPC -> waitForActionReady -> pickpocket (op3) -> wait -> repeat
+     * until the target GP is reached.
+     *
+     * @param targetGp Target coin count to reach
+     * @param npcName NPC to pickpocket (default: 'Man')
+     * @param area Coordinates to search near (default: Lumbridge spawn 3222,3218)
+     */
+    async earnCoinsViaPickpocket(targetGp: number, npcName: string = 'Man', area?: { x: number; z: number }): Promise<void> {
+        const areaX = area?.x ?? 3222;
+        const areaZ = area?.z ?? 3218;
+
+        this.log('STATE', `earnCoinsViaPickpocket: target=${targetGp}gp, npc=${npcName}, area=(${areaX},${areaZ})`);
+
+        let attempts = 0;
+        const MAX_ATTEMPTS = 600;
+
+        while (attempts < MAX_ATTEMPTS) {
+            const coins = this.findItem('Coins');
+            const currentGp = coins ? coins.count : 0;
+            if (currentGp >= targetGp) {
+                this.log('EVENT', `Earned ${currentGp}gp (target: ${targetGp}gp) in ${attempts} pickpocket attempts`);
+                return;
+            }
+
+            this.dismissModals();
+
+            // Wait for stun/delay to expire
+            await this.waitForActionReady();
+
+            let npc = this.findNearbyNpc(npcName);
+            if (!npc) {
+                this.log('STATE', `No ${npcName} found nearby, walking to area (${areaX},${areaZ})`);
+                await this.walkToWithPathfinding(areaX, areaZ);
+                await this.waitForTicks(2);
+                npc = this.findNearbyNpc(npcName);
+                if (!npc) {
+                    throw new Error(`No ${npcName} NPC found near (${areaX},${areaZ})`);
+                }
+            }
+
+            attempts++;
+            await this.interactNpc(npc, 3); // op3 = Pickpocket
+            await this.waitForTicks(5);
+            await this.waitForTicks(1);
+            this.dismissModals();
+        }
+
+        const finalCoins = this.findItem('Coins');
+        throw new Error(`earnCoinsViaPickpocket: failed to earn ${targetGp}gp after ${MAX_ATTEMPTS} attempts. Current gp: ${finalCoins ? finalCoins.count : 0}`);
+    }
+
+    // --- Snapshot restoration (test mode only) ---
+
+    /**
+     * Restore the bot to a previously captured snapshot state.
+     * Teleports to the snapshot position, sets skills, varps, and inventory.
+     * Used for single-state testing from snapshots — NOT during E2E runs.
+     */
+    restoreFromSnapshot(snapshot: StateSnapshot): void {
+        const player = this.player;
+
+        // Teleport to snapshot position
+        player.teleport(snapshot.position.x, snapshot.position.z, snapshot.position.level);
+        this.log('STATE', `restoreFromSnapshot: teleported to (${snapshot.position.x},${snapshot.position.z},${snapshot.position.level})`);
+
+        // Restore skills (base levels + current levels)
+        for (const [name, baseLevel] of Object.entries(snapshot.skills)) {
+            const statId = PlayerStatMap.get(name);
+            if (statId === undefined) {
+                throw new Error(`restoreFromSnapshot: unknown skill "${name}"`);
+            }
+            player.baseLevels[statId] = baseLevel;
+            player.levels[statId] = baseLevel;
+        }
+
+        // Restore varps
+        for (const [idStr, value] of Object.entries(snapshot.varps)) {
+            const id = parseInt(idStr, 10);
+            player.vars[id] = value;
+        }
+
+        // Restore inventory — clear first, then add items using stored IDs
+        player.invClear(InvType.INV);
+        for (const item of snapshot.items) {
+            player.invAdd(InvType.INV, item.id, item.count);
+        }
+        this.log('STATE', `restoreFromSnapshot: restored ${snapshot.items.length} items, ${Object.keys(snapshot.skills).length} skills, ${Object.keys(snapshot.varps).length} varps`);
+    }
+
 }

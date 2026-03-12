@@ -1,5 +1,8 @@
+import path from 'path';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
+import { type BotState, runStateMachine } from '../runtime/state-machine.js';
+import type { ScriptMeta } from '../runtime/script-meta.js';
 
 // Varp ID for Imp Catcher quest progress (from content/pack/varp.pack: 160=imp)
 const IMP_CATCHER_VARP = 160;
@@ -97,7 +100,7 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
     const startZ = imp.z;
     let lastKnownX = imp.x;
     let lastKnownZ = imp.z;
-    let reengageCount = 0;
+    const _reengageCount = 0;
     let ticksAtDistance = 0; // Count ticks where imp is far away
     const MAX_DRIFT = 80; // Allow imps to wander far - they have wanderrange=27 from spawn
     const COMBAT_TIMEOUT = 300;
@@ -161,40 +164,9 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
             return null;
         }
 
-        // If the bot lost its target (engine cleared the interaction),
-        // re-engage. This happens frequently because imps have givechase=false
-        // and reset to wandering after each retaliation.
-        if (bot.player.target === null && imp.isActive && tick > 3) {
-            // If imp HP is 0, it's dying — wait for death to complete
-            if (impHP <= 0) {
-                await bot.waitForTicks(5);
-                if (!imp.isActive) {
-                    if (bot.player.run) { bot.enableRun(false); }
-                    bot.log('EVENT', `Imp died at (${lastKnownX},${lastKnownZ}) after ~${tick} ticks`);
-                    await bot.waitForTicks(2);
-                    return { x: lastKnownX, z: lastKnownZ };
-                }
-            }
-
-            if (dist <= 15 && imp.isActive) {
-                reengageCount++;
-                if (reengageCount % 5 === 1) {
-                    bot.log('STATE', `Re-engaging imp at dist=${dist} impHP=${impHP}/8 (re-engage #${reengageCount})`);
-                }
-                try {
-                    await bot.interactNpc(imp, ATTACK_OP);
-                } catch {
-                    // interactNpc can fail if imp died during the call
-                    if (!imp.isActive) {
-                        if (bot.player.run) { bot.enableRun(false); }
-                        bot.log('EVENT', `Imp died at (${lastKnownX},${lastKnownZ}) after ~${tick} ticks (during re-engage)`);
-                        await bot.waitForTicks(2);
-                        return { x: lastKnownX, z: lastKnownZ };
-                    }
-                    return null;
-                }
-            }
-        }
+        // Do NOT re-engage — the engine's player_melee_attack script ends with
+        // p_opnpc(2) which self-sustains the combat loop. Re-engaging cancels the
+        // pending p_opnpc(2), resetting the combat cycle and preventing hits.
     }
 
     const finalImpHP = imp.levels[HITPOINTS_STAT];
@@ -492,42 +464,12 @@ async function completeQuestWithMizgog(bot: BotAPI): Promise<void> {
     bot.dismissModals();
 }
 
-export async function impCatcher(bot: BotAPI): Promise<void> {
-    // === Setup: skip tutorial, start in Lumbridge ===
-    await skipTutorial(bot);
-    await bot.waitForTicks(2);
-
-    bot.log('STATE', `Starting Imp Catcher quest at (${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    const initialVarp = bot.getQuestProgress(IMP_CATCHER_VARP);
-    if (initialVarp !== STAGE_NOT_STARTED) {
-        throw new Error(`Quest varp is ${initialVarp}, expected ${STAGE_NOT_STARTED} (not started)`);
-    }
-
-    // ================================================================
-    // Step 1: Walk to the Wizard Tower and talk to Mizgog to start quest
-    // ================================================================
-    bot.log('STATE', '=== Step 1: Start quest with Wizard Mizgog ===');
-
-    await enterWizardTowerTopFloor(bot);
-    await startQuestWithMizgog(bot);
-
-    const varpAfterStart = bot.getQuestProgress(IMP_CATCHER_VARP);
-    if (varpAfterStart !== STAGE_STARTED) {
-        throw new Error(`Quest varp after starting is ${varpAfterStart}, expected ${STAGE_STARTED}`);
-    }
-    bot.log('EVENT', `Quest started! varp=${varpAfterStart}`);
-
-    // ================================================================
-    // Step 2: Exit the tower and hunt imps for beads
-    // ================================================================
-    bot.log('STATE', '=== Step 2: Hunt imps for beads ===');
-
-    await exitWizardTower(bot);
-
-    // Equip the bronze pickaxe as a weapon for faster kills.
-    // Bronze pickaxe provides +4 crush attack and some strength bonus,
-    // significantly improving DPS over unarmed combat at level 1.
+/**
+ * Collect all 4 beads by hunting imps near Lumbridge.
+ * Extracted from the main function to be reusable by the state machine.
+ */
+async function collectBeads(bot: BotAPI): Promise<void> {
+    // Equip the bronze pickaxe as a weapon for faster kills
     bot.log('STATE', 'Equipping bronze pickaxe as weapon');
     await bot.equipItem('Bronze pickaxe');
     await bot.waitForTicks(1);
@@ -538,13 +480,9 @@ export async function impCatcher(bot: BotAPI): Promise<void> {
         bot.log('EVENT', 'Bronze pickaxe equipped');
     }
 
-    // NOTE: We do NOT enable running here. Running drains energy fast and we need
-    // to conserve it for chasing fleeing imps during combat. The attackImpAndWait
-    // function enables running right before engaging in combat.
-
     let impsKilled = 0;
     let totalTicks = 0;
-    const MAX_TICKS = 50000; // Safety timeout (~500 minutes game time)
+    const MAX_TICKS = 50000;
 
     while (!hasAllBeads(bot) && totalTicks < MAX_TICKS) {
         const missing = getMissingBeads(bot);
@@ -552,20 +490,16 @@ export async function impCatcher(bot: BotAPI): Promise<void> {
             bot.log('STATE', `Beads missing: [${missing.join(', ')}], imps killed: ${impsKilled}, ticks: ${totalTicks}`);
         }
 
-        // Dismiss any level-up dialogs or modals
         bot.dismissModals();
 
-        // Wait for any delay to clear
         if (bot.player.delayed) {
             await bot.waitForCondition(() => !bot.player.delayed, 20);
         }
 
-        // Disable running while patrolling to conserve energy for combat
         if (bot.player.run) {
             bot.enableRun(false);
         }
 
-        // If run energy is low, rest briefly to recover some before next combat
         if (bot.player.runenergy < 3000) {
             const restTicks = Math.min(30, Math.floor((3000 - bot.player.runenergy) / 80));
             if (restTicks > 5) {
@@ -575,30 +509,26 @@ export async function impCatcher(bot: BotAPI): Promise<void> {
             }
         }
 
-        // Find an imp — only engage imps within 10 tiles (closer = faster fights)
         let imp = bot.findNearbyNpc('Imp', 10);
 
         if (!imp) {
             imp = await patrolForImps(bot);
-            totalTicks += 30; // Rough estimate for patrol walking
+            totalTicks += 30;
 
             if (!imp) {
-                // No imps found — wait briefly for respawns
                 await bot.waitForTicks(10);
                 totalTicks += 10;
                 continue;
             }
         }
 
-        // Attack the imp and wait for it to die
         const deathPos = await attackImpAndWait(bot, imp);
-        totalTicks += 15; // Rough estimate of ticks spent in combat
+        totalTicks += 15;
 
         if (deathPos) {
             impsKilled++;
             bot.dismissModals();
 
-            // Try to pick up any bead drops
             const beadsPickedUp = await pickUpBeadDrops(bot, deathPos.x, deathPos.z);
             totalTicks += 5;
 
@@ -606,10 +536,9 @@ export async function impCatcher(bot: BotAPI): Promise<void> {
                 bot.log('EVENT', `Picked up beads: [${beadsPickedUp.join(', ')}] (total imps killed: ${impsKilled})`);
             }
 
-            // Log progress every 10 kills
             if (impsKilled % 10 === 0) {
-                const missing = getMissingBeads(bot);
-                bot.log('STATE', `Progress: ${impsKilled} imps killed, missing beads: [${missing.join(', ')}]`);
+                const remainingBeads = getMissingBeads(bot);
+                bot.log('STATE', `Progress: ${impsKilled} imps killed, missing beads: [${remainingBeads.join(', ')}]`);
             }
         }
 
@@ -623,46 +552,104 @@ export async function impCatcher(bot: BotAPI): Promise<void> {
     }
 
     bot.log('EVENT', `All 4 beads collected after ${impsKilled} imp kills!`);
-
-    // ================================================================
-    // Step 3: Return to Wizard Mizgog to complete the quest
-    // ================================================================
-    bot.log('STATE', '=== Step 3: Return to Wizard Mizgog ===');
-
-    // Disable running to conserve energy for the walk
-    if (bot.player.run) {
-        bot.enableRun(false);
-    }
-
-    // Walk to Lumbridge spawn first — the segmented pathfinder picks intermediate
-    // targets in a straight line, and the direct line from the imp hunting area
-    // to the Wizard Tower can cross the river or hit fences. Lumbridge spawn
-    // (3222,3218) is a known-good starting point for the Wizard Tower path.
-    bot.log('STATE', `Walking to Lumbridge spawn first from (${bot.player.x},${bot.player.z})`);
-    await bot.walkToWithPathfinding(3222, 3218);
-
-    await enterWizardTowerTopFloor(bot);
-    await completeQuestWithMizgog(bot);
-
-    // ================================================================
-    // Step 4: Verify quest completion
-    // ================================================================
-    await bot.waitForTicks(5);
-    bot.dismissModals();
-
-    const finalVarp = bot.getQuestProgress(IMP_CATCHER_VARP);
-    const magicSkill = bot.getSkill('Magic');
-    const hasAmulet = bot.findItem('Amulet of accuracy') !== null;
-
-    if (finalVarp !== STAGE_COMPLETE) {
-        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
-    }
-    if (magicSkill.exp <= 0) {
-        throw new Error('No magic XP gained during quest');
-    }
-    if (!hasAmulet) {
-        throw new Error('Amulet of accuracy not received as reward');
-    }
-
-    bot.log('SUCCESS', `Imp Catcher quest complete! varp=${finalVarp}, magic_xp=${magicSkill.exp}, has_amulet=${hasAmulet}, imps_killed=${impsKilled}`);
 }
+
+/**
+ * Build the Imp Catcher state machine.
+ * States: start-quest, collect-beads, deliver-to-wizard
+ */
+export function buildImpCatcherStates(bot: BotAPI): BotState {
+    return {
+        name: 'imp-catcher',
+        isComplete: () => bot.getQuestProgress(IMP_CATCHER_VARP) === STAGE_COMPLETE,
+        run: async () => { throw new Error('Composite state should not be called directly'); },
+        children: [
+            {
+                name: 'start-quest',
+                isComplete: () => bot.getQuestProgress(IMP_CATCHER_VARP) >= STAGE_STARTED,
+                run: async () => {
+                    await enterWizardTowerTopFloor(bot);
+                    await startQuestWithMizgog(bot);
+
+                    const varpAfterStart = bot.getQuestProgress(IMP_CATCHER_VARP);
+                    if (varpAfterStart !== STAGE_STARTED) {
+                        throw new Error(`Quest varp after starting is ${varpAfterStart}, expected ${STAGE_STARTED}`);
+                    }
+                    bot.log('EVENT', `Quest started! varp=${varpAfterStart}`);
+                }
+            },
+            {
+                name: 'collect-beads',
+                isComplete: () => hasAllBeads(bot),
+                stuckThreshold: 3000,
+                run: async () => {
+                    await exitWizardTower(bot);
+                    await collectBeads(bot);
+                }
+            },
+            {
+                name: 'deliver-to-wizard',
+                isComplete: () => bot.getQuestProgress(IMP_CATCHER_VARP) === STAGE_COMPLETE,
+                run: async () => {
+                    // Disable running to conserve energy for the walk
+                    if (bot.player.run) {
+                        bot.enableRun(false);
+                    }
+
+                    // Walk to Lumbridge spawn first for reliable pathfinding
+                    bot.log('STATE', `Walking to Lumbridge spawn first from (${bot.player.x},${bot.player.z})`);
+                    await bot.walkToWithPathfinding(3222, 3218);
+
+                    await enterWizardTowerTopFloor(bot);
+                    await completeQuestWithMizgog(bot);
+
+                    await bot.waitForTicks(5);
+                    bot.dismissModals();
+
+                    const finalVarp = bot.getQuestProgress(IMP_CATCHER_VARP);
+                    const magicSkill = bot.getSkill('Magic');
+                    const hasAmulet = bot.findItem('Amulet of accuracy') !== null;
+
+                    if (finalVarp !== STAGE_COMPLETE) {
+                        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
+                    }
+                    if (magicSkill.exp <= 0) {
+                        throw new Error('No magic XP gained during quest');
+                    }
+                    if (!hasAmulet) {
+                        throw new Error('Amulet of accuracy not received as reward');
+                    }
+
+                    bot.log('SUCCESS', `Imp Catcher quest complete! varp=${finalVarp}, magic_xp=${magicSkill.exp}, has_amulet=${hasAmulet}`);
+                }
+            }
+        ]
+    };
+}
+
+export async function impCatcher(bot: BotAPI): Promise<void> {
+    // === Setup: skip tutorial, start in Lumbridge ===
+    await skipTutorial(bot);
+    await bot.waitForTicks(2);
+
+    bot.log('STATE', `Starting Imp Catcher quest at (${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+    const initialVarp = bot.getQuestProgress(IMP_CATCHER_VARP);
+    if (initialVarp !== STAGE_NOT_STARTED) {
+        throw new Error(`Quest varp is ${initialVarp}, expected ${STAGE_NOT_STARTED} (not started)`);
+    }
+
+    const root = buildImpCatcherStates(bot);
+    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
+    await runStateMachine(bot, { root, varpIds: [IMP_CATCHER_VARP], captureSnapshots: true, snapshotDir });
+}
+
+export const metadata: ScriptMeta = {
+    name: 'impcatcher',
+    type: 'quest',
+    varpId: IMP_CATCHER_VARP,
+    varpComplete: STAGE_COMPLETE,
+    maxTicks: 40000,
+    run: impCatcher,
+    buildStates: buildImpCatcherStates,
+};

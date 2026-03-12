@@ -1,0 +1,490 @@
+{
+  "test": "demon-slayer",
+  "states": [
+    {
+      "path": "demon-slayer",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/earn-coins-and-buy-bucket",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/talk-to-gypsy",
+      "snapshot": {
+        "position": {
+          "x": 3210,
+          "z": 3244,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 0
+        },
+        "items": [
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 4
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/talk-to-sir-prysin",
+      "snapshot": {
+        "position": {
+          "x": 3205,
+          "z": 3424,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 1
+        },
+        "items": [
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 3
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/get-rovin-key",
+      "snapshot": {
+        "position": {
+          "x": 3203,
+          "z": 3472,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 2
+        },
+        "items": [
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 3
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/get-drain-key",
+      "snapshot": {
+        "position": {
+          "x": 3203,
+          "z": 3496,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 2
+        },
+        "items": [
+          {
+            "id": 2400,
+            "name": "Key",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 3
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/get-traiborn-key",
+      "snapshot": {
+        "position": {
+          "x": 3237,
+          "z": 3457,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 2
+        },
+        "items": [
+          {
+            "id": 2400,
+            "name": "Key",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 3
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          },
+          {
+            "id": 2401,
+            "name": "Key",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/get-silverlight",
+      "snapshot": {
+        "position": {
+          "x": 3109,
+          "z": 3169,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 4,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 28
+        },
+        "items": [
+          {
+            "id": 2400,
+            "name": "Key",
+            "count": 1
+          },
+          {
+            "id": 2399,
+            "name": "Key",
+            "count": 1
+          },
+          {
+            "id": 2401,
+            "name": "Key",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/do-cooks-assistant",
+      "snapshot": {
+        "position": {
+          "x": 3206,
+          "z": 3476,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 4,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 29
+        },
+        "items": [
+          {
+            "id": 2402,
+            "name": "Silverlight",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "demon-slayer/kill-delrith",
+      "snapshot": {
+        "position": {
+          "x": 3207,
+          "z": 3213,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 4,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 4,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "222": 29
+        },
+        "items": [
+          {
+            "id": 2402,
+            "name": "Silverlight",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          }
+        ]
+      }
+    }
+  ]
+}

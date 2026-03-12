@@ -1,11 +1,14 @@
+import path from 'path';
 import LocType from '../../src/cache/config/LocType.js';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
 import { reachedEntity } from '../../src/engine/GameMap.js';
 import type Npc from '../../src/engine/entity/Npc.js';
+import { type BotState, runStateMachine } from '../runtime/state-machine.js';
+import type { ScriptMeta } from '../runtime/script-meta.js';
 
 // Varp ID for Sheep Shearer quest progress (from content/pack/varp.pack: 179=sheep)
-const SHEEP_SHEARER_VARP = 179;
+export const SHEEP_SHEARER_VARP = 179;
 
 // Quest stages (from content/scripts/quests/quest_sheep/configs/quest_sheep.constant
 // and content/scripts/general/configs/quest.constant)
@@ -17,15 +20,7 @@ const STAGE_COMPLETE = 22;
 // NPC type IDs (from content/pack/npc.pack)
 const NPC_SHEEPUNSHEERED = 43;
 
-// Varp IDs for stun/delay (same as thieving-men.ts)
-const VARP_ACTION_DELAY = 58;
-const VARP_STUNNED = 103;
-
 // ---- Key locations ----
-
-// Lumbridge spawn point (after tutorial)
-const LUMBRIDGE_SPAWN_X = 3222;
-const LUMBRIDGE_SPAWN_Z = 3218;
 
 // Lumbridge General Store area (Shop keeper is inside)
 const GENERAL_STORE_X = 3212;
@@ -245,66 +240,7 @@ async function walkToSheepArea(bot: BotAPI): Promise<void> {
     bot.log('STATE', `In sheep area: pos=(${bot.player.x},${bot.player.z})`);
 }
 
-/**
- * Pickpocket men in Lumbridge to earn coins for buying shears.
- * Targets 5gp (shears cost 1gp, but we want a buffer).
- */
-async function earnCoins(bot: BotAPI, targetGp: number): Promise<void> {
-    bot.log('STATE', `=== Earning ${targetGp}gp by pickpocketing men ===`);
-
-    let attempts = 0;
-    const MAX_ATTEMPTS = 100;
-
-    while (attempts < MAX_ATTEMPTS) {
-        const coins = bot.findItem('Coins');
-        const currentGp = coins ? coins.count : 0;
-        if (currentGp >= targetGp) {
-            bot.log('EVENT', `Earned ${currentGp}gp (target: ${targetGp}gp) in ${attempts} pickpocket attempts`);
-            return;
-        }
-
-        // Dismiss any open modal interface (e.g. level-up dialog)
-        bot.dismissModals();
-
-        // Wait for stun/delay to expire
-        const stunnedUntil = bot.getVarp(VARP_STUNNED);
-        const actionDelayUntil = bot.getVarp(VARP_ACTION_DELAY);
-        const currentTick = bot.getCurrentTick();
-
-        if (stunnedUntil > currentTick || actionDelayUntil > currentTick) {
-            const waitUntil = Math.max(stunnedUntil, actionDelayUntil);
-            const ticksToWait = waitUntil - currentTick + 1;
-            bot.log('STATE', `Stunned/delayed, waiting ${ticksToWait} ticks`);
-            await bot.waitForTicks(ticksToWait);
-        }
-
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
-
-        let man = bot.findNearbyNpc('Man');
-        if (!man) {
-            bot.log('STATE', 'No Man found nearby, walking to Lumbridge center');
-            await bot.walkTo(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
-            await bot.waitForTicks(2);
-            man = bot.findNearbyNpc('Man');
-            if (!man) {
-                throw new Error(`No Man NPC found near (${LUMBRIDGE_SPAWN_X},${LUMBRIDGE_SPAWN_Z})`);
-            }
-        }
-
-        attempts++;
-        await bot.interactNpc(man, 3); // op3 = Pickpocket
-        await bot.waitForTicks(5);
-
-        // Dismiss level-up dialogs
-        await bot.waitForTicks(1);
-        bot.dismissModals();
-    }
-
-    const finalCoins = bot.findItem('Coins');
-    throw new Error(`Failed to earn ${targetGp}gp after ${MAX_ATTEMPTS} attempts. Current gp: ${finalCoins ? finalCoins.count : 0}`);
-}
+// earnCoins is now handled by bot.earnCoinsViaPickpocket()
 
 /**
  * Buy shears from the Lumbridge General Store.
@@ -469,6 +405,249 @@ async function spinOneWool(bot: BotAPI): Promise<void> {
     bot.dismissModals();
 }
 
+/**
+ * Build the Sheep Shearer state machine.
+ * States: earn-coins, buy-shears, start-quest, deliver-wool
+ */
+export function buildSheepShearerStates(bot: BotAPI): BotState {
+    return {
+        name: 'sheep-shearer',
+        isComplete: () => bot.getQuestProgress(SHEEP_SHEARER_VARP) === STAGE_COMPLETE,
+        run: async () => { throw new Error('Composite state should not be called directly'); },
+        children: [
+            {
+                name: 'earn-coins',
+                stuckThreshold: 3000,
+                isComplete: () => {
+                    const coins = bot.findItem('Coins');
+                    return coins !== null && coins.count >= 1;
+                },
+                run: async () => {
+                    await bot.earnCoinsViaPickpocket(5);
+                }
+            },
+            {
+                name: 'buy-shears',
+                isComplete: () => bot.findItem('Shears') !== null,
+                run: async () => {
+                    await buyShears(bot);
+                }
+            },
+            {
+                name: 'start-quest',
+                isComplete: () => bot.getQuestProgress(SHEEP_SHEARER_VARP) >= STAGE_STARTED,
+                run: async () => {
+                    await walkToFred(bot);
+
+                    const fred = bot.findNearbyNpc('Fred the Farmer', 20);
+                    if (!fred) {
+                        throw new Error(`Fred the Farmer not found near (${bot.player.x},${bot.player.z})`);
+                    }
+                    bot.log('STATE', `Found Fred at (${fred.x},${fred.z}), interacting...`);
+                    await bot.interactNpc(fred, 1);
+                    const fredDialog = await bot.waitForDialog(30);
+                    if (!fredDialog) {
+                        throw new Error(`No dialog opened after talking to Fred the Farmer. pos=(${bot.player.x},${bot.player.z}), Fred at (${fred.x},${fred.z})`);
+                    }
+                    await bot.continueDialog();
+
+                    // Multi3: "I'm looking for a quest." (1)
+                    await bot.waitForDialog(10);
+                    await bot.selectDialogOption(1);
+
+                    // chatplayer "I'm looking for a quest." -> continue
+                    await bot.waitForDialog(10);
+                    await bot.continueDialog();
+
+                    // chatnpc "You're after a quest, you say?..." -> continue
+                    await bot.waitForDialog(10);
+                    await bot.continueDialog();
+
+                    // chatnpc "My sheep are getting mighty woolly..." -> continue
+                    await bot.waitForDialog(10);
+                    await bot.continueDialog();
+
+                    // chatnpc "Yes, that's it. Bring me 20 balls of wool..." -> continue
+                    await bot.waitForDialog(10);
+                    await bot.continueDialog();
+
+                    // Multi3: "Yes okay. I can do that." (1)
+                    await bot.waitForDialog(10);
+                    await bot.selectDialogOption(1);
+
+                    // chatplayer "Yes okay. I can do that." -> continue
+                    await bot.waitForDialog(10);
+                    await bot.continueDialog();
+
+                    // chatnpc "Ok I'll see you when you have some wool." (varp 0 -> 1)
+                    await bot.waitForDialog(10);
+                    await bot.continueDialog();
+
+                    await bot.waitForTicks(2);
+
+                    const varpAfterStart = bot.getQuestProgress(SHEEP_SHEARER_VARP);
+                    if (varpAfterStart !== STAGE_STARTED) {
+                        throw new Error(`Quest varp after starting is ${varpAfterStart}, expected ${STAGE_STARTED}`);
+                    }
+                    bot.log('EVENT', `Quest started! varp=${varpAfterStart}`);
+                }
+            },
+            {
+                name: 'deliver-wool',
+                isComplete: () => bot.getQuestProgress(SHEEP_SHEARER_VARP) === STAGE_COMPLETE,
+                maxRetries: 5,
+                run: async () => {
+                    // Batch loop: shear, spin, deliver. Repeat until 20 balls delivered.
+                    let woolDelivered = bot.getQuestProgress(SHEEP_SHEARER_VARP) - STAGE_STARTED;
+
+                    while (woolDelivered < 20) {
+                        const batchSize = Math.min(10, 20 - woolDelivered);
+                        bot.log('STATE', `--- Batch: need ${batchSize} more balls of wool (${woolDelivered}/20 delivered) ---`);
+
+                        // 4a: Walk to the sheep pen and shear sheep
+                        await walkToSheepArea(bot);
+
+                        let woolCollected = 0;
+                        let waitTicks = 0;
+                        const MAX_WAIT_TICKS = 3000;
+
+                        while (woolCollected < batchSize && waitTicks < MAX_WAIT_TICKS) {
+                            bot.dismissModals();
+
+                            if (bot.player.delayed) {
+                                await bot.waitForCondition(() => !bot.player.delayed, 20);
+                            }
+
+                            const sheep = findAdjacentReachableSheep(bot);
+                            if (!sheep) {
+                                const nearest = bot.findNearbyNpcByTypeId(NPC_SHEEPUNSHEERED, 16);
+                                if (nearest) {
+                                    const dist = Math.max(Math.abs(nearest.x - bot.player.x), Math.abs(nearest.z - bot.player.z));
+                                    if (dist > 1) {
+                                        bot.player.queueWaypoint(nearest.x, nearest.z);
+                                        await bot.waitForTicks(Math.min(dist, 5));
+                                        waitTicks += Math.min(dist, 5);
+                                    } else {
+                                        await bot.waitForTick();
+                                        waitTicks++;
+                                    }
+                                } else {
+                                    await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
+                                    await bot.waitForTicks(5);
+                                    waitTicks += 5;
+                                }
+
+                                if (waitTicks % 100 === 0) {
+                                    const nearLog = bot.findNearbyNpcByTypeId(NPC_SHEEPUNSHEERED, 16);
+                                    bot.log('STATE', `Chasing sheep... tick=${waitTicks} wool=${woolCollected}/${batchSize} pos=(${bot.player.x},${bot.player.z}) nearestSheep=${nearLog ? `(${nearLog.x},${nearLog.z})` : 'none'}`);
+                                }
+
+                                if (bot.player.x < 3193 || bot.player.x > 3210 || bot.player.z < 3258 || bot.player.z > 3276) {
+                                    bot.log('STATE', `Drifted outside sheep area to (${bot.player.x},${bot.player.z}), returning`);
+                                    await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
+                                }
+
+                                continue;
+                            }
+
+                            const success = await shearOneSheep(bot, sheep);
+                            if (success) {
+                                woolCollected++;
+                                bot.log('EVENT', `Wool collected: ${woolCollected}/${batchSize} (waitTicks=${waitTicks})`);
+                            } else {
+                                bot.log('EVENT', `Sheep escaped or failed (waitTicks=${waitTicks})`);
+                                if (bot.player.x < 3193 || bot.player.x > 3205 || bot.player.z < 3271 || bot.player.z > 3276) {
+                                    await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
+                                }
+                            }
+                            await bot.waitForTicks(1);
+                            waitTicks++;
+                        }
+
+                        if (woolCollected < batchSize) {
+                            throw new Error(`Failed to collect ${batchSize} wool after ${MAX_WAIT_TICKS} ticks (got ${woolCollected})`);
+                        }
+
+                        // 4b: Walk to Lumbridge Castle and spin wool
+                        bot.log('STATE', `Spinning ${woolCollected} wool...`);
+
+                        await bot.walkToWithPathfinding(3212, 3262);
+                        await openGateAndCross(bot, 3214, 3262, 'exit sheep field');
+
+                        await goToSpinningWheel(bot);
+
+                        for (let i = 0; i < woolCollected; i++) {
+                            const wool = bot.findItem('Wool');
+                            if (!wool) {
+                                throw new Error(`Wool disappeared from inventory while spinning (spun ${i}/${woolCollected})`);
+                            }
+
+                            if (bot.player.delayed) {
+                                await bot.waitForCondition(() => !bot.player.delayed, 20);
+                            }
+
+                            await spinOneWool(bot);
+                            bot.log('EVENT', `Spun ball of wool: ${i + 1}/${woolCollected}`);
+                        }
+
+                        const ballsOfWoolCount = countItem(bot, 'Ball of wool');
+                        if (ballsOfWoolCount < woolCollected) {
+                            throw new Error(`Expected ${woolCollected} balls of wool, found ${ballsOfWoolCount}`);
+                        }
+
+                        // 4c: Go back down and deliver to Fred
+                        bot.log('STATE', 'Delivering wool to Fred...');
+                        await goDownFromSpinningWheel(bot);
+
+                        await talkToFredForDelivery(bot);
+                        await bot.continueDialog();
+
+                        const d2 = await bot.waitForDialog(10);
+                        if (!d2) throw new Error('No dialog: expected chatplayer "I have some."');
+                        await bot.continueDialog();
+
+                        const d3 = await bot.waitForDialog(10);
+                        if (!d3) throw new Error('No dialog: expected chatnpc "Give em here then."');
+                        await bot.continueDialog();
+
+                        const woolInInv = countItem(bot, 'Ball of wool');
+                        await bot.waitForTicks(woolInInv + 5);
+
+                        for (let dialogIdx = 0; dialogIdx < 5; dialogIdx++) {
+                            const hasDialog = await bot.waitForDialog(10);
+                            if (!hasDialog) break;
+                            await bot.continueDialog();
+                        }
+
+                        await bot.waitForTicks(5);
+                        bot.dismissModals();
+
+                        const updatedVarp = bot.getQuestProgress(SHEEP_SHEARER_VARP);
+                        woolDelivered = updatedVarp - STAGE_STARTED;
+                        bot.log('EVENT', `Delivered wool, varp=${updatedVarp}, woolDelivered=${woolDelivered}/20`);
+                    }
+
+                    // Verify quest completion
+                    await bot.waitForTicks(5);
+                    bot.dismissModals();
+
+                    const finalVarp = bot.getQuestProgress(SHEEP_SHEARER_VARP);
+                    const craftingSkill = bot.getSkill('Crafting');
+
+                    if (finalVarp !== STAGE_COMPLETE) {
+                        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
+                    }
+                    if (craftingSkill.exp <= 0) {
+                        throw new Error('No crafting XP gained during quest');
+                    }
+
+                    bot.log('SUCCESS', `Sheep Shearer quest complete! varp=${finalVarp}, crafting_xp=${craftingSkill.exp}`);
+                }
+            }
+        ]
+    };
+}
+
 export async function sheepShearer(bot: BotAPI): Promise<void> {
     // === Setup: skip tutorial, start in Lumbridge ===
     await skipTutorial(bot);
@@ -481,276 +660,17 @@ export async function sheepShearer(bot: BotAPI): Promise<void> {
         throw new Error(`Quest varp is ${initialVarp}, expected ${STAGE_NOT_STARTED} (not started)`);
     }
 
-    // ================================================================
-    // Step 1: Earn coins by pickpocketing men
-    // ================================================================
-    bot.log('STATE', '=== Step 1: Earn coins ===');
-    await earnCoins(bot, 5); // Need at least 1gp for shears, get 5 for safety
-
-    // ================================================================
-    // Step 2: Buy shears from the General Store
-    // ================================================================
-    bot.log('STATE', '=== Step 2: Buy shears ===');
-    await buyShears(bot);
-
-    // ================================================================
-    // Step 3: Talk to Fred the Farmer to start the quest
-    // ================================================================
-    bot.log('STATE', '=== Step 3: Start quest with Fred ===');
-
-    // Walk to Fred the Farmer's area
-    await walkToFred(bot);
-
-    // Talk to Fred (op1). The engine will auto-walk to Fred.
-    const fred = bot.findNearbyNpc('Fred the Farmer', 20);
-    if (!fred) {
-        throw new Error(`Fred the Farmer not found near (${bot.player.x},${bot.player.z})`);
-    }
-    bot.log('STATE', `Found Fred at (${fred.x},${fred.z}), interacting...`);
-    await bot.interactNpc(fred, 1);
-    const fredDialog = await bot.waitForDialog(30);
-    if (!fredDialog) {
-        throw new Error(`No dialog opened after talking to Fred the Farmer. pos=(${bot.player.x},${bot.player.z}), Fred at (${fred.x},${fred.z})`);
-    }
-    await bot.continueDialog();
-
-    // Multi3: "I'm looking for a quest." (1), "I'm looking for something to kill." (2), "I'm lost." (3)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "I'm looking for a quest."
-
-    // chatplayer "I'm looking for a quest." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "You're after a quest, you say?..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "My sheep are getting mighty woolly..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Yes, that's it. Bring me 20 balls of wool..." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // Multi3: "Yes okay. I can do that." (1), "That doesn't sound..." (2), "What do you mean, The Thing?" (3)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "Yes okay. I can do that."
-
-    // chatplayer "Yes okay. I can do that." → continue
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    // chatnpc "Ok I'll see you when you have some wool."
-    // varp 0 → 1 happens here
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
-
-    await bot.waitForTicks(2);
-
-    const varpAfterStart = bot.getQuestProgress(SHEEP_SHEARER_VARP);
-    if (varpAfterStart !== STAGE_STARTED) {
-        throw new Error(`Quest varp after starting is ${varpAfterStart}, expected ${STAGE_STARTED}`);
-    }
-    bot.log('EVENT', `Quest started! varp=${varpAfterStart}`);
-
-    // ================================================================
-    // Step 4: Gather 20 balls of wool and deliver to Fred
-    // ================================================================
-    bot.log('STATE', '=== Step 4: Gather and deliver wool ===');
-
-    // We'll do batches: shear some sheep, spin the wool, deliver to Fred.
-    // Fred takes all wool in inventory in one conversation (loops in @fred_give_wool).
-    // Strategy: shear a batch, spin, deliver. Repeat until done.
-    // Inventory space: we have shears (1 slot), coins (1 slot), leaves 26 slots.
-    // We'll batch 10 wool at a time (shear 10, spin 10, deliver 10).
-
-    let woolDelivered = 0; // Track based on varp: varp = 1 + woolDelivered
-
-    while (woolDelivered < 20) {
-        const batchSize = Math.min(10, 20 - woolDelivered);
-        bot.log('STATE', `--- Batch: need ${batchSize} more balls of wool (${woolDelivered}/20 delivered) ---`);
-
-        // 4a: Walk to the sheep pen and shear sheep
-        await walkToSheepArea(bot);
-
-        let woolCollected = 0;
-        let waitTicks = 0;
-        const MAX_WAIT_TICKS = 3000; // ~30 minutes game time
-
-        while (woolCollected < batchSize && waitTicks < MAX_WAIT_TICKS) {
-            // Dismiss any level-up dialogs
-            bot.dismissModals();
-
-            // Wait for any delay to clear
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
-
-            // Check for an adjacent, reachable sheep (no wall between us)
-            const sheep = findAdjacentReachableSheep(bot);
-            if (!sheep) {
-                // No adjacent sheep — actively walk toward the nearest one
-                const nearest = bot.findNearbyNpcByTypeId(NPC_SHEEPUNSHEERED, 16);
-                if (nearest) {
-                    const dist = Math.max(Math.abs(nearest.x - bot.player.x), Math.abs(nearest.z - bot.player.z));
-                    if (dist > 1) {
-                        // Walk toward the sheep — just queue the waypoint, don't block
-                        bot.player.queueWaypoint(nearest.x, nearest.z);
-                        // Wait a few ticks while walking — sheep may wander into range
-                        await bot.waitForTicks(Math.min(dist, 5));
-                        waitTicks += Math.min(dist, 5);
-                    } else {
-                        // Very close but not reachable (wall between us) — wait for it to move
-                        await bot.waitForTick();
-                        waitTicks++;
-                    }
-                } else {
-                    // No sheep visible at all — walk back to center and wait
-                    await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
-                    await bot.waitForTicks(5);
-                    waitTicks += 5;
-                }
-
-                // Every 100 ticks, log status
-                if (waitTicks % 100 === 0) {
-                    const nearLog = bot.findNearbyNpcByTypeId(NPC_SHEEPUNSHEERED, 16);
-                    bot.log('STATE', `Chasing sheep... tick=${waitTicks} wool=${woolCollected}/${batchSize} pos=(${bot.player.x},${bot.player.z}) nearestSheep=${nearLog ? `(${nearLog.x},${nearLog.z})` : 'none'}`);
-                }
-
-                // If the bot drifted far outside the sheep area, walk back
-                if (bot.player.x < 3193 || bot.player.x > 3210 || bot.player.z < 3258 || bot.player.z > 3276) {
-                    bot.log('STATE', `Drifted outside sheep area to (${bot.player.x},${bot.player.z}), returning`);
-                    await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
-                }
-
-                continue;
-            }
-
-            // Found a reachable sheep — shear it
-            const success = await shearOneSheep(bot, sheep);
-            if (success) {
-                woolCollected++;
-                bot.log('EVENT', `Wool collected: ${woolCollected}/${batchSize} (waitTicks=${waitTicks})`);
-            } else {
-                bot.log('EVENT', `Sheep escaped or failed (waitTicks=${waitTicks})`);
-                // Walk back to pen center if we drifted
-                if (bot.player.x < 3193 || bot.player.x > 3205 || bot.player.z < 3271 || bot.player.z > 3276) {
-                    await bot.walkToWithPathfinding(SHEEP_AREA_X, SHEEP_AREA_Z);
-                }
-            }
-            await bot.waitForTicks(1);
-            waitTicks++;
-        }
-
-        if (woolCollected < batchSize) {
-            throw new Error(`Failed to collect ${batchSize} wool after ${MAX_WAIT_TICKS} ticks (got ${woolCollected})`);
-        }
-
-        // 4b: Walk to Lumbridge Castle and spin wool
-        bot.log('STATE', `Spinning ${woolCollected} wool...`);
-
-        // Exit the sheep field through the east gate
-        await bot.walkToWithPathfinding(3212, 3262); // Near the east gate (inside)
-        await openGateAndCross(bot, 3214, 3262, 'exit sheep field');
-
-        // Navigate to the spinning wheel (handles castle doors etc.)
-        await goToSpinningWheel(bot);
-
-        // Spin all wool
-        for (let i = 0; i < woolCollected; i++) {
-            const wool = bot.findItem('Wool');
-            if (!wool) {
-                throw new Error(`Wool disappeared from inventory while spinning (spun ${i}/${woolCollected})`);
-            }
-
-            // Wait for any delay to clear from the previous spin
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
-
-            await spinOneWool(bot);
-            bot.log('EVENT', `Spun ball of wool: ${i + 1}/${woolCollected}`);
-        }
-
-        // Verify we have balls of wool (unstackable — count across all slots)
-        const ballsOfWoolCount = countItem(bot, 'Ball of wool');
-        if (ballsOfWoolCount < woolCollected) {
-            throw new Error(`Expected ${woolCollected} balls of wool, found ${ballsOfWoolCount}`);
-        }
-
-        // 4c: Go back down and deliver to Fred
-        bot.log('STATE', 'Delivering wool to Fred...');
-        await goDownFromSpinningWheel(bot);
-
-        // Walk to Fred's area and talk to him for delivery.
-        // Fred wanders in x=3185-3191, z=3268-3278. His house has brickwalls
-        // that block east-west pathfinding, so talkToFredForDelivery handles
-        // retrying if Fred is behind a wall.
-        //
-        // RS2 dialog flow (from fred_the_farmer.rs2):
-        //   1. chatnpc "How are you doing getting those balls of wool?" (PAUSEBUTTON)
-        //   2. chatplayer "I have some." (PAUSEBUTTON) — only if inv has ball_of_wool
-        //   3. chatnpc "Give 'em here then." (PAUSEBUTTON)
-        //   4. @fred_give_wool loop: if_close → inv_del → mes → varp++ → p_delay(1) → repeat
-        //      (NO PAUSEBUTTON — uses if_close/mes/p_delay)
-        //      Loop ends when: no more wool OR varp reaches sheep_last_wool (20)
-        //   5. @fred_end_giving_wool:
-        //      a) If varp=20 AND still have wool: chatplayer "I have your last ball of wool." → chatnpc "I guess I'd better pay you then." → queue(sheep_complete)
-        //      b) Otherwise: chatplayer "That's all I've got so far." → chatnpc "I need more..." → chatplayer "Ok, I'll work on it."
-        await talkToFredForDelivery(bot);
-        // Dialog is now open at step 1: "How are you doing getting those balls of wool?"
-        await bot.continueDialog();
-
-        // 2. chatplayer "I have some."
-        const d2 = await bot.waitForDialog(10);
-        if (!d2) throw new Error('No dialog: expected chatplayer "I have some."');
-        await bot.continueDialog();
-
-        // 3. chatnpc "Give 'em here then."
-        const d3 = await bot.waitForDialog(10);
-        if (!d3) throw new Error('No dialog: expected chatnpc "Give em here then."');
-        await bot.continueDialog();
-
-        // 4. Wait for the @fred_give_wool loop (p_delay(1) per wool, no PAUSEBUTTON).
-        // The loop runs as a server script with p_delay, so we just wait ticks.
-        const woolInInv = countItem(bot, 'Ball of wool');
-        await bot.waitForTicks(woolInInv + 5);
-
-        // 5. After the give loop, the script goes to @fred_end_giving_wool.
-        // This produces 2-3 more PAUSEBUTTON dialogs depending on whether the quest completes.
-        // Just keep continuing dialogs until they stop.
-        for (let dialogIdx = 0; dialogIdx < 5; dialogIdx++) {
-            const hasDialog = await bot.waitForDialog(10);
-            if (!hasDialog) break;
-            await bot.continueDialog();
-        }
-
-        // Wait for any queued scripts (sheep_complete) to fire
-        await bot.waitForTicks(5);
-        bot.dismissModals();
-
-        const updatedVarp = bot.getQuestProgress(SHEEP_SHEARER_VARP);
-        woolDelivered = updatedVarp - STAGE_STARTED;
-        bot.log('EVENT', `Delivered wool, varp=${updatedVarp}, woolDelivered=${woolDelivered}/20`);
-    }
-
-    // ================================================================
-    // Step 5: Verify quest completion
-    // ================================================================
-    await bot.waitForTicks(5);
-    bot.dismissModals();
-
-    const finalVarp = bot.getQuestProgress(SHEEP_SHEARER_VARP);
-    const craftingSkill = bot.getSkill('Crafting');
-
-    if (finalVarp !== STAGE_COMPLETE) {
-        throw new Error(`Quest not complete: varp is ${finalVarp}, expected ${STAGE_COMPLETE}`);
-    }
-    if (craftingSkill.exp <= 0) {
-        throw new Error('No crafting XP gained during quest');
-    }
-
-    bot.log('SUCCESS', `Sheep Shearer quest complete! varp=${finalVarp}, crafting_xp=${craftingSkill.exp}`);
+    const root = buildSheepShearerStates(bot);
+    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
+    await runStateMachine(bot, { root, varpIds: [SHEEP_SHEARER_VARP], captureSnapshots: true, snapshotDir });
 }
+
+export const metadata: ScriptMeta = {
+    name: 'sheepshearer',
+    type: 'quest',
+    varpId: SHEEP_SHEARER_VARP,
+    varpComplete: STAGE_COMPLETE,
+    maxTicks: 20000,
+    run: sheepShearer,
+    buildStates: buildSheepShearerStates,
+};

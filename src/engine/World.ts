@@ -102,17 +102,28 @@ import VarBitType from '#/cache/config/VarBitType.js';
 import FriendlistLoaded from '#/network/game/server/model/FriendlistLoaded.js';
 import HashTable from '#/datastruct/HashTable.js';
 
-const priv = forge.pki.privateKeyFromPem(fs.readFileSync('data/config/private.pem', 'ascii'));
+// Lazy-load RSA key — bots don't need it and it fails if cwd isn't engine/
+let _priv: forge.pki.rsa.PrivateKey | null = null;
+function getPrivateKey(): forge.pki.rsa.PrivateKey {
+    if (!_priv) {
+        _priv = forge.pki.privateKeyFromPem(fs.readFileSync('data/config/private.pem', 'ascii'));
+    }
+    return _priv;
+}
 
 type LogoutRequest = {
     save: Uint8Array;
     lastAttempt: number;
 };
 
+// No-op worker for bot test mode — avoids spawning 3 V8 isolates (~1-2GB RAM) that bots don't use
+const nullWorker = { on() {}, postMessage() {}, terminate() {} } as unknown as Worker;
+const isBotTest = process.env.BOT_TEST_MODE === 'true';
+
 class World {
-    private loginThread = new Worker('./src/server/login/LoginThread.ts');
-    private friendThread = new Worker('./src/server/friend/FriendThread.ts');
-    private loggerThread = new Worker('./src/server/logger/LoggerThread.ts');
+    private loginThread = isBotTest ? nullWorker : new Worker('./src/server/login/LoginThread.ts');
+    private friendThread = isBotTest ? nullWorker : new Worker('./src/server/friend/FriendThread.ts');
+    private loggerThread = isBotTest ? nullWorker : new Worker('./src/server/logger/LoggerThread.ts');
     private devThread: Worker | null = null;
 
     private static readonly PLAYERS: number = Environment.NODE_MAX_PLAYERS;
@@ -2178,7 +2189,7 @@ class World {
                 return;
             }
 
-            World.loginBuf.rsadec(priv);
+            World.loginBuf.rsadec(getPrivateKey());
 
             if (World.loginBuf.g1() !== 10) {
                 // RSA error
