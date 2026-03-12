@@ -5,20 +5,31 @@
  * Usage:
  *   bun engine/bots/test/run.ts sheepshearer [--timeout=60]
  */
+import path from 'path';
+
 const testName = process.argv[2];
 if (!testName) {
-    console.error('Usage: bun engine/bots/test/run.ts <test-name> [--timeout=<seconds>]');
+    console.error('Usage: bun engine/bots/test/run.ts <test-name> [--timeout=<seconds>] [--state=<path>]');
     process.exit(1);
 }
 
-let timeout = '';
+let timeoutParam = '';
+let stateParam = '';
 for (const arg of process.argv.slice(3)) {
     const m = arg.match(/^--timeout=(\d+)$/);
-    if (m) timeout = `?timeout=${m[1]}`;
+    if (m) timeoutParam = m[1];
+    const s = arg.match(/^--state=(.+)$/);
+    if (s) stateParam = s[1];
 }
 
 const PORT = 7123;
-const url = `http://localhost:${PORT}/${testName}${timeout}`;
+const clientBotsDir = path.resolve(import.meta.dir, '..');
+const params = new URLSearchParams();
+if (timeoutParam) params.set('timeout', timeoutParam);
+if (stateParam) params.set('state', stateParam);
+params.set('scriptDir', clientBotsDir);
+const qs = params.toString();
+const url = `http://localhost:${PORT}/${testName}${qs ? '?' + qs : ''}`;
 
 try {
     const res = await fetch(url);

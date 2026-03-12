@@ -62,24 +62,31 @@ bun engine/bots/test/run.ts sheepshearer    # run tests (~2s)
 bun engine/bots/test/run.ts runemysteries
 ```
 
-The server loads script code at startup. After editing a script, you must restart
-the server to pick up changes.
+The server hot-reloads bot scripts and runtime code automatically. After editing
+a script or runtime file, changes are picked up on the next test run without
+restarting the server. Only engine changes (files under `src/`) require a server
+restart.
 
 Omit `--timeout` — let each script's `ScriptMeta.maxTicks` handle it.
 
 ## Single-state iteration with --state=
 
-Full E2E runs are expensive. Use `--state=` to re-run only a failing state from
-its snapshot in seconds:
+Full E2E runs are expensive. Use `--state=` to test independant parts in parallel in seconds:
 
 ```bash
-# Full diagnostic run (captures snapshots for all states)
-bun engine/bots/test/run.ts f2pskills
-
-# Iterate on the failing state only (~2s per run)
+# Make a state for the smithing component
 bun engine/bots/test/run.ts f2pskills --state="f2p-skills/smithing"
 
-# Final full verification after fixing
+# Make a state for the woodcutting component
+bun engine/bots/test/run.ts f2pskills --state="f2p-skills/woodcutting"
+
+# Run them all in parallel
+Todo
+
+# View the results
+todo
+
+# Once you have all the states working, run an E2E and do something else while it completes
 bun engine/bots/test/run.ts f2pskills
 ```
 

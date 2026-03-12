@@ -18,7 +18,64 @@ const engineDir = path.resolve(import.meta.dir, '..', '..');
 process.chdir(engineDir);
 
 const { default: World } = await import('../../src/engine/World.ts');
-const { default: BotManager } = await import('../runtime/manager.ts');
+const { default: _BotManager } = await import('../runtime/manager.ts');
+
+// --- Hot-reload helper ---
+const botsDir = path.resolve(engineDir, 'bots');
+
+function copyDirSync(src: string, dst: string) {
+    for (const f of fs.readdirSync(src)) {
+        const srcPath = path.join(src, f);
+        if (fs.statSync(srcPath).isFile()) {
+            fs.copyFileSync(srcPath, path.join(dst, f));
+        }
+    }
+}
+
+interface HotLoadResult {
+    meta: ScriptMeta | null;
+    botManager: typeof _BotManager;
+    hotDir: string;
+}
+
+async function hotLoad(testName: string, sourceBotsDir?: string): Promise<HotLoadResult> {
+    const src = sourceBotsDir || botsDir;
+    const hotDir = path.resolve(engineDir, '.hot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
+
+    // Mirror bots/ structure at the same depth so ../../src/ resolves correctly
+    fs.mkdirSync(hotDir + '/runtime', { recursive: true });
+    fs.mkdirSync(hotDir + '/scripts', { recursive: true });
+    fs.mkdirSync(hotDir + '/integration', { recursive: true });
+
+    copyDirSync(src + '/runtime', hotDir + '/runtime');
+    copyDirSync(src + '/scripts', hotDir + '/scripts');
+    copyDirSync(src + '/integration', hotDir + '/integration');
+
+    // Import the hot-loaded BotManager (uses hot BotAPI, hot BotController, etc.)
+    const hotManagerMod = await import(hotDir + '/runtime/manager.ts');
+    const hotBotManager = hotManagerMod.default;
+
+    // Find the requested script's metadata
+    const scriptFiles = fs.readdirSync(hotDir + '/scripts').filter((f: string) => f.endsWith('.ts'));
+    let meta: ScriptMeta | null = null;
+    for (const file of scriptFiles) {
+        const mod = await import(hotDir + '/scripts/' + file);
+        for (const key of Object.keys(mod)) {
+            const val = mod[key];
+            if (val && typeof val === 'object' && val.name === testName && typeof val.run === 'function') {
+                meta = val as ScriptMeta;
+                break;
+            }
+        }
+        if (meta) break;
+    }
+
+    return {
+        meta,
+        botManager: hotBotManager,
+        hotDir,
+    };
+}
 
 console.log('Loading world...');
 const loadStart = Date.now();
@@ -62,7 +119,11 @@ interface ActiveTest {
     startTick: number;
     startTime: number;
     maxTicks: number;
-    api: ReturnType<typeof BotManager.spawnBot>;
+    api: ReturnType<typeof _BotManager.spawnBot>;
+    botManager: typeof _BotManager;
+    meta: ScriptMeta;
+    hotDir: string | null;
+    statePath: string | null;
     scriptDone: boolean;
     scriptDoneTick: number;
     scriptError: Error | null;
@@ -100,7 +161,7 @@ World.cycle = function(this: typeof World) {
 };
 
 // --- Inventory summary for heartbeats ---
-function summarizeInventory(api: ReturnType<typeof BotManager.spawnBot>): string {
+function summarizeInventory(api: ReturnType<typeof _BotManager.spawnBot>): string {
     const items = api.getInventory();
     const counts = new Map<string, number>();
     for (const item of items) {
@@ -113,7 +174,7 @@ function summarizeInventory(api: ReturnType<typeof BotManager.spawnBot>): string
 const SKILL_NAMES = ['attack', 'defence', 'strength', 'hitpoints', 'ranged', 'prayer', 'magic',
     'cooking', 'woodcutting', 'fishing', 'firemaking', 'crafting', 'smithing', 'mining', 'runecraft'];
 
-function dumpBotState(api: ReturnType<typeof BotManager.spawnBot>): Record<string, unknown> {
+function dumpBotState(api: ReturnType<typeof _BotManager.spawnBot>): Record<string, unknown> {
     const pos = api.getPosition();
     const inv = api.getInventory().map(i => ({ name: i.name, count: i.count, slot: i.slot }));
     const skills: Record<string, string> = {};
@@ -169,23 +230,54 @@ function checkActiveTests(): void {
     }
 }
 
+const snapshotDir = path.resolve(botsDir, 'test', 'snapshots');
+
 function resolveTest(test: ActiveTest): void {
     activeTests.delete(test.botName);
 
     const duration = Math.round((Date.now() - test.startTime) / 1000);
-    const meta = scriptRegistry[test.testName]!;
+    const meta = test.meta;
     const elapsed = World.currentTick - test.startTick;
 
-    // Clean up the bot
+    // Clean up the bot (use the hot-loaded BotManager that owns this bot)
     try {
-        BotManager.stopBot(test.botName);
+        test.botManager.stopBot(test.botName);
     } catch {
         // best effort — bot may already be removed
     }
 
+    // Copy snapshots from hot dir to the real snapshot location, then clean up hot dir
+    if (test.hotDir) {
+        try {
+            const hotSnapshots = path.join(test.hotDir, 'test', 'snapshots');
+            if (fs.existsSync(hotSnapshots)) {
+                if (!fs.existsSync(snapshotDir)) fs.mkdirSync(snapshotDir, { recursive: true });
+                for (const f of fs.readdirSync(hotSnapshots)) {
+                    fs.copyFileSync(path.join(hotSnapshots, f), path.join(snapshotDir, f));
+                }
+            }
+        } catch { /* best effort */ }
+        try {
+            fs.rmSync(test.hotDir, { recursive: true, force: true });
+        } catch { /* best effort */ }
+    }
+
     let result: TestResult;
 
-    if (meta.varpId !== undefined && meta.varpComplete !== undefined) {
+    // --state= mode: only check for error/timeout, skip quest completion validation
+    if (test.statePath) {
+        if (elapsed >= test.maxTicks && !test.scriptError) {
+            const pos = test.api.getPosition();
+            result = { status: 'FAIL', duration, error: `TIMEOUT at (${pos.x},${pos.z})` };
+        } else if (test.scriptError) {
+            result = { status: 'FAIL', duration, error: test.scriptError.message };
+        } else {
+            result = { status: 'PASS', duration };
+        }
+        if (meta.varpId !== undefined) {
+            result.varp = test.api.getQuestProgress(meta.varpId);
+        }
+    } else if (meta.varpId !== undefined && meta.varpComplete !== undefined) {
         if (elapsed >= test.maxTicks && !test.scriptError) {
             const pos = test.api.getPosition();
             result = { status: 'FAIL', duration, error: `TIMEOUT at (${pos.x},${pos.z})`, varp: test.api.getQuestProgress(meta.varpId) };
@@ -265,15 +357,34 @@ async function tickLoop(): Promise<never> {
 const PORT = 7123;
 let testCounter = 0;
 
-function runTest(testName: string, timeoutTicks?: number, streamWriter?: StreamWriter): Promise<TestResult> {
-    const meta = scriptRegistry[testName];
-    if (!meta) {
+async function runTest(testName: string, timeoutTicks?: number, streamWriter?: StreamWriter, scriptDir?: string, statePath?: string): Promise<TestResult> {
+    // Hot-load the script and runtime fresh from disk
+    const hot = await hotLoad(testName, scriptDir || undefined);
+    if (!hot.meta) {
+        // Clean up hot dir immediately — nothing to run
+        try { fs.rmSync(hot.hotDir, { recursive: true, force: true }); } catch { /* best effort */ }
         const available = Object.keys(scriptRegistry).join(', ');
-        return Promise.resolve({ status: 'FAIL', duration: 0, error: `Unknown test: ${testName}. Available: ${available}` });
+        return { status: 'FAIL', duration: 0, error: `Unknown test: ${testName}. Available: ${available}` };
     }
+
+    // Validate --state= requirements upfront
+    if (statePath && !hot.meta.buildStates) {
+        try { fs.rmSync(hot.hotDir, { recursive: true, force: true }); } catch { /* best effort */ }
+        return { status: 'FAIL', duration: 0, error: `Script "${testName}" does not export buildStates — cannot use --state=` };
+    }
+
+    const meta = hot.meta;
+    const hotBotManager = hot.botManager;
 
     const maxTicks = timeoutTicks ?? meta.maxTicks;
     const botName = `testbot_${testCounter++}`;
+
+    // We need loadAndRunFromState from the hot-loaded state-machine module
+    let hotLoadAndRunFromState: typeof import('../runtime/state-machine.ts').loadAndRunFromState | null = null;
+    if (statePath) {
+        const hotStateMachineMod = await import(hot.hotDir + '/runtime/state-machine.ts');
+        hotLoadAndRunFromState = hotStateMachineMod.loadAndRunFromState;
+    }
 
     return new Promise<TestResult>((resolve) => {
         const test: ActiveTest = {
@@ -283,6 +394,10 @@ function runTest(testName: string, timeoutTicks?: number, streamWriter?: StreamW
             startTime: Date.now(),
             maxTicks,
             api: null as any, // set after spawnBot
+            botManager: hotBotManager,
+            meta,
+            hotDir: hot.hotDir,
+            statePath: statePath ?? null,
             scriptDone: false,
             scriptDoneTick: 0,
             scriptError: null,
@@ -291,11 +406,11 @@ function runTest(testName: string, timeoutTicks?: number, streamWriter?: StreamW
             streamWriter: streamWriter ?? null,
         };
 
-        const api = BotManager.spawnBot(botName, async (bot) => {
+        const api = hotBotManager.spawnBot(botName, async (bot: any) => {
             try {
                 // Stream state transitions to the client
                 if (streamWriter) {
-                    bot.onLog = (level, message) => {
+                    bot.onLog = (level: string, message: string) => {
                         if (level === 'STATE') {
                             streamWriter(JSON.stringify({ type: 'state', test: testName, message }));
                         }
@@ -303,7 +418,15 @@ function runTest(testName: string, timeoutTicks?: number, streamWriter?: StreamW
                 }
                 await bot.waitForTick();
                 await bot.waitForTick();
-                await meta.run(bot);
+
+                if (statePath && hotLoadAndRunFromState && meta.buildStates) {
+                    // --state= mode: restore from snapshot and run single state
+                    const root = meta.buildStates(bot);
+                    const snapshotFile = path.join(snapshotDir, `${root.name}.json`);
+                    await hotLoadAndRunFromState(statePath, snapshotFile, bot, root, meta.varpId !== undefined ? [meta.varpId] : []);
+                } else {
+                    await meta.run(bot);
+                }
                 test.scriptDone = true;
             } catch (err) {
                 test.scriptError = err as Error;
@@ -333,8 +456,10 @@ const _server = Bun.serve({
 
         const timeoutParam = url.searchParams.get('timeout');
         const timeoutTicks = timeoutParam ? Math.ceil(parseInt(timeoutParam) * 1000 / 600) : undefined;
+        const scriptDir = url.searchParams.get('scriptDir') ?? undefined;
+        const statePath = url.searchParams.get('state') ?? undefined;
 
-        console.log(`[TEST] Starting: ${testName}`);
+        console.log(`[TEST] Starting: ${testName}${statePath ? ` --state=${statePath}` : ''}${scriptDir ? ` (scriptDir=${scriptDir})` : ''}`);
 
         // Stream NDJSON: heartbeat lines followed by final result line
         const stream = new ReadableStream({
@@ -344,7 +469,7 @@ const _server = Bun.serve({
                     try { controller.enqueue(encoder.encode(line + '\n')); } catch { /* stream closed */ }
                 };
 
-                runTest(testName, timeoutTicks, writer).then(result => {
+                runTest(testName, timeoutTicks, writer, scriptDir, statePath).then(result => {
                     console.log(`[TEST] ${testName}: ${result.status} (${result.duration}s)${result.error ? ` - ${result.error}` : ''}`);
                     writer(JSON.stringify({ type: 'result', ...result }));
                     controller.close();

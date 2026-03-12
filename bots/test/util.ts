@@ -123,9 +123,7 @@ export async function runTickLoop(opts: TickLoopOptions): Promise<TickLoopResult
     const afkThreshold = opts.afkThreshold ?? 500;
     const settleTicks = opts.settleTicks ?? 5;
 
-    // Apply --timeout cap from runner.ts if set
-    const globalTimeoutTicks = (globalThis as any).__testTimeoutTicks as number | null;
-    const effectiveMaxTicks = globalTimeoutTicks != null ? Math.min(opts.maxTicks, globalTimeoutTicks) : opts.maxTicks;
+    const effectiveMaxTicks = opts.maxTicks;
 
     let lastX = 0;
     let lastZ = 0;
@@ -183,11 +181,3 @@ export function getTotalXp(player: { stats: number[] }): number {
     return total;
 }
 
-/**
- * Parse the --timeout flag value from runner.ts.
- * Returns the max ticks if --timeout was set, or the given default.
- */
-export function getEffectiveMaxTicks(defaultMaxTicks: number): number {
-    const globalTimeoutTicks = (globalThis as any).__testTimeoutTicks as number | null;
-    return globalTimeoutTicks != null ? Math.min(defaultMaxTicks, globalTimeoutTicks) : defaultMaxTicks;
-}

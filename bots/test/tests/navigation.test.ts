@@ -1,5 +1,5 @@
 import path from 'path';
-import { runTickLoop, getTotalXp, getEffectiveMaxTicks, emitFailureJson } from '../util.ts';
+import { runTickLoop, getTotalXp, emitFailureJson } from '../util.ts';
 
 const startTime = Date.now();
 
@@ -76,7 +76,7 @@ const api = BotManager.spawnBot('navbot0', async (bot) => {
 // Run game ticks — navigation test should be fast (~10s)
 const DEFAULT_TIMEOUT_TICKS = 3000;
 const { timedOut, ticksRun } = await runTickLoop({
-    maxTicks: getEffectiveMaxTicks(DEFAULT_TIMEOUT_TICKS),
+    maxTicks: DEFAULT_TIMEOUT_TICKS,
     world: World,
     isDone: () => scriptDone,
     getState: () => ({ x: api.player.x, z: api.player.z, totalXp: getTotalXp(api.player) }),

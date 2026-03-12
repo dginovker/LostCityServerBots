@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { runTickLoop, getTotalXp, getEffectiveMaxTicks, emitFailureJson } from '../util.ts';
+import { runTickLoop, getTotalXp, emitFailureJson } from '../util.ts';
 
 const startTime = Date.now();
 
@@ -47,7 +47,7 @@ const api = BotManager.spawnBot('sheepbot4', async (bot) => {
 // This quest involves pickpocketing, shopping, shearing, spinning, and dialog — generous timeout.
 const DEFAULT_TIMEOUT_TICKS = 20000;
 const { timedOut, ticksRun } = await runTickLoop({
-    maxTicks: getEffectiveMaxTicks(DEFAULT_TIMEOUT_TICKS),
+    maxTicks: DEFAULT_TIMEOUT_TICKS,
     world: World,
     isDone: () => scriptDone,
     getState: () => ({ x: api.player.x, z: api.player.z, totalXp: getTotalXp(api.player) }),
