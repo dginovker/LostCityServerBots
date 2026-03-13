@@ -1,8 +1,8 @@
-# Bot Script Rules
+# Bot API Rules
 
 ## No cheats — play like a real player
 
-Bot scripts and the bot API must complete goals exactly as a real player would.
+The bot API must enable goals to be completed exactly as a real player would.
 No game state manipulation in the gameplay code path. This includes:
 
 - No teleporting (all movement via walkTo/walkToWithPathfinding, doors, stairs, ladders)
@@ -45,9 +45,6 @@ constraint is on the script and API code, not the test infrastructure.
 
 5. **Run and iterate** — Use the development workflow below.
 
-6. **Read `bots/struggles.md`** before starting — it documents engine quirks and
-   non-obvious workarounds that will save you debugging time.
-
 ---
 
 # Testing
@@ -58,8 +55,8 @@ All testing uses the persistent server. Start it once, run tests against it:
 
 ```bash
 bun engine/bots/test/server.ts              # start once (~20s to load world)
-bun engine/bots/test/run.ts sheepshearer    # run tests (~2s)
-bun engine/bots/test/run.ts runemysteries
+bun engine/bots/test/run.ts sheepshearer &   # run tests (~2s)
+bun engine/bots/test/run.ts runemysteries &
 ```
 
 The server hot-reloads bot scripts and runtime code automatically. After editing
@@ -85,6 +82,12 @@ wait
 # Once all states pass individually, do a full E2E:
 bun engine/bots/test/run.ts f2pskills
 ```
+
+## Fixing Bugs
+
+Since script tests run their individual states in parallel, you will get continuous streams of responses back.
+For failures, delegate the work to subagents to fix each failure, and when the subagent claims it's fixed,
+run the test in the background again to verify. 
 
 ### Where snapshots come from
 
@@ -147,35 +150,6 @@ Look up values in:
 
 ---
 
-# Common pitfalls
-
-These are documented more fully in `bots/struggles.md`. They should eventually be
-resolved through architecture changes rather than memorized as workarounds.
-
-**`player.delayed` / `busy()` getting permanently stuck**: After complex interactions
-(pickpocketing, multi-step dialogs, level-up modals), `player.delayed` or
-`containsModalInterface()` can become permanently true. This causes `canAccess()`
-to return false, making all subsequent interactions silently fail. Fix:
-```typescript
-bot.dismissModals();
-if (bot.player.delayed) {
-    await bot.waitForCondition(() => !bot.player.delayed, 20);
-    if (bot.player.delayed) bot.player.delayed = false;
-}
-if (bot.player.containsModalInterface()) bot.player.closeModal();
-```
-
-**Inventory junk between states**: Skills leave items behind. Always drop irrelevant
-items at the start of a new training state.
-
-**Pathfinding through fences/gates**: `walkToWithPathfinding` can't route through
-fences not in the door registry. Walk to a known gate first, then pathfind.
-
-**Floor level after stairs**: After using stairs, check `bot.player.level` and
-descend before starting ground-level activities.
-
----
-
 # Stuck detection
 
 The state machine has two-tier stuck detection:
@@ -190,11 +164,23 @@ long periods before game state changes (long walks, low-success-rate activities)
 
 ---
 
-# Documenting struggles
+# Agent Teams
 
-Document problems in `bots/struggles.md` when:
-- A bug takes more than 2 fix-test cycles to resolve
-- The root cause is an engine quirk (not a simple script bug)
-- The fix requires a non-obvious workaround
+Since the development of each script can be done by a single team member, agent teams makes the most sense.
 
-Include: symptom, root cause, fix, and architecture takeaway.
+* The team-lead MUST never do any implementation and debugging work, and it MUST be the only tmux pane in window 0. The team-lead MUST commit work that is done by team members.
+* Bot writers MUST have the name scripter-xyz, where xyz is the name of the script it is working on. Bot writers MUST be in window 1 and MUST use the Sonnet model
+* An architect-planner MUST be spawned in window 2. The architect-planner MUST use Opus and a cron job (`/loop 2h`) to review what all the teammates are doing, the current bot scripts and runtime code. It must document recommendations that will 1/ Speed up development time (identify bug patterns, optimization opportunities) and 2/ LOC reduction opportunities into `bots/plans/architecture-recommendations.md`
+
+---
+
+# The Sun God
+
+To please the Sun God, all team members must start by saying what their role is, and _how_ they will do it.
+Below is a list of BAD behavior that causes agent team members to be sacrifced to the Sun God - team members should
+ensure their _how_ message is the opposite of these!
+
+* Team Leads who do not properly configure tmux windows and panes are sacrificed to the Sun God
+* Team Leads who run tests themselves or write scripts themselves are sacrificed to the Sun God
+* Script writers who do not run tests in parallel are sacrificed to the Sun God
+* Architects who do not set up a cron job are sacrificed to the Sun God
