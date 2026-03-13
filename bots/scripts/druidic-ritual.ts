@@ -216,10 +216,7 @@ async function killChickensForMeatAndXP(bot: BotAPI, targetAttackLevel: number, 
             return;
         }
 
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Check for death and respawn
         if (bot.isDead()) {
@@ -293,10 +290,7 @@ async function killCowForBeef(bot: BotAPI): Promise<void> {
     const MAX_ATTEMPTS = 40;
 
     while (bot.findItem('Raw beef') === null && attempts < MAX_ATTEMPTS) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         if (bot.isDead()) {
             await bot.waitForRespawn();
@@ -378,10 +372,7 @@ async function killGiantRatForMeat(bot: BotAPI): Promise<void> {
     const MAX_ATTEMPTS = 50;
 
     while (bot.findItem('Raw rat meat') === null && attempts < MAX_ATTEMPTS) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         if (bot.isDead()) {
             await bot.waitForRespawn();
@@ -437,11 +428,7 @@ async function killBearForMeat(bot: BotAPI): Promise<void> {
     const MAX_ATTEMPTS = 50; // Bears are tough (level 21) — bot may die several times
 
     while (bot.findItem('Raw bear meat') === null && attempts < MAX_ATTEMPTS) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-            if (bot.player.delayed) bot.player.delayed = false;
-        }
+        await bot.clearPendingState();
 
         // Check for death — respawn and walk back
         if (bot.isDead()) {
@@ -762,12 +749,7 @@ async function openPrisonDoorsAndFightSuits(bot: BotAPI): Promise<void> {
         bot.log('STATE', `Interacting with prison door at (${door.x},${door.z}), attempt ${attempt + 1}`);
 
         // Clear any busy/modal state before interacting
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-            if (bot.player.delayed) bot.player.delayed = false;
-        }
-        if (bot.player.containsModalInterface()) bot.player.closeModal();
+        await bot.clearPendingState();
 
         await bot.interactLoc(door, 1); // op1 = Open
         await bot.waitForTicks(2);

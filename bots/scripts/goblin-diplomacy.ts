@@ -333,11 +333,7 @@ async function collectGoblinMails(bot: BotAPI, targetCount: number): Promise<voi
             bot.log('STATE', `Goblin mails: ${currentCount}/${targetCount}, goblins killed: ${goblinsKilled}, ticks: ${totalTicks}`);
         }
 
-        bot.dismissModals();
-
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Conserve run energy while patrolling
         if (bot.player.run) {
@@ -412,10 +408,7 @@ async function pickOnions(bot: BotAPI, count: number): Promise<void> {
     bot.log('STATE', `Inside onion field: pos=(${bot.player.x},${bot.player.z})`);
 
     for (let i = 0; i < count; i++) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         const onionsBefore = countItem(bot, 'Onion');
         const onionLoc = bot.findNearbyLoc('onion', 10);
@@ -645,12 +638,7 @@ async function buyRedberries(bot: BotAPI): Promise<void> {
         }
 
         // Clear any lingering state from previous shop visit
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-            if (bot.player.delayed) bot.player.delayed = false;
-        }
-        if (bot.player.containsModalInterface()) bot.player.closeModal();
+        await bot.clearPendingState();
 
         // Walk back to Wydin (bot may have drifted during restock wait)
         await bot.walkToWithPathfinding(WYDIN_X, WYDIN_Z);
@@ -741,12 +729,7 @@ async function talkToGenerals(bot: BotAPI): Promise<void> {
     bot.log('STATE', `At Goblin Village: pos=(${bot.player.x},${bot.player.z})`);
 
     // Clear any lingering state
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) bot.player.delayed = false;
-    }
-    if (bot.player.containsModalInterface()) bot.player.closeModal();
+    await bot.clearPendingState();
 
     // The generals spawn around (2957,3511). Try multiple positions to find
     // one that's reachable and adjacent to the generals.

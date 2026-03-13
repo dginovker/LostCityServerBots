@@ -158,8 +158,8 @@ async function earnCoins(bot: BotAPI, targetGp: number): Promise<void> {
             continue;
         }
 
-        // Dismiss any open modal interface (level-up dialog)
-        bot.dismissModals();
+        // Clear any modal/delayed state before next pickpocket attempt
+        await bot.clearPendingState();
 
         // Wait until stun and action_delay varps have expired (exact same as thieving-men.ts)
         const stunnedUntil = bot.getVarp(VARP_STUNNED);
@@ -170,24 +170,6 @@ async function earnCoins(bot: BotAPI, targetGp: number): Promise<void> {
             const waitUntil = Math.max(stunnedUntil, actionDelayUntil);
             const ticksToWait = waitUntil - currentTick + 1;
             await bot.waitForTicks(ticksToWait);
-        }
-
-        // Also wait for engine-level delay to clear (p_delay)
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-            // If still delayed after timeout, force-clear it — p_delay can get permanently stuck
-            // when pickpocketing at high volume (modal dialogs + script interactions conflict)
-            if (bot.player.delayed) {
-                bot.log('STATE', `Force-clearing stuck delayed state (delayedUntil=${bot.player.delayedUntil}, currentTick=${bot.getCurrentTick()})`);
-                bot.player.delayed = false;
-            }
-        }
-        // Force-close any stuck modal interface (level-up dialogs can persist)
-        if (bot.player.containsModalInterface()) {
-            bot.dismissModals();
-            if (bot.player.containsModalInterface()) {
-                bot.player.closeModal();
-            }
         }
 
         // Find a nearby Man NPC
@@ -383,20 +365,14 @@ async function goToSpinningWheel(bot: BotAPI): Promise<void> {
  */
 async function goDownFromSpinningWheel(bot: BotAPI): Promise<void> {
     // Clear any leftover modal/delay from spinning wheel before climbing stairs
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-    }
+    await bot.clearPendingState();
     await bot.waitForTicks(2);
 
     await bot.walkToWithPathfinding(3206, 3210);
 
     // Try climbing stairs with retry — spinning wheel sometimes leaves stale state
     for (let attempt = 1; attempt <= 3; attempt++) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 10);
-        }
+        await bot.clearPendingState();
         await bot.climbStairs('loc_1739', 3);
         await bot.waitForTicks(3);
 
@@ -483,10 +459,7 @@ async function trainWoodcutting(bot: BotAPI): Promise<void> {
     await bot.walkToWithPathfinding(TREE_AREA_X, TREE_AREA_Z);
 
     while (bot.getSkill('Woodcutting').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Check inv space - drop any non-essential items
         if (bot.freeSlots() < 1) {
@@ -561,10 +534,7 @@ async function trainFiremaking(bot: BotAPI): Promise<void> {
     await bot.walkToWithPathfinding(3220, 3244);
 
     while (bot.getSkill('Firemaking').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Check if we have logs
         let logs = bot.findItem('Logs');
@@ -630,10 +600,7 @@ async function trainMining(bot: BotAPI): Promise<void> {
     bot.log('STATE', `At mine area: pos=(${bot.player.x},${bot.player.z})`);
 
     while (bot.getSkill('Mining').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Drop ores if inventory is full (keep pickaxe and other tools)
         if (bot.freeSlots() < 1) {
@@ -729,10 +696,7 @@ async function trainSmithing(bot: BotAPI): Promise<void> {
             // Mine one copper
             if (bot.freeSlots() < 2) break; // need room for both copper and tin
 
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
+            await bot.clearPendingState();
 
             let rock = bot.findNearbyLoc('copperrock1') ?? bot.findNearbyLoc('copperrock2');
             while (!rock && totalWaitTicks < MAX_WAIT_TICKS) {
@@ -789,10 +753,7 @@ async function trainSmithing(bot: BotAPI): Promise<void> {
         for (let i = 0; i < pairs; i++) {
             if (bot.getSkill('Smithing').baseLevel >= targetLevel) break;
 
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
+            await bot.clearPendingState();
 
             const copper = bot.findItem('Copper ore');
             if (!copper) break;
@@ -826,10 +787,7 @@ async function trainSmithing(bot: BotAPI): Promise<void> {
 
         // Smith bronze daggers (1 bar each, 12.5 XP each)
         while (bot.findItem('Bronze bar') && bot.getSkill('Smithing').baseLevel < targetLevel) {
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
+            await bot.clearPendingState();
 
             // Use bar on anvil to open smithing interface
             await bot.useItemOnLoc('Bronze bar', 'anvil');
@@ -876,10 +834,7 @@ async function trainFishing(bot: BotAPI): Promise<void> {
     bot.log('STATE', `At Draynor fishing area: pos=(${bot.player.x},${bot.player.z})`);
 
     while (bot.getSkill('Fishing').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Drop anchovies to make room, but keep raw shrimps for cooking training later
         if (bot.freeSlots() < 1) {
@@ -939,10 +894,7 @@ async function trainCooking(bot: BotAPI): Promise<void> {
             await bot.walkToWithPathfinding(DRAYNOR_FISH_AREA_X, DRAYNOR_FISH_AREA_Z);
 
             while (rawCount < 20 && bot.freeSlots() > 1) {
-                bot.dismissModals();
-                if (bot.player.delayed) {
-                    await bot.waitForCondition(() => !bot.player.delayed, 20);
-                }
+                await bot.clearPendingState();
 
                 const spot = bot.findNearbyNpc('Fishing spot', 20);
                 if (!spot) {
@@ -1040,10 +992,7 @@ async function trainCooking(bot: BotAPI): Promise<void> {
 
         // Cook each raw shrimp on the fire
         while (bot.findItem('Raw shrimps') && bot.getSkill('Cooking').baseLevel < targetLevel) {
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
+            await bot.clearPendingState();
 
             const fireCheck = bot.findNearbyLoc('loc_2732', 5);
             if (!fireCheck) {
@@ -1120,10 +1069,7 @@ async function trainCooking(bot: BotAPI): Promise<void> {
 async function openGateAndCross(bot: BotAPI, targetX: number, targetZ: number, label: string): Promise<void> {
     for (let attempt = 1; attempt <= 3; attempt++) {
         // Clear any stale modals/delayed state that would block the interaction
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
         await bot.waitForTicks(1);
 
         await bot.openGate(5);
@@ -1218,10 +1164,7 @@ async function trainCrafting(bot: BotAPI): Promise<void> {
         const MAX_WAIT = 2000;
 
         while (woolCollected < woolNeeded && waitTicks < MAX_WAIT) {
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                await bot.waitForCondition(() => !bot.player.delayed, 20);
-            }
+            await bot.clearPendingState();
 
             if (bot.freeSlots() < 1) break;
 
@@ -1298,10 +1241,7 @@ async function trainSingleCombatSkill(bot: BotAPI, skillName: string, combatStyl
     // Safety: if stuck on upper floor, get down first
     if (bot.player.level > 0) {
         bot.log('STATE', `Combat: recovering from level ${bot.player.level}, climbing down...`);
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
         await goDownFromSpinningWheel(bot);
     }
 
@@ -1318,10 +1258,7 @@ async function trainSingleCombatSkill(bot: BotAPI, skillName: string, combatStyl
     bot.setCombatStyle(combatStyle);
 
     while (bot.getSkill(skillName).baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Bury any bones in inventory (Prayer training)
         while (bot.findItem('Bones')) {
@@ -1415,10 +1352,7 @@ async function trainPrayer(bot: BotAPI): Promise<void> {
     bot.setCombatStyle(0);
 
     while (bot.getSkill('Prayer').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Bury any bones we have
         while (bot.findItem('Bones') && bot.getSkill('Prayer').baseLevel < targetLevel) {
@@ -1523,10 +1457,7 @@ async function trainRanged(bot: BotAPI): Promise<void> {
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
 
     while (bot.getSkill('Ranged').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Drop junk
         if (bot.freeSlots() < 3) {
@@ -1597,10 +1528,7 @@ async function trainMagic(bot: BotAPI): Promise<void> {
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
 
     while (bot.getSkill('Magic').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Check rune supply
         if (bot.countItem('Mind rune') < 1 || bot.countItem('Air rune') < 1) {
@@ -1795,10 +1723,7 @@ export function buildF2pSkillsStates(bot: BotAPI): BotState {
                 isComplete: () => bot.getSkill('Crafting').baseLevel >= 10 && bot.player.level === 0,
                 run: async () => {
                     // Clear stale modals/delayed state from smithing before crafting
-                    bot.dismissModals();
-                    if (bot.player.delayed) {
-                        await bot.waitForCondition(() => !bot.player.delayed, 20);
-                    }
+                    await bot.clearPendingState();
                     // Recovery: if stuck on upper floor (from previous failed stair descent)
                     if (bot.player.level > 0) {
                         bot.log('STATE', `Recovering from level ${bot.player.level}, climbing down...`);
@@ -1872,10 +1797,7 @@ export function buildF2pSkillsStates(bot: BotAPI): BotState {
                 isComplete: () =>
                     bot.getSkill('Ranged').baseLevel >= 10 && bot.getSkill('Magic').baseLevel >= 10,
                 run: async () => {
-                    bot.dismissModals();
-                    if (bot.player.delayed) {
-                        await bot.waitForCondition(() => !bot.player.delayed, 20);
-                    }
+                    await bot.clearPendingState();
                     await bot.waitForTicks(2);
 
                     // Escape chicken pen — fully fenced, must use north gate at (3236,3295).

@@ -135,12 +135,7 @@ async function enterManor(bot: BotAPI): Promise<void> {
  */
 async function climbStairsInDirection(bot: BotAPI, direction: 'up' | 'down'): Promise<boolean> {
     // Clear any stuck state that would block interactions (player.delayed, modals)
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) bot.player.delayed = false;
-    }
-    if (bot.player.containsModalInterface()) bot.player.closeModal();
+    await bot.clearPendingState();
 
     const levelBefore = bot.player.level as number;
     const allLocs = bot.findAllNearbyLocs(20);
@@ -163,9 +158,7 @@ async function climbStairsInDirection(bot: BotAPI, direction: 'up' | 'down'): Pr
                 }
                 bot.log('STATE', `Stair interaction did not change level (still ${bot.player.level}), clearing state and retrying`);
                 // The interaction may have silently failed. Clear state again.
-                bot.dismissModals();
-                if (bot.player.delayed) bot.player.delayed = false;
-                if (bot.player.containsModalInterface()) bot.player.closeModal();
+                await bot.clearPendingState();
                 return false;
             }
         }

@@ -347,6 +347,9 @@ export async function runStateMachine(bot: BotAPI, options: StateMachineOptions)
                     throw new Error(`${statePath} failed after ${maxRetries} attempts: ${msg}`);
                 }
 
+                // Clear any stuck pending state before retrying
+                await bot.clearPendingState();
+
                 bot.log('STATE', `[STATE] Retrying ${statePath} (attempt ${attempt + 1}/${maxRetries})...`);
                 await bot.waitForTicks(5);
             }
@@ -496,6 +499,9 @@ async function runSingleState(bot: BotAPI, state: BotState, statePath: string, v
             if (attempt === maxRetries) {
                 throw new Error(`${statePath} failed after ${maxRetries} attempts: ${msg}`);
             }
+
+            // Clear any stuck pending state before retrying
+            await bot.clearPendingState();
 
             bot.log('STATE', `[STATE] Retrying ${statePath} (attempt ${attempt + 1}/${maxRetries})...`);
             await bot.waitForTicks(5);

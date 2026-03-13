@@ -214,10 +214,7 @@ async function trainCombatOnChickens(bot: BotAPI, targetAttackLevel: number, min
             break;
         }
 
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
         if (bot.isDead()) {
             bot.log('STATE', 'Died during chicken training, respawning');
             await bot.waitForRespawn();
@@ -336,11 +333,7 @@ async function _farmCows(bot: BotAPI, targetKills: number, targetBeef: number): 
             break;
         }
 
-        bot.dismissModals();
-
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Check if we died
         if (bot.isDead()) {
@@ -546,11 +539,7 @@ async function collectBones(bot: BotAPI, targetBones: number): Promise<void> {
     }
 
     while (bonesCollected < targetBones && totalTicks < MAX_TICKS) {
-        bot.dismissModals();
-
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Check if we died
         if (bot.isDead()) {

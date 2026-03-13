@@ -53,10 +53,7 @@ async function mineOre(bot: BotAPI, rockNames: string[], oreName: string, needed
     const MAX_MINE_ATTEMPTS = 200;
 
     while (bot.countItem(oreName) < needed && mineAttempts < MAX_MINE_ATTEMPTS) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Find a rock of the right type
         let rock = null;
@@ -153,12 +150,7 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
                     await bot.waitForTicks(2);
 
                     // Clear any stuck state before interacting
-                    bot.dismissModals();
-                    if (bot.player.delayed) {
-                        await bot.waitForCondition(() => !bot.player.delayed, 20);
-                        if (bot.player.delayed) bot.player.delayed = false;
-                    }
-                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+                    await bot.clearPendingState();
 
                     // Find Doric and walk to his position so we're definitely adjacent
                     let doric = bot.findNearbyNpc('Doric');
@@ -309,12 +301,7 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
                     await bot.waitForTicks(2);
 
                     // Clear any stuck state before interacting
-                    bot.dismissModals();
-                    if (bot.player.delayed) {
-                        await bot.waitForCondition(() => !bot.player.delayed, 20);
-                        if (bot.player.delayed) bot.player.delayed = false;
-                    }
-                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+                    await bot.clearPendingState();
 
                     // Find Doric and walk to his position so we're definitely adjacent
                     let doric = bot.findNearbyNpc('Doric');
@@ -419,10 +406,7 @@ async function trainMiningToLevel(bot: BotAPI, targetLevel: number): Promise<voi
     bot.log('STATE', `Training Mining to level ${targetLevel} (currently ${bot.getSkill('Mining').baseLevel})...`);
 
     while (bot.getSkill('Mining').baseLevel < targetLevel) {
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Drop excess ores to keep inventory space (keep quest items)
         if (bot.freeSlots() < 1) {

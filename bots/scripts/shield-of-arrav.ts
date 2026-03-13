@@ -774,12 +774,7 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                     // or containsModalInterface() can be permanently true, which
                     // causes canAccess() to return false and silently prevents
                     // door interactions from firing.
-                    bot.dismissModals();
-                    if (bot.player.delayed) {
-                        await bot.waitForCondition(() => !bot.player.delayed, 20);
-                        if (bot.player.delayed) bot.player.delayed = false;
-                    }
-                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+                    await bot.clearPendingState();
 
                     // The Black Arm HQ is accessed through TWO doors:
                     // 1. East building door at (3196,3384) — enters the alley between buildings
@@ -1000,12 +995,7 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                     // player.delayed or containsModalInterface() can be permanently
                     // true, which causes canAccess() to return false and silently
                     // prevents door interactions from firing.
-                    bot.dismissModals();
-                    if (bot.player.delayed) {
-                        await bot.waitForCondition(() => !bot.player.delayed, 20);
-                        if (bot.player.delayed) bot.player.delayed = false;
-                    }
-                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+                    await bot.clearPendingState();
 
                     // Enter Black Arm HQ through both doors (east building + HQ)
                     await bot.walkToWithPathfinding(3197, 3384);
@@ -1049,12 +1039,7 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                         const insideHQ = pos.x <= 3190 && pos.z >= 3383 && pos.z <= 3390;
                         if (!insideHQ) {
                             bot.log('STATE', `Outside HQ at (${pos.x},${pos.z}), entering through doors`);
-                            bot.dismissModals();
-                            if (bot.player.delayed) {
-                                await bot.waitForCondition(() => !bot.player.delayed, 20);
-                                if (bot.player.delayed) bot.player.delayed = false;
-                            }
-                            if (bot.player.containsModalInterface()) bot.player.closeModal();
+                            await bot.clearPendingState();
                             await bot.walkToWithPathfinding(3197, 3384);
                             bot.dismissModals();
                             await bot.openDoor('inaccastledoubledoorropen');
@@ -1231,12 +1216,7 @@ async function runBlackArmPath(bot: BotAPI, coord: Coordination): Promise<void> 
     await bot.waitForTicks(5);
 
     // Dismiss any modals/delays from the login trigger (macro event timer etc.)
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) bot.player.delayed = false;
-    }
-    if (bot.player.containsModalInterface()) bot.player.closeModal();
+    await bot.clearPendingState();
 
     bot.log('STATE', `Black Arm Bot starting at (${bot.player.x},${bot.player.z},${bot.player.level})`);
 

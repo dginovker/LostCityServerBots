@@ -598,91 +598,80 @@ async function infiltrateFortress(bot: BotAPI): Promise<void> {
     }
     bot.log('STATE', `Inside fortress: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Step 2: Push through bksecretdoor to access the north passage.
-    const secretDoor = bot.findNearbyLoc('bksecretdoor', 10);
-    if (!secretDoor) {
-        throw new Error(`bksecretdoor not found on L0 near (${bot.player.x},${bot.player.z})`);
-    }
-    await bot.interactLoc(secretDoor, 1); // op1 = Push
-    await bot.waitForTicks(5);
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) bot.player.delayed = false;
-    }
-    bot.log('STATE', `After bksecretdoor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    // Test: walk from fortress entrance SOUTH to grate at (3025,3507,0)
+    // The grate might be accessible from outside the fortress walls
+    bot.log('STATE', `Testing external approach from inside fortress (${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Step 3: Climb loc_1750 to L1, then to L2.
-    await bot.climbStairs('loc_1750', 1);
-    if ((bot.player.level as number) !== 1) {
-        throw new Error(`Failed to climb to L1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    const l1Loc1750 = bot.findNearbyLoc('loc_1750', 10);
-    if (!l1Loc1750) {
-        throw new Error(`loc_1750 not found on L1 near (${bot.player.x},${bot.player.z})`);
-    }
-    await bot.interactLoc(l1Loc1750, 1);
-    await bot.waitForTicks(5);
-    if ((bot.player.level as number) !== 2) {
-        throw new Error(`Failed to climb to L2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    bot.log('STATE', `On L2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Step 4: On L2, navigate east to loc_1749@(3023,3513) or @(3025,3513) which descend
-    // to the inner L1 area (where bkfortressdoor3, bksecretdoor, the hole, and loc_1746 are).
-    // The western L2 area starts at ~(3016,3518). Probe to find a walkable path east.
-    // Step 4: Walk west on L2 to bankdoor_l@(3013,3515,2) and open it.
-    // This door connects the western L2 tower room to the main L2 rooftop/battlements.
-    await bot.walkTo(3013, 3515);
-    bot.log('STATE', `At bankdoor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    const bankDoor = bot.findNearbyLoc('bankdoor_l', 3);
-    if (!bankDoor) {
-        throw new Error(`bankdoor_l not found on L2 near (${bot.player.x},${bot.player.z})`);
-    }
-    await bot.interactLoc(bankDoor, 1); // op1 = Open
-    await bot.waitForTicks(3);
-    bot.log('STATE', `After bankdoor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Probe after opening the door — can we now go further west/south/east?
-    // Walk west through the opened door first
-    await bot.walkTo(3010, 3514);
-    bot.log('STATE', `West area: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    const l2ProbeTargets = [
-        // South from (3010,3514)
-        { x: 3010, z: 3513, label: 's1' },
-        { x: 3010, z: 3512, label: 's2' },
-        { x: 3010, z: 3510, label: 's4' },
-        { x: 3010, z: 3508, label: 's6' },
-        { x: 3010, z: 3505, label: 's9' },
-        // East along z=3514
-        { x: 3012, z: 3514, label: 'e2-514' },
-        { x: 3015, z: 3514, label: 'e5-514' },
-        // East along z=3513
-        { x: 3012, z: 3513, label: 'e2-513' },
-        { x: 3015, z: 3513, label: 'e5-513' },
-        // East along z=3510
-        { x: 3012, z: 3510, label: 'e2-510' },
-        { x: 3015, z: 3510, label: 'e5-510' },
-        { x: 3020, z: 3510, label: 'e10-510' },
-        // Far targets
-        { x: 3023, z: 3513, label: 'TARGET' },
-        { x: 3025, z: 3510, label: 'TARGET2' },
-        { x: 3029, z: 3508, label: 'bankdoor2' },
+    const extProbes = [
+        { x: 3016, z: 3512, label: 'south-12' },
+        { x: 3016, z: 3510, label: 'south-10' },
+        { x: 3016, z: 3508, label: 'south-08' },
+        { x: 3020, z: 3515, label: 'east-20' },
+        { x: 3020, z: 3512, label: 'se-12' },
+        { x: 3020, z: 3510, label: 'se-10' },
+        { x: 3020, z: 3508, label: 'se-08' },
+        { x: 3025, z: 3508, label: 'grate-area' },
+        { x: 3021, z: 3510, label: 'ladder-area' },
     ];
-    const l2Start = { x: bot.player.x, z: bot.player.z };
-    for (const target of l2ProbeTargets) {
+    for (const target of extProbes) {
         try {
-            if (bot.player.x !== l2Start.x || bot.player.z !== l2Start.z) {
-                await bot.walkTo(l2Start.x, l2Start.z);
+            // Reset to start position
+            if (Math.abs(bot.player.x - 3016) > 3 || Math.abs(bot.player.z - 3515) > 3) {
+                await bot.walkTo(3016, 3515);
             }
             await bot.walkTo(target.x, target.z);
-            bot.log('STATE', `L2 ${target.label} (${target.x},${target.z}) -> at (${bot.player.x},${bot.player.z})`);
+            bot.log('STATE', `Ext ${target.label} -> at (${bot.player.x},${bot.player.z})`);
         } catch {
-            bot.log('STATE', `L2 ${target.label} (${target.x},${target.z}) -> FAIL at (${bot.player.x},${bot.player.z})`);
+            bot.log('STATE', `Ext ${target.label} -> FAIL at (${bot.player.x},${bot.player.z})`);
         }
     }
-    throw new Error(`L2 probe after bankdoor from (${l2Start.x},${l2Start.z})`);
+
+    // Try ghost pathfinding from inside fortress to grate
+    await bot.walkTo(3016, 3515);
+    bot.log('STATE', `Ghost pathfind to grate from (${bot.player.x},${bot.player.z})`);
+    try {
+        await bot.walkToWithPathfinding(3025, 3508);
+        bot.log('STATE', `Ghost to grate: SUCCESS at (${bot.player.x},${bot.player.z})`);
+    } catch (e: any) {
+        bot.log('STATE', `Ghost to grate: FAIL at (${bot.player.x},${bot.player.z}) - ${e.message?.substring(0, 100)}`);
+    }
+
+    // Try from outside the fortress entirely - walk from approach route
+    await bot.walkTo(3016, 3515);
+    // Exit through front door
+    const exitDoor = bot.findNearbyLoc('bkfortressdoor1', 5);
+    if (exitDoor) {
+        await bot.interactLoc(exitDoor, 1);
+        await bot.waitForTicks(3);
+    }
+    bot.log('STATE', `Outside fortress: pos=(${bot.player.x},${bot.player.z})`);
+
+    // Walk east along south side
+    const outsideProbes = [
+        { x: 3020, z: 3513, label: 'outside-east-20' },
+        { x: 3025, z: 3513, label: 'outside-east-25' },
+        { x: 3025, z: 3510, label: 'outside-se-25' },
+        { x: 3025, z: 3508, label: 'outside-grate' },
+        { x: 3030, z: 3508, label: 'outside-far-east' },
+    ];
+    for (const target of outsideProbes) {
+        try {
+            await bot.walkTo(target.x, target.z);
+            bot.log('STATE', `Out ${target.label} -> at (${bot.player.x},${bot.player.z})`);
+        } catch {
+            bot.log('STATE', `Out ${target.label} -> FAIL at (${bot.player.x},${bot.player.z})`);
+        }
+    }
+
+    // Ghost pathfind to grate from outside
+    try {
+        await bot.walkToWithPathfinding(3025, 3508);
+        bot.log('STATE', `Ghost outside to grate: SUCCESS at (${bot.player.x},${bot.player.z})`);
+    } catch (e: any) {
+        bot.log('STATE', `Ghost outside to grate: FAIL at (${bot.player.x},${bot.player.z}) - ${e.message?.substring(0, 100)}`);
+    }
+
+    throw new Error('External grate probe done');
 
     await eatLobster(bot);
 
@@ -742,11 +731,7 @@ async function infiltrateFortress(bot: BotAPI): Promise<void> {
     bot.log('STATE', `Found bkfortressdoor3 at (${door3.x},${door3.z})`);
     await bot.interactLoc(door3, 1); // op1 triggers ~open_and_close_door + aggro
     await bot.waitForTicks(5);
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) bot.player.delayed = false;
-    }
+    await bot.clearPendingState();
     await eatLobster(bot);
     bot.log('STATE', `After bkfortressdoor3: pos=(${bot.player.x},${bot.player.z})`);
 
@@ -758,11 +743,7 @@ async function infiltrateFortress(bot: BotAPI): Promise<void> {
     bot.log('STATE', `Found L1 bksecretdoor at (${secretWallL1.x},${secretWallL1.z}), pushing through`);
     await bot.interactLoc(secretWallL1, 1); // op1 = Push
     await bot.waitForTicks(5);
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) bot.player.delayed = false;
-    }
+    await bot.clearPendingState();
     await eatLobster(bot);
     bot.log('STATE', `After bksecretdoor: pos=(${bot.player.x},${bot.player.z})`);
 

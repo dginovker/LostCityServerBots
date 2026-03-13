@@ -86,16 +86,7 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
     // Clear any stale state that would block canAccess() from firing the attack.
     // player.delayed or containsModalInterface() → canAccess() returns false →
     // setInteraction dispatches but tryInteract() never fires the OP trigger.
-    bot.dismissModals();
-    if (bot.player.delayed) {
-        await bot.waitForCondition(() => !bot.player.delayed, 20);
-        if (bot.player.delayed) {
-            bot.player.delayed = false;
-        }
-    }
-    if (bot.player.containsModalInterface()) {
-        bot.player.closeModal();
-    }
+    await bot.clearPendingState();
 
     // Enable running to close the gap to the imp quickly. Imps have givechase=false,
     // meaning they reset to wandering after each retaliation and can wander up to
@@ -171,13 +162,7 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
             bot.log('STATE', `Re-engaging imp (attempt ${reengageCount}/${MAX_REENGAGES}): impHP=${impHP}/${startHP} dist=${curDist}`);
 
             // Clear any blocking state before re-engaging
-            bot.dismissModals();
-            if (bot.player.delayed) {
-                bot.player.delayed = false;
-            }
-            if (bot.player.containsModalInterface()) {
-                bot.player.closeModal();
-            }
+            await bot.clearPendingState();
 
             try {
                 await bot.interactNpc(imp, ATTACK_OP);
@@ -529,16 +514,7 @@ async function collectBeads(bot: BotAPI): Promise<void> {
         }
 
         // Clear any stale interaction state before searching for new imps
-        bot.dismissModals();
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-            if (bot.player.delayed) {
-                bot.player.delayed = false;
-            }
-        }
-        if (bot.player.containsModalInterface()) {
-            bot.player.closeModal();
-        }
+        await bot.clearPendingState();
 
         // Disable running during patrol to conserve energy for combat chasing
         if (bot.player.run) {

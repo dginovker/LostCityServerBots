@@ -485,11 +485,7 @@ async function shearSheep(bot: BotAPI, count: number): Promise<void> {
     const MAX_WAIT_TICKS = 3000;
 
     while (woolCollected < count && waitTicks < MAX_WAIT_TICKS) {
-        bot.dismissModals();
-
-        if (bot.player.delayed) {
-            await bot.waitForCondition(() => !bot.player.delayed, 20);
-        }
+        await bot.clearPendingState();
 
         // Find a nearby unsheered sheep
         const sheep = bot.findNearbyNpcByTypeId(NPC_SHEEPUNSHEERED, 16);
@@ -724,8 +720,7 @@ async function gatherMaterials(bot: BotAPI): Promise<void> {
     await bot.walkToWithPathfinding(3189, 3267);
 
     for (let i = 0; i < 2; i++) {
-        bot.dismissModals();
-        if (bot.player.delayed) await bot.waitForCondition(() => !bot.player.delayed, 20);
+        await bot.clearPendingState();
         const onionsBefore = countItem(bot, 'Onion');
         const onionLoc = bot.findNearbyLoc('onion', 10);
         if (!onionLoc) throw new Error(`No onion loc found near (${bot.player.x},${bot.player.z})`);

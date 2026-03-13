@@ -512,11 +512,7 @@ export function buildSheepShearerStates(bot: BotAPI): BotState {
                         const MAX_WAIT_TICKS = 3000;
 
                         while (woolCollected < batchSize && waitTicks < MAX_WAIT_TICKS) {
-                            bot.dismissModals();
-
-                            if (bot.player.delayed) {
-                                await bot.waitForCondition(() => !bot.player.delayed, 20);
-                            }
+                            await bot.clearPendingState();
 
                             const sheep = findAdjacentReachableSheep(bot);
                             if (!sheep) {

@@ -12,7 +12,7 @@ import type Loc from '../../src/engine/entity/Loc.js';
 import type Npc from '../../src/engine/entity/Npc.js';
 import type Obj from '../../src/engine/entity/Obj.js';
 import { PlayerStatMap } from '../../src/engine/entity/PlayerStat.js';
-import { getExpByLevel } from '../../src/engine/entity/Player.js';
+import Player, { getExpByLevel } from '../../src/engine/entity/Player.js';
 import ScriptProvider from '../../src/engine/script/ScriptProvider.js';
 import ScriptRunner from '../../src/engine/script/ScriptRunner.js';
 import ScriptState from '../../src/engine/script/ScriptState.js';
@@ -139,6 +139,34 @@ export class BotAPI {
         }
     }
 
+    /**
+     * Clear all pending state that would block interactions.
+     *
+     * After complex interactions (pickpocketing, multi-step dialogs, level-up modals),
+     * player.delayed or containsModalInterface() can become permanently true.
+     * This causes canAccess() to return false, making all subsequent interactions
+     * silently fail.
+     *
+     * This method consolidates the cleanup boilerplate that was duplicated across
+     * every script:
+     *   1. dismissModals() — resume any PAUSEBUTTON script
+     *   2. Wait for player.delayed to clear naturally (up to 20 ticks)
+     *   3. Force-clear player.delayed if it's still stuck
+     *   4. Close any remaining modal interface
+     */
+    async clearPendingState(): Promise<void> {
+        this.dismissModals();
+        if (this.player.delayed) {
+            await this.waitForCondition(() => !this.player.delayed, 20);
+            if (this.player.delayed) {
+                this.player.delayed = false;
+            }
+        }
+        if (this.player.containsModalInterface()) {
+            this.player.closeModal();
+        }
+    }
+
     log(level: LogLevel, message: string): void {
         this.logger.log(level, message);
         if (this.onLog) this.onLog(level, message);
@@ -194,10 +222,58 @@ export class BotAPI {
         return closest;
     }
 
+    /**
+     * Find another player in the world by username, within maxDist tiles.
+     * Used to locate a bot partner for PvP coordination.
+     */
+    findNearbyPlayerByUsername(username: string, maxDist: number = 32): Player | null {
+        const px = this.player.x;
+        const pz = this.player.z;
+
+        for (const player of World.playerLoop.all()) {
+            if (player.username === username && player.isActive) {
+                const dist = Math.max(Math.abs(player.x - px), Math.abs(player.z - pz));
+                if (dist <= maxDist) {
+                    return player;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Attack a player (op2 = Attack) via the APPLAYER2 trigger.
+     * Only valid in PvP-enabled zones (wilderness). The engine auto-walks to the
+     * target and self-sustains combat via pvp_retaliate / p_opplayer(2).
+     *
+     * Call this ONCE to initiate — do not re-call while combat is ongoing or
+     * it will cancel the current attack cycle via p_stopaction.
+     */
+    async attackPlayer(targetPlayer: Player): Promise<void> {
+        await this.clearPendingState();
+
+        this.log('ACTION', `attackPlayer: ${targetPlayer.username} at (${targetPlayer.x},${targetPlayer.z})`);
+
+        const success = this.player.setInteraction(Interaction.SCRIPT, targetPlayer, ServerTriggerType.APPLAYER2);
+        if (!success) {
+            throw new Error(`attackPlayer: setInteraction failed for ${targetPlayer.username} (isActive=${targetPlayer.isActive})`);
+        }
+
+        // Wait for the engine to process (approach + first hit dispatch)
+        for (let i = 0; i < 15; i++) {
+            await this.waitForTick();
+            if (this.player.target === null) {
+                return;
+            }
+        }
+    }
+
     async interactNpc(npc: Npc, op: number): Promise<void> {
         if (op < 1 || op > 5) {
             throw new Error(`Invalid NPC op: ${op}. Must be 1-5.`);
         }
+
+        await this.clearPendingState();
 
         // The engine expects the AP trigger type as targetOp.
         // getOpTrigger() adds +7 to get the corresponding OP trigger.
@@ -433,6 +509,8 @@ export class BotAPI {
         if (op < 1 || op > 5) {
             throw new Error(`Invalid loc op: ${op}. Must be 1-5.`);
         }
+
+        await this.clearPendingState();
 
         // Use AP trigger — the engine's getOpTrigger() adds +7 to get the OP trigger.
         // This matches how OpLocHandler works: ServerTriggerType.APLOC1 + (op - 1)
