@@ -188,7 +188,7 @@
       "snapshot": {
         "position": {
           "x": 3203,
-          "z": 3472,
+          "z": 3470,
           "level": 0
         },
         "skills": {
@@ -399,8 +399,8 @@
       "path": "demon-slayer/do-cooks-assistant",
       "snapshot": {
         "position": {
-          "x": 3206,
-          "z": 3476,
+          "x": 3207,
+          "z": 3472,
           "level": 0
         },
         "skills": {
@@ -442,8 +442,8 @@
       "path": "demon-slayer/kill-delrith",
       "snapshot": {
         "position": {
-          "x": 3207,
-          "z": 3213,
+          "x": 3210,
+          "z": 3211,
           "level": 0
         },
         "skills": {

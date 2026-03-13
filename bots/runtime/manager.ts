@@ -105,6 +105,32 @@ class BotManager {
     getBot(username: string): BotAPI | null {
         return this.activeBots.get(username)?.api ?? null;
     }
+
+    /**
+     * Remove any stale player with this username from the world.
+     * Between hot-reloaded test runs, a previous BotManager instance may have
+     * been garbage collected without fully removing its players from
+     * World.playerLoop. A stale player causes processLogin to reject the new
+     * player (never gets onLogin, stays isActive=false, can't move).
+     *
+     * This scans the world's player list directly and removes any match.
+     */
+    forceCleanup(username: string): void {
+        // Remove from our own tracking first
+        const tracked = this.activeBots.get(username);
+        if (tracked) {
+            World.botControllers.delete(tracked.controller);
+            World.removePlayer(tracked.player);
+            this.activeBots.delete(username);
+        }
+
+        // Also scan the world for any stale player with this username
+        for (const player of World.playerLoop.all()) {
+            if (player.username === username) {
+                World.removePlayer(player);
+            }
+        }
+    }
 }
 
 export default new BotManager();

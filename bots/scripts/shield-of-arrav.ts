@@ -140,8 +140,12 @@ async function trainCombatForBlackArm(bot: BotAPI): Promise<void> {
 
     bot.setCombatStyle(0); // Accurate for attack XP
 
-    // Walk to chicken pen gate area (south side of pen)
-    await bot.walkToWithPathfinding(3236, 3295);
+    // Walk to just outside the chicken pen gate.
+    // From Lumbridge spawn (3222,3218), go north through Lumbridge town center
+    // then northeast. The chicken pen is fenced — must open the gate first.
+    // Gate is on the north side at roughly (3236,3295).
+    await bot.walkToWithPathfinding(3220, 3244); // North through Lumbridge town
+    await bot.walkToWithPathfinding(3236, 3300); // Just north of chicken pen gate
 
     // Open the gate to enter the chicken pen
     await bot.openGate(10);
@@ -734,6 +738,7 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                 name: 'talk-to-tramp',
                 isComplete: () => bot.getQuestProgress(BLACKARM_VARP) >= BA_STARTED,
                 run: async () => {
+
                     bot.log('STATE', '=== Black Arm Bot: Talking to Tramp ===');
                     await bot.walkToWithPathfinding(TRAMP_X, TRAMP_Z);
 
@@ -763,15 +768,32 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                 isComplete: () => bot.getQuestProgress(BLACKARM_VARP) >= BA_SPOKEN_KATRINE,
                 run: async () => {
                     bot.log('STATE', '=== Black Arm Bot: Talking to Katrine ===');
+
+                    // Clear any stuck delayed/modal state from combat training
+                    // or Tramp dialog. After complex interactions, player.delayed
+                    // or containsModalInterface() can be permanently true, which
+                    // causes canAccess() to return false and silently prevents
+                    // door interactions from firing.
+                    bot.dismissModals();
+                    if (bot.player.delayed) {
+                        await bot.waitForCondition(() => !bot.player.delayed, 20);
+                        if (bot.player.delayed) bot.player.delayed = false;
+                    }
+                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+
                     // The Black Arm HQ is accessed through TWO doors:
                     // 1. East building door at (3196,3384) — enters the alley between buildings
                     // 2. Black Arm HQ door at (3190,3384) — enters the HQ proper
                     // Walk to east of the east building door, open it, walk through the alley,
                     // then open the HQ door.
                     await bot.walkToWithPathfinding(3197, 3384); // east of outer door
+                    bot.dismissModals();
                     await bot.openDoor('inaccastledoubledoorropen'); // open east building door
-                    await bot.walkToWithPathfinding(3191, 3384); // walk through alley
+                    await bot.waitForTicks(2);
+                    await bot.walkTo(3191, 3384); // straight line through open doorway (no pathfinding — walls block alternate routes)
+                    bot.dismissModals();
                     await bot.openDoor('inaccastledoubledoorropen'); // open HQ door
+                    await bot.waitForTicks(2);
                     await bot.walkToWithPathfinding(BLACKARM_HQ_X, BLACKARM_HQ_Z);
 
                     await bot.talkToNpc(NPC_KATRINE);
@@ -972,11 +994,28 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                         await bot.climbStairs('loc_1746', 1); // Climb-down (loc_1746=down, loc_1747=up)
                         await bot.waitForTicks(3);
                     }
+
+                    // Clear any stuck delayed/modal state from combat + item pickup.
+                    // After killing the Weaponsmaster and picking up crossbows,
+                    // player.delayed or containsModalInterface() can be permanently
+                    // true, which causes canAccess() to return false and silently
+                    // prevents door interactions from firing.
+                    bot.dismissModals();
+                    if (bot.player.delayed) {
+                        await bot.waitForCondition(() => !bot.player.delayed, 20);
+                        if (bot.player.delayed) bot.player.delayed = false;
+                    }
+                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+
                     // Enter Black Arm HQ through both doors (east building + HQ)
                     await bot.walkToWithPathfinding(3197, 3384);
+                    bot.dismissModals();
                     await bot.openDoor('inaccastledoubledoorropen');
-                    await bot.walkToWithPathfinding(3191, 3384);
+                    await bot.waitForTicks(2);
+                    await bot.walkTo(3191, 3384); // straight line through open doorway (no pathfinding — walls block alternate routes)
+                    bot.dismissModals();
                     await bot.openDoor('inaccastledoubledoorropen');
+                    await bot.waitForTicks(2);
                     await bot.walkToWithPathfinding(BLACKARM_HQ_X, BLACKARM_HQ_Z);
 
                     await bot.talkToNpc(NPC_KATRINE);
@@ -1010,10 +1049,20 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
                         const insideHQ = pos.x <= 3190 && pos.z >= 3383 && pos.z <= 3390;
                         if (!insideHQ) {
                             bot.log('STATE', `Outside HQ at (${pos.x},${pos.z}), entering through doors`);
+                            bot.dismissModals();
+                            if (bot.player.delayed) {
+                                await bot.waitForCondition(() => !bot.player.delayed, 20);
+                                if (bot.player.delayed) bot.player.delayed = false;
+                            }
+                            if (bot.player.containsModalInterface()) bot.player.closeModal();
                             await bot.walkToWithPathfinding(3197, 3384);
+                            bot.dismissModals();
                             await bot.openDoor('inaccastledoubledoorropen');
-                            await bot.walkToWithPathfinding(3191, 3384);
+                            await bot.waitForTicks(2);
+                            await bot.walkTo(3191, 3384); // straight line through open doorway (no pathfinding — walls block alternate routes)
+                            bot.dismissModals();
                             await bot.openDoor('inaccastledoubledoorropen');
+                            await bot.waitForTicks(2);
                         } else {
                             bot.log('STATE', `Already inside HQ at (${pos.x},${pos.z})`);
                         }
@@ -1179,7 +1228,15 @@ function buildBlackArmStates(bot: BotAPI, coord: Coordination): BotState {
 
 async function runBlackArmPath(bot: BotAPI, coord: Coordination): Promise<void> {
     await skipTutorial(bot);
-    await bot.waitForTicks(2);
+    await bot.waitForTicks(5);
+
+    // Dismiss any modals/delays from the login trigger (macro event timer etc.)
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) bot.player.delayed = false;
+    }
+    if (bot.player.containsModalInterface()) bot.player.closeModal();
 
     bot.log('STATE', `Black Arm Bot starting at (${bot.player.x},${bot.player.z},${bot.player.level})`);
 
@@ -1213,10 +1270,23 @@ export async function shieldOfArrav(bot: BotAPI): Promise<void> {
         blackArmBotError: null,
     };
 
+    // Clean up any leftover arrav-blackarm player from a previous test run.
+    // Between hot-reloaded runs the old BotManager instance may have been garbage
+    // collected without fully removing the player from the world. A stale player
+    // with the same username in World.playerLoop causes processLogin to reject
+    // the new player (it never gets onLogin(), stays isActive=false, and can't move).
+    BotManager.forceCleanup('arrav-blackarm');
+
     // Spawn Bot B for Black Arm Gang
     const _botBApi = BotManager.spawnBot('arrav-blackarm', async (blackArmBot: BotAPI) => {
-        await blackArmBot.waitForTick();
-        await blackArmBot.waitForTick();
+        // Wait for login to complete — need enough ticks for processLogin to run
+        for (let i = 0; i < 10; i++) {
+            await blackArmBot.waitForTick();
+            if (blackArmBot.player.isActive) break;
+        }
+        if (!blackArmBot.player.isActive) {
+            throw new Error(`Bot B login failed: isActive=${blackArmBot.player.isActive} tele=${blackArmBot.player.tele} delayed=${blackArmBot.player.delayed}`);
+        }
         try {
             await runBlackArmPath(blackArmBot, coord);
         } catch (err) {
@@ -1251,12 +1321,10 @@ export async function shieldOfArrav(bot: BotAPI): Promise<void> {
 
         bot.log('SUCCESS', 'Shield of Arrav quest complete for both bots!');
     } finally {
-        // Always clean up Bot B to prevent "already active" errors on re-run
-        try {
-            BotManager.stopBot('arrav-blackarm');
-        } catch {
-            // Bot may already be stopped
-        }
+        // Always clean up Bot B to prevent "already active" errors on re-run.
+        // Use forceCleanup to also remove the player from World.playerLoop
+        // in case the BotManager tracking is out of sync.
+        BotManager.forceCleanup('arrav-blackarm');
     }
 }
 

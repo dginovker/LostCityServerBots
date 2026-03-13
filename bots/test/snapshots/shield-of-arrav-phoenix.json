@@ -93,7 +93,7 @@
       "path": "shield-of-arrav-phoenix/walk-to-varrock",
       "snapshot": {
         "position": {
-          "x": 3222,
+          "x": 3219,
           "z": 3216,
           "level": 0
         },
@@ -191,8 +191,8 @@
       "path": "shield-of-arrav-phoenix/search-bookcase-read-book",
       "snapshot": {
         "position": {
-          "x": 3210,
-          "z": 3491,
+          "x": 3208,
+          "z": 3495,
           "level": 0
         },
         "skills": {
@@ -241,7 +241,7 @@
       "snapshot": {
         "position": {
           "x": 3213,
-          "z": 3493,
+          "z": 3494,
           "level": 0
         },
         "skills": {
@@ -294,8 +294,8 @@
       "path": "shield-of-arrav-phoenix/talk-to-baraek",
       "snapshot": {
         "position": {
-          "x": 3208,
-          "z": 3495,
+          "x": 3209,
+          "z": 3491,
           "level": 0
         },
         "skills": {
@@ -348,8 +348,8 @@
       "path": "shield-of-arrav-phoenix/talk-to-straven",
       "snapshot": {
         "position": {
-          "x": 3216,
-          "z": 3434,
+          "x": 3218,
+          "z": 3435,
           "level": 0
         },
         "skills": {
@@ -402,8 +402,8 @@
       "path": "shield-of-arrav-phoenix/kill-jonny-the-beard",
       "snapshot": {
         "position": {
-          "x": 3246,
-          "z": 9781,
+          "x": 3247,
+          "z": 9780,
           "level": 0
         },
         "skills": {
@@ -456,8 +456,8 @@
       "path": "shield-of-arrav-phoenix/return-to-straven-join",
       "snapshot": {
         "position": {
-          "x": 3225,
-          "z": 3395,
+          "x": 3222,
+          "z": 3399,
           "level": 0
         },
         "skills": {
@@ -761,8 +761,8 @@
       "path": "shield-of-arrav-phoenix/drop-cert-for-bot-b",
       "snapshot": {
         "position": {
-          "x": 3257,
-          "z": 3447,
+          "x": 3258,
+          "z": 3445,
           "level": 0
         },
         "skills": {

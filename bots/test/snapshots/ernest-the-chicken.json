@@ -91,7 +91,7 @@
       "path": "ernest-the-chicken/talk-to-oddenstein",
       "snapshot": {
         "position": {
-          "x": 3110,
+          "x": 3109,
           "z": 3330,
           "level": 0
         },
@@ -288,8 +288,8 @@
       "path": "ernest-the-chicken/complete-quest",
       "snapshot": {
         "position": {
-          "x": 3092,
-          "z": 3361,
+          "x": 3099,
+          "z": 9758,
           "level": 0
         },
         "skills": {

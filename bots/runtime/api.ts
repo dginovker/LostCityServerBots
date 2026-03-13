@@ -12,6 +12,7 @@ import type Loc from '../../src/engine/entity/Loc.js';
 import type Npc from '../../src/engine/entity/Npc.js';
 import type Obj from '../../src/engine/entity/Obj.js';
 import { PlayerStatMap } from '../../src/engine/entity/PlayerStat.js';
+import { getExpByLevel } from '../../src/engine/entity/Player.js';
 import ScriptProvider from '../../src/engine/script/ScriptProvider.js';
 import ScriptRunner from '../../src/engine/script/ScriptRunner.js';
 import ScriptState from '../../src/engine/script/ScriptState.js';
@@ -2277,7 +2278,7 @@ export class BotAPI {
         player.teleport(snapshot.position.x, snapshot.position.z, snapshot.position.level);
         this.log('STATE', `restoreFromSnapshot: teleported to (${snapshot.position.x},${snapshot.position.z},${snapshot.position.level})`);
 
-        // Restore skills (base levels + current levels)
+        // Restore skills (base levels + current levels + XP)
         for (const [name, baseLevel] of Object.entries(snapshot.skills)) {
             const statId = PlayerStatMap.get(name);
             if (statId === undefined) {
@@ -2285,6 +2286,7 @@ export class BotAPI {
             }
             player.baseLevels[statId] = baseLevel;
             player.levels[statId] = baseLevel;
+            player.stats[statId] = getExpByLevel(baseLevel);
         }
 
         // Restore varps

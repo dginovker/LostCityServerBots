@@ -1,8 +1,8 @@
 {
-  "test": "pirates-treasure",
+  "test": "goblin-diplomacy",
   "states": [
     {
-      "path": "pirates-treasure",
+      "path": "goblin-diplomacy",
       "snapshot": {
         "position": {
           "x": 3222,
@@ -33,8 +33,7 @@
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "62": 0
         },
         "items": [
           {
@@ -46,7 +45,7 @@
       }
     },
     {
-      "path": "pirates-treasure/earn-coins",
+      "path": "goblin-diplomacy/earn-coins",
       "snapshot": {
         "position": {
           "x": 3222,
@@ -77,8 +76,7 @@
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "62": 0
         },
         "items": [
           {
@@ -90,11 +88,11 @@
       }
     },
     {
-      "path": "pirates-treasure/buy-apron",
+      "path": "goblin-diplomacy/collect-goblin-mails",
       "snapshot": {
         "position": {
-          "x": 3222,
-          "z": 3220,
+          "x": 3224,
+          "z": 3219,
           "level": 0
         },
         "skills": {
@@ -115,14 +113,13 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 3,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "62": 0
         },
         "items": [
           {
@@ -133,24 +130,24 @@
           {
             "id": 995,
             "name": "Coins",
-            "count": 200
+            "count": 81
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/start-quest",
+      "path": "goblin-diplomacy/collect-ingredients",
       "snapshot": {
         "position": {
-          "x": 3205,
-          "z": 3414,
+          "x": 3202,
+          "z": 3249,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
           "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "HITPOINTS": 13,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -164,47 +161,51 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 3,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "62": 0
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 288,
+            "name": "Goblin mail",
+            "count": 1
+          },
+          {
+            "id": 288,
+            "name": "Goblin mail",
             "count": 1
           },
           {
             "id": 995,
             "name": "Coins",
-            "count": 198
+            "count": 1
           },
           {
-            "id": 1005,
-            "name": "White apron",
+            "id": 288,
+            "name": "Goblin mail",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/smuggle-rum",
+      "path": "goblin-diplomacy/start-quest",
       "snapshot": {
         "position": {
-          "x": 3054,
-          "z": 3251,
+          "x": 3188,
+          "z": 3266,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
           "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "HITPOINTS": 13,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -218,47 +219,61 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 3,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 1,
-          "74": 0
+          "62": 0
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 288,
+            "name": "Goblin mail",
+            "count": 1
+          },
+          {
+            "id": 288,
+            "name": "Goblin mail",
             "count": 1
           },
           {
             "id": 995,
             "name": "Coins",
-            "count": 198
+            "count": 1
           },
           {
-            "id": 1005,
-            "name": "White apron",
+            "id": 288,
+            "name": "Goblin mail",
+            "count": 1
+          },
+          {
+            "id": 1957,
+            "name": "Onion",
+            "count": 1
+          },
+          {
+            "id": 1957,
+            "name": "Onion",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/retrieve-rum",
+      "path": "goblin-diplomacy/prepare-dyes",
       "snapshot": {
         "position": {
-          "x": 2939,
-          "z": 3154,
+          "x": 3045,
+          "z": 3256,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
           "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "HITPOINTS": 13,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -272,47 +287,61 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 3,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 1,
-          "74": 2
+          "62": 1
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 288,
+            "name": "Goblin mail",
+            "count": 1
+          },
+          {
+            "id": 288,
+            "name": "Goblin mail",
             "count": 1
           },
           {
             "id": 995,
             "name": "Coins",
-            "count": 168
+            "count": 1
           },
           {
-            "id": 1005,
-            "name": "White apron",
+            "id": 288,
+            "name": "Goblin mail",
+            "count": 1
+          },
+          {
+            "id": 1957,
+            "name": "Onion",
+            "count": 1
+          },
+          {
+            "id": 1957,
+            "name": "Onion",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/get-key",
+      "path": "goblin-diplomacy/deliver-to-generals",
       "snapshot": {
         "position": {
-          "x": 3010,
-          "z": 3207,
+          "x": 3092,
+          "z": 3256,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
           "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "HITPOINTS": 13,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -326,137 +355,33 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 4,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 1,
-          "74": 0
+          "62": 1
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 286,
+            "name": "Orange goblin mail",
+            "count": 1
+          },
+          {
+            "id": 287,
+            "name": "Blue goblin mail",
             "count": 1
           },
           {
             "id": 995,
             "name": "Coins",
-            "count": 138
+            "count": 2
           },
           {
-            "id": 431,
-            "name": "Karamjan rum",
-            "count": 1
-          }
-        ]
-      }
-    },
-    {
-      "path": "pirates-treasure/open-chest",
-      "snapshot": {
-        "position": {
-          "x": 3052,
-          "z": 3252,
-          "level": 0
-        },
-        "skills": {
-          "ATTACK": 1,
-          "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
-          "RANGED": 1,
-          "PRAYER": 1,
-          "MAGIC": 1,
-          "COOKING": 1,
-          "WOODCUTTING": 1,
-          "FLETCHING": 1,
-          "FISHING": 1,
-          "FIREMAKING": 1,
-          "CRAFTING": 1,
-          "SMITHING": 1,
-          "MINING": 1,
-          "HERBLORE": 1,
-          "AGILITY": 1,
-          "THIEVING": 13,
-          "STAT18": 1,
-          "STAT19": 1,
-          "RUNECRAFT": 1
-        },
-        "varps": {
-          "71": 2,
-          "74": 0
-        },
-        "items": [
-          {
-            "id": 1265,
-            "name": "Bronze pickaxe",
-            "count": 1
-          },
-          {
-            "id": 995,
-            "name": "Coins",
-            "count": 138
-          },
-          {
-            "id": 432,
-            "name": "Chest key",
-            "count": 1
-          }
-        ]
-      }
-    },
-    {
-      "path": "pirates-treasure/dig-treasure",
-      "snapshot": {
-        "position": {
-          "x": 3219,
-          "z": 3396,
-          "level": 1
-        },
-        "skills": {
-          "ATTACK": 1,
-          "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
-          "RANGED": 1,
-          "PRAYER": 1,
-          "MAGIC": 1,
-          "COOKING": 1,
-          "WOODCUTTING": 1,
-          "FLETCHING": 1,
-          "FISHING": 1,
-          "FIREMAKING": 1,
-          "CRAFTING": 1,
-          "SMITHING": 1,
-          "MINING": 1,
-          "HERBLORE": 1,
-          "AGILITY": 1,
-          "THIEVING": 13,
-          "STAT18": 1,
-          "STAT19": 1,
-          "RUNECRAFT": 1
-        },
-        "varps": {
-          "71": 3,
-          "74": 0
-        },
-        "items": [
-          {
-            "id": 1265,
-            "name": "Bronze pickaxe",
-            "count": 1
-          },
-          {
-            "id": 995,
-            "name": "Coins",
-            "count": 138
-          },
-          {
-            "id": 433,
-            "name": "Pirate message",
+            "id": 288,
+            "name": "Goblin mail",
             "count": 1
           }
         ]

@@ -91,8 +91,8 @@
       "path": "vampire-slayer/buy-hammer",
       "snapshot": {
         "position": {
-          "x": 3225,
-          "z": 3219,
+          "x": 3211,
+          "z": 3223,
           "level": 0
         },
         "skills": {
@@ -140,7 +140,7 @@
       "snapshot": {
         "position": {
           "x": 3209,
-          "z": 3247,
+          "z": 3244,
           "level": 0
         },
         "skills": {
@@ -240,8 +240,8 @@
       "path": "vampire-slayer/get-garlic",
       "snapshot": {
         "position": {
-          "x": 3097,
-          "z": 3267,
+          "x": 3098,
+          "z": 3268,
           "level": 0
         },
         "skills": {
@@ -342,7 +342,7 @@
       "snapshot": {
         "position": {
           "x": 3203,
-          "z": 3395,
+          "z": 3399,
           "level": 0
         },
         "skills": {

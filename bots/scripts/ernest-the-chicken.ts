@@ -96,8 +96,12 @@ async function enterManor(bot: BotAPI): Promise<void> {
         bot.log('STATE', `After climbing ladder: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
 
-    // If on upper floors, climb down first
-    while ((bot.player.level as number) > 0) {
+    // If on upper floors, climb down first.
+    // Guard with max iterations to prevent infinite loops if stairs silently fail.
+    for (let attempts = 0; (bot.player.level as number) > 0; attempts++) {
+        if (attempts >= 6) {
+            throw new Error(`Failed to climb down after ${attempts} attempts. Still on level ${bot.player.level} at (${bot.player.x},${bot.player.z})`);
+        }
         const climbed = await climbStairsInDirection(bot, 'down');
         if (!climbed) {
             throw new Error(`Cannot find stairs down on level ${bot.player.level}. pos=(${bot.player.x},${bot.player.z})`);
@@ -126,9 +130,19 @@ async function enterManor(bot: BotAPI): Promise<void> {
 
 /**
  * Find and climb stairs in the specified direction.
- * Returns true if successful, false if no stairs found.
+ * Returns true if the level actually changed, false if no stairs found
+ * or the stair interaction failed (e.g. player.delayed blocking canAccess).
  */
 async function climbStairsInDirection(bot: BotAPI, direction: 'up' | 'down'): Promise<boolean> {
+    // Clear any stuck state that would block interactions (player.delayed, modals)
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) bot.player.delayed = false;
+    }
+    if (bot.player.containsModalInterface()) bot.player.closeModal();
+
+    const levelBefore = bot.player.level as number;
     const allLocs = bot.findAllNearbyLocs(20);
     const stairsLocs = allLocs.filter(l =>
         l.displayName.toLowerCase().includes('stair')
@@ -142,7 +156,17 @@ async function climbStairsInDirection(bot: BotAPI, direction: 'up' | 'down'): Pr
                 bot.log('ACTION', `Climbing ${direction}: ${s.debugname} op${i + 1} at (${s.x},${s.z})`);
                 await bot.climbStairs(s.debugname, i + 1);
                 await bot.waitForTicks(3);
-                return true;
+
+                // Verify the level actually changed
+                if ((bot.player.level as number) !== levelBefore) {
+                    return true;
+                }
+                bot.log('STATE', `Stair interaction did not change level (still ${bot.player.level}), clearing state and retrying`);
+                // The interaction may have silently failed. Clear state again.
+                bot.dismissModals();
+                if (bot.player.delayed) bot.player.delayed = false;
+                if (bot.player.containsModalInterface()) bot.player.closeModal();
+                return false;
             }
         }
     }
@@ -160,16 +184,33 @@ async function exitManor(bot: BotAPI): Promise<void> {
 
     // If in the basement (z >= 6400), climb the ladder to exit first.
     if (bot.player.z >= 6400) {
-        bot.log('STATE', `In basement at z=${bot.player.z}, climbing ladder to exit`);
-        // Use climbStairs directly — it calls interactLoc which uses findPathToLocSegment
-        // for approach. Don't use walkToWithPathfinding because basement walls between
-        // bot and ladder may block regular pathfinding.
+        bot.log('STATE', `In basement at z=${bot.player.z} pos=(${bot.player.x},${bot.player.z}), climbing ladder to exit`);
+        // The puzzle_ladder is at (3117,9754) in room 7 (SE). findNearbyLoc has a
+        // 16-tile default radius which may not reach from other rooms. Find it with
+        // a larger radius and use interactLoc directly (which does its own approach).
+        const ladder = bot.findNearbyLoc('puzzle_ladder', 50);
+        if (!ladder) {
+            throw new Error(`puzzle_ladder not found within 50 tiles of (${bot.player.x},${bot.player.z})`);
+        }
+        // Try to walk to the ladder area. The bot may be in any room, and the
+        // pathfinder may not be able to route through puzzle doors. Walk to the
+        // south side of the gap at (3103,9753), then east to the ladder.
+        if (bot.player.z > 9758) {
+            // North of the z=9758 wall — go south through gap
+            await bot.walkToWithPathfinding(3103, 9753);
+        }
+        // Now on south side — walk to ladder
+        await bot.walkToWithPathfinding(3116, 9754);
         await bot.climbStairs('puzzle_ladder', 1);
         await bot.waitForTicks(3);
     }
 
-    // If on upper floors, climb down first
-    while ((bot.player.level as number) > 0) {
+    // If on upper floors, climb down first.
+    // Guard with max iterations to prevent infinite loops if stairs silently fail.
+    for (let attempts = 0; (bot.player.level as number) > 0; attempts++) {
+        if (attempts >= 6) {
+            throw new Error(`Failed to climb down after ${attempts} attempts. Still on level ${bot.player.level} at (${bot.player.x},${bot.player.z})`);
+        }
         const climbed = await climbStairsInDirection(bot, 'down');
         if (!climbed) {
             throw new Error(`Cannot find stairs down on level ${bot.player.level}. pos=(${bot.player.x},${bot.player.z})`);
@@ -201,6 +242,16 @@ async function exitManor(bot: BotAPI): Promise<void> {
             await bot.openDoor('inaccastledoubledoorropen');
             await bot.waitForTicks(3);
             bot.log('STATE', `After opening door: pos=(${bot.player.x},${bot.player.z})`);
+            // The door teleports us to a room north of the corridor (~3102,3371).
+            // This room may be enclosed. Walk south to the stair area and exit via
+            // the south entrance. The front door (haunteddoorl) blocks pathfinding
+            // at z=3331, so walk to just inside it, open it, then walk through.
+            await bot.walkToWithPathfinding(MANOR_ENTRANCE_X, MANOR_ENTRANCE_Z + 2);
+            await bot.openDoor('haunteddoorl');
+            await bot.waitForTicks(1);
+            await bot.walkToWithPathfinding(MANOR_ENTRANCE_X, MANOR_ENTRANCE_Z - 5);
+            bot.log('STATE', `Exited manor: pos=(${bot.player.x},${bot.player.z})`);
+            return;
         }
     }
 
@@ -217,16 +268,32 @@ async function exitManor(bot: BotAPI): Promise<void> {
         await bot.interactLoc(lever, 1);
         await bot.waitForTicks(5);
         bot.log('STATE', `After lever: pos=(${bot.player.x},${bot.player.z})`);
-        // Now in main hall east of bookcase. Continue north exit.
-        await bot.walkToWithPathfinding(3109, 3373);
+        // Now in main hall east of bookcase (~3098,3357). Walk south to exit.
+        // The front door (haunteddoorl) blocks pathfinding at z=3331, so walk
+        // to just inside it, open it, then walk through.
+        await bot.walkToWithPathfinding(MANOR_ENTRANCE_X, MANOR_ENTRANCE_Z + 2);
+        await bot.openDoor('haunteddoorl');
+        await bot.waitForTicks(1);
+        await bot.walkToWithPathfinding(MANOR_ENTRANCE_X, MANOR_ENTRANCE_Z - 5);
+    } else if (bot.player.z >= 3370) {
+        // Already north of the z=3373 interior wall — walk north to exit the building
+        // directly. Use walkTo (no pathfinding) since interior walls may block the
+        // pathfinder for short 1-tile moves.
+        await bot.walkTo(bot.player.x, 3378);
+        await bot.waitForTicks(3);
+        // Route around exterior: east then south.
         await bot.walkToWithPathfinding(3128, 3358);
         await bot.walkToWithPathfinding(3109, 3336);
     } else {
-        // Main hall: walk north through building to the north exit (z >= 3370),
-        // then east around the building exterior, and south.
-        await bot.walkToWithPathfinding(3109, 3373);
-        await bot.walkToWithPathfinding(3128, 3358);
-        await bot.walkToWithPathfinding(3109, 3336);
+        // Main hall south of z=3373 wall. There is a solid interior wall at z=3373
+        // (x=3105-3115) blocking northward routes. Exit via the south entrance.
+        // The front door (haunteddoorl) blocks pathfinding at z=3331, so walk
+        // to just inside it, open it, then walk through.
+        bot.log('STATE', `In main hall at (${bot.player.x},${bot.player.z}), exiting via south entrance`);
+        await bot.walkToWithPathfinding(MANOR_ENTRANCE_X, MANOR_ENTRANCE_Z + 2);
+        await bot.openDoor('haunteddoorl');
+        await bot.waitForTicks(1);
+        await bot.walkToWithPathfinding(MANOR_ENTRANCE_X, MANOR_ENTRANCE_Z - 5);
     }
     bot.log('STATE', `Exited manor: pos=(${bot.player.x},${bot.player.z})`);
 }
@@ -265,9 +332,17 @@ async function goToOddenstein(bot: BotAPI): Promise<void> {
 
     bot.log('STATE', `Oddenstein floor (level ${bot.player.level}): pos=(${bot.player.x},${bot.player.z})`);
 
-    // Walk to Oddenstein's known spawn area (3110, 3367, level 2)
-    // The level 2 floor has walls with doors that auto-door should handle.
-    await bot.walkToWithPathfinding(3110, 3367);
+    // Walk to Oddenstein's known spawn area (3110, 3367, level 2).
+    // Use walkTo (direct waypoint) instead of walkToWithPathfinding because the
+    // rsmod pathfinder has no collision data for upper floors (struggle #2).
+    //
+    // There's a wall at x=3108 (oldwall shape 0) running z=3362-3369 on level 2,
+    // with an inaccastledoubledoorropen door at (3108,3364). Open it first, then
+    // walk through to Oddenstein's room on the east side.
+    await bot.walkTo(3108, 3364);
+    await bot.openDoor('inaccastledoubledoorropen');
+    await bot.waitForTicks(2);
+    await bot.walkTo(3110, 3367);
 
     // Find Oddenstein
     const oddenstein = bot.findNearbyNpc('Professor Oddenstein', 30);
@@ -281,7 +356,15 @@ async function goToOddenstein(bot: BotAPI): Promise<void> {
  * Go from Oddenstein's floor back to ground floor.
  */
 async function goDownToGroundFloor(bot: BotAPI): Promise<void> {
-    while ((bot.player.level as number) > 0) {
+    // On upper floors, walk to the stairs area first using walkTo (no pathfinding
+    // on upper floors — struggle #2). The stairs are near (3105,3364).
+    if ((bot.player.level as number) > 0) {
+        await bot.walkTo(3105, 3364);
+    }
+    for (let attempts = 0; (bot.player.level as number) > 0; attempts++) {
+        if (attempts >= 6) {
+            throw new Error(`Failed to climb down after ${attempts} attempts. Still on level ${bot.player.level} at (${bot.player.x},${bot.player.z})`);
+        }
         const climbed = await climbStairsInDirection(bot, 'down');
         if (!climbed) {
             throw new Error(`Cannot find stairs down on level ${bot.player.level}. pos=(${bot.player.x},${bot.player.z})`);
@@ -848,12 +931,16 @@ async function obtainOilCan(bot: BotAPI): Promise<void> {
         await bot.walkToWithPathfinding(3103, 9753);
     }
 
-    // Helper: navigate from room 7 back to room 5 via gap
+    // Helper: navigate from room 7 back to room 5 via 5to8 door.
+    // The gap at x=3103 in the z=9758 wall only works north→south (due to wall
+    // edge placement). Use the 5to8 door instead: room 7 → room 8 → 5to8 → room 5.
+    // At step 6, state is 001000 (D on), so 5to8 is open (C=off,D=on ✓).
     async function navigateToRoom5FromSouth(): Promise<void> {
-        bot.log('STATE', `Navigating back to room 5 from (${bot.player.x},${bot.player.z})`);
-        await bot.walkToWithPathfinding(3103, 9753);
-        await bot.walkToWithPathfinding(3103, 9759);
-        await bot.walkToWithPathfinding(3104, 9760);
+        bot.log('STATE', `Navigating back to room 5 via 5to8 from (${bot.player.x},${bot.player.z})`);
+        // Walk from room 7 to room 8 area (no door between adjacent south rooms)
+        await bot.walkToWithPathfinding(3104, 9753);
+        // Open 5to8 door to enter room 5
+        await openHauntedDoor(bot, '5to8');
     }
 
     logState('Initial');
@@ -927,16 +1014,19 @@ async function obtainOilCan(bot: BotAPI): Promise<void> {
     logState('After E toggle');
 
     // Step 11: Navigate to room 9 for oil can
-    // State: 101100 (C,D,F on). 8to9 requires E=off,F=on → ✓
-    // Instead of going through 2to5 → 5to8 → 8to9 (which has pathfinding issues
-    // with the puzzle doors), navigate through the open gap at x=3103 in the z=9758
-    // wall to reach the south rooms directly, then open 8to9.
-    // From room 3 (~3097,9767): go east to gap, through to south, then to 8to9.
-    bot.log('STATE', `Navigating to room 9 via gap from (${bot.player.x},${bot.player.z})`);
-    await bot.walkToWithPathfinding(3103, 9759);
-    await bot.walkToWithPathfinding(3103, 9753);
-    // 8to9 door is at (3100, 9755). Walk near it, then open.
-    await bot.walkToWithPathfinding(3100, 9753);
+    // State: 101100 (C,D,F on). All four doors on the path are open:
+    //   2to3: B=off,D=on,F=on ✓
+    //   2to5: state==101100 ✓
+    //   5to8: state==101100 ✓
+    //   8to9: E=off,F=on ✓
+    // Route: room 3 → 2to3 → room 2 → 2to5 → room 5 → 5to8 → room 8 → 8to9 → room 9
+    bot.log('STATE', `Navigating to room 9 via doors from (${bot.player.x},${bot.player.z})`);
+    await openHauntedDoor(bot, '2to3');
+    logState('Through 2to3 (step 11)');
+    await openHauntedDoor(bot, '2to5');
+    logState('Through 2to5');
+    await openHauntedDoor(bot, '5to8');
+    logState('Through 5to8');
     await openHauntedDoor(bot, '8to9');
     logState('Through 8to9');
 

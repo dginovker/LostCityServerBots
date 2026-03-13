@@ -171,8 +171,8 @@
       "path": "imp-catcher/collect-beads",
       "snapshot": {
         "position": {
-          "x": 3105,
-          "z": 3163,
+          "x": 3107,
+          "z": 3160,
           "level": 2
         },
         "skills": {
@@ -254,15 +254,15 @@
       "path": "imp-catcher/deliver-to-wizard",
       "snapshot": {
         "position": {
-          "x": 3214,
-          "z": 3236,
+          "x": 3175,
+          "z": 3240,
           "level": 0
         },
         "skills": {
-          "ATTACK": 12,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
-          "HITPOINTS": 12,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -286,8 +286,8 @@
         },
         "items": [
           {
-            "id": 1472,
-            "name": "Yellow bead",
+            "id": 1470,
+            "name": "Red bead",
             "count": 1
           },
           {
@@ -331,18 +331,18 @@
             "count": 1
           },
           {
-            "id": 1476,
-            "name": "White bead",
-            "count": 1
-          },
-          {
-            "id": 1470,
-            "name": "Red bead",
+            "id": 1472,
+            "name": "Yellow bead",
             "count": 1
           },
           {
             "id": 1474,
             "name": "Black bead",
+            "count": 1
+          },
+          {
+            "id": 1476,
+            "name": "White bead",
             "count": 1
           }
         ]

@@ -39,33 +39,37 @@ const _COW_FIELD_Z = 3252;
 const GIANT_RAT_AREA_X = 3195;
 const GIANT_RAT_AREA_Z = 3205;
 
-// Bears south of Varrock (east side, near Champions Guild)
-const BEAR_AREA_X = 3290;
-const BEAR_AREA_Z = 3350;
+// Bears southwest of Lumbridge (map m49_50)
+// Spawn at (3176,3223) and (3159,3233) — much closer than Varrock
+const BEAR_AREA_X = 3176;
+const BEAR_AREA_Z = 3223;
 
 // Route waypoints from Lumbridge westward
 const ROUTE_LUMBRIDGE_TO_DRAYNOR = { x: 3105, z: 3250 };
-const ROUTE_DRAYNOR_TO_FALADOR_SOUTH = { x: 2965, z: 3380 };
+const ROUTE_DRAYNOR_TO_FALADOR_SOUTH = { x: 2965, z: 3370 };
+// Enter Falador via south gate, then go through town to north exit
+const ROUTE_FALADOR_SOUTH_GATE = { x: 2965, z: 3394 };
 const ROUTE_FALADOR_SOUTH_TO_NORTH = { x: 2945, z: 3400 };
+const ROUTE_FALADOR_PARK = { x: 2960, z: 3430 };
+// Waypoint through Taverley village, west of castle walls, toward the druid circle
+const ROUTE_TAVERLEY_VILLAGE = { x: 2920, z: 3440 };
 
 // Taverley village area (Sanfew's house)
-const SANFEW_HOUSE_X = 2899;
-const SANFEW_HOUSE_Z = 3429;
-
-// Stair inside Sanfew's house to go upstairs
-// From ladders+stairs script: case 0_45_53_18_36 : p_telejump(1_45_53_18_35)
-// World coords: x = 45*64+18 = 2898, z = 53*64+36 = 3428
-const SANFEW_STAIRS_X = 2898;
-const SANFEW_STAIRS_Z = 3428;
+// Target the east door entrance at (2901,3428) rather than the house interior (2899,3429)
+// which may be blocked by walls the pathfinder can't traverse.
+const SANFEW_HOUSE_X = 2901;
+const SANFEW_HOUSE_Z = 3428;
 
 // Druid Circle north of Taverley (where Kaqemeex is)
-const DRUID_CIRCLE_X = 2925;
+// Kaqemeex spawns at (2925,3486). Target a walkable tile outside the henge stones
+// rather than the center which is blocked by the guthix_altar at (2925,3483).
+const DRUID_CIRCLE_X = 2928;
 const DRUID_CIRCLE_Z = 3484;
 
-// Taverley dungeon entrance (ladder going underground, loc_1754)
-// Approximately (2884, 3397) on surface
+// Taverley dungeon entrance (ladder going underground, loc_1759 with op1=Climb-Down)
+// The ladder is at (2884, 3397). Target one tile north to approach without wall issues.
 const DUNGEON_ENTRANCE_X = 2884;
-const DUNGEON_ENTRANCE_Z = 3397;
+const DUNGEON_ENTRANCE_Z = 3398;
 
 // Underground offset
 const UNDERGROUND_Z_OFFSET = 6400;
@@ -146,6 +150,12 @@ async function walkAdjacentAndAttack(bot: BotAPI, npc: Npc, maxTicks: number = 2
             await bot.waitForTicks(2);
             return { x: lastX, z: lastZ };
         }
+
+        // Detect bot death — bail immediately instead of spinning for the full timeout
+        if (bot.isDead()) {
+            bot.log('STATE', `Bot died fighting ${npcType.name} at tick ${tick}`);
+            return null;
+        }
     }
 
     bot.log('STATE', `Combat timed out after ${maxTicks} ticks`);
@@ -171,10 +181,11 @@ async function pickUpIfPresent(bot: BotAPI, itemName: string, _deathX: number, _
 
 /**
  * Kill chickens near Lumbridge to get raw chicken and train combat.
- * Returns when we have at least 1 raw_chicken and the specified minimum attack level.
+ * Trains attack first for accuracy, then strength for damage.
+ * Both stats are needed to fight bears (level 21).
  */
-async function killChickensForMeatAndXP(bot: BotAPI, targetAttackLevel: number): Promise<void> {
-    bot.log('STATE', `=== Killing chickens for raw chicken and training to attack ${targetAttackLevel} ===`);
+async function killChickensForMeatAndXP(bot: BotAPI, targetAttackLevel: number, targetStrengthLevel: number): Promise<void> {
+    bot.log('STATE', `=== Killing chickens for raw chicken and training to attack ${targetAttackLevel}, strength ${targetStrengthLevel} ===`);
 
     // Equip bronze pickaxe for combat
     if (bot.findItem('Bronze pickaxe')) {
@@ -184,17 +195,24 @@ async function killChickensForMeatAndXP(bot: BotAPI, targetAttackLevel: number):
 
     await bot.walkToWithPathfinding(CHICKEN_AREA_X, CHICKEN_AREA_Z);
 
-    // Set combat style to Accurate (0) for Attack XP
+    // Start with Accurate (0) for Attack XP
     bot.setCombatStyle(0);
 
     let hasRawChicken = bot.findItem('Raw chicken') !== null;
     let totalTicks = 0;
-    const MAX_TICKS = 5000;
+    const MAX_TICKS = 15000;
 
     while (totalTicks < MAX_TICKS) {
         const attackLevel = bot.getSkill('Attack').baseLevel;
-        if (hasRawChicken && attackLevel >= targetAttackLevel) {
-            bot.log('EVENT', `Done killing chickens: attack=${attackLevel}, hasRawChicken=${hasRawChicken}`);
+        const strengthLevel = bot.getSkill('Strength').baseLevel;
+
+        // Switch to Aggressive (1) once attack target is reached
+        if (attackLevel >= targetAttackLevel && strengthLevel < targetStrengthLevel) {
+            bot.setCombatStyle(1);
+        }
+
+        if (hasRawChicken && attackLevel >= targetAttackLevel && strengthLevel >= targetStrengthLevel) {
+            bot.log('EVENT', `Done killing chickens: attack=${attackLevel}, strength=${strengthLevel}, hasRawChicken=${hasRawChicken}`);
             return;
         }
 
@@ -242,12 +260,14 @@ async function killChickensForMeatAndXP(bot: BotAPI, targetAttackLevel: number):
 
         if (totalTicks % 200 === 0) {
             const atk = bot.getSkill('Attack').baseLevel;
-            bot.log('STATE', `Training chickens: attack=${atk}/${targetAttackLevel} rawChicken=${hasRawChicken} ticks=${totalTicks}`);
+            const str = bot.getSkill('Strength').baseLevel;
+            bot.log('STATE', `Training chickens: attack=${atk}/${targetAttackLevel} strength=${str}/${targetStrengthLevel} rawChicken=${hasRawChicken} ticks=${totalTicks}`);
         }
     }
 
     throw new Error(`Failed to finish chicken training after ${MAX_TICKS} ticks`);
 }
+
 
 /**
  * Kill a cow to get raw beef.
@@ -393,49 +413,89 @@ async function killGiantRatForMeat(bot: BotAPI): Promise<void> {
 
 /**
  * Kill a bear for raw bear meat. Bears are level 21 so the bot needs
- * some combat training first. Bears spawn south of Varrock.
+ * some combat training first. Bears spawn southwest of Lumbridge.
+ *
+ * Uses attackNpcClearingCollision from the API which properly detects
+ * bot death and handles NPC collision clearing for size-2 NPCs.
  */
 async function killBearForMeat(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Killing bear for raw bear meat ===');
 
-    // Route to bear area south of Varrock via Lumbridge road.
-    // Need to clear any fenced areas first.
-    await bot.walkToWithPathfinding(3222, 3218); // Lumbridge center
-    await bot.walkToWithPathfinding(3260, 3230); // East road, south of fence line
-    await bot.walkToWithPathfinding(BEAR_AREA_X, BEAR_AREA_Z);
+    // Equip bronze pickaxe for combat
+    if (bot.findItem('Bronze pickaxe')) {
+        await bot.equipItem('Bronze pickaxe');
+        await bot.waitForTicks(1);
+    }
 
     // Set to Aggressive for strength XP while killing bear
     bot.setCombatStyle(1);
 
+    // Walk to bear area southwest of Lumbridge
+    await bot.walkToWithPathfinding(BEAR_AREA_X, BEAR_AREA_Z);
+
     let attempts = 0;
-    const MAX_ATTEMPTS = 50;
+    const MAX_ATTEMPTS = 50; // Bears are tough (level 21) — bot may die several times
 
     while (bot.findItem('Raw bear meat') === null && attempts < MAX_ATTEMPTS) {
         bot.dismissModals();
         if (bot.player.delayed) {
             await bot.waitForCondition(() => !bot.player.delayed, 20);
+            if (bot.player.delayed) bot.player.delayed = false;
         }
 
+        // Check for death — respawn and walk back
         if (bot.isDead()) {
+            bot.log('STATE', 'Bot died fighting bear, recovering...');
             await bot.waitForRespawn();
-            // Respawn in Lumbridge, walk back via road
-            await bot.walkToWithPathfinding(3260, 3230);
+            bot.enableRun(true);
+            if (bot.findItem('Bronze pickaxe')) {
+                await bot.equipItem('Bronze pickaxe');
+                await bot.waitForTicks(1);
+            }
+            bot.setCombatStyle(1);
             await bot.walkToWithPathfinding(BEAR_AREA_X, BEAR_AREA_Z);
-            continue;
-        }
-
-        const bear = bot.findNearbyNpc('Bear', 20);
-        if (!bear) {
-            await bot.walkToWithPathfinding(BEAR_AREA_X, BEAR_AREA_Z);
-            await bot.waitForTicks(10);
             attempts++;
             continue;
         }
 
-        const deathPos = await walkAdjacentAndAttack(bot, bear, 400);
+        // Find a bear — search both spawn points
+        let bear = bot.findNearbyNpc('Bear', 20);
+        if (!bear) {
+            // Try the other spawn point at (3159,3233)
+            await bot.walkToWithPathfinding(3159, 3233);
+            await bot.waitForTicks(5);
+            bear = bot.findNearbyNpc('Bear', 20);
+        }
+        if (!bear) {
+            // Walk back to primary spawn and wait for respawn
+            await bot.walkToWithPathfinding(BEAR_AREA_X, BEAR_AREA_Z);
+            await bot.waitForTicks(15);
+            attempts++;
+            continue;
+        }
+
+        bot.log('STATE', `Attacking bear at (${bear.x},${bear.z}), bot at (${bot.player.x},${bot.player.z})`);
+
+        // Use attackNpcClearingCollision which handles death detection and
+        // NPC collision clearing for size-2 NPCs
+        const deathPos = await bot.attackNpcClearingCollision(bear, 300);
         if (deathPos) {
             bot.dismissModals();
             await pickUpIfPresent(bot, 'Raw bear meat', deathPos.x, deathPos.z);
+        } else {
+            // Combat failed (bot died, timed out, or couldn't engage)
+            bot.dismissModals();
+            if (bot.isDead()) {
+                bot.log('STATE', 'Bot died fighting bear, recovering...');
+                await bot.waitForRespawn();
+                bot.enableRun(true);
+                if (bot.findItem('Bronze pickaxe')) {
+                    await bot.equipItem('Bronze pickaxe');
+                    await bot.waitForTicks(1);
+                }
+                bot.setCombatStyle(1);
+                await bot.walkToWithPathfinding(BEAR_AREA_X, BEAR_AREA_Z);
+            }
         }
         attempts++;
     }
@@ -453,20 +513,26 @@ async function _walkToTaverley(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Walking to Taverley ===');
     await bot.walkToWithPathfinding(ROUTE_LUMBRIDGE_TO_DRAYNOR.x, ROUTE_LUMBRIDGE_TO_DRAYNOR.z);
     await bot.walkToWithPathfinding(ROUTE_DRAYNOR_TO_FALADOR_SOUTH.x, ROUTE_DRAYNOR_TO_FALADOR_SOUTH.z);
+    await bot.walkToWithPathfinding(ROUTE_FALADOR_SOUTH_GATE.x, ROUTE_FALADOR_SOUTH_GATE.z);
     await bot.walkToWithPathfinding(ROUTE_FALADOR_SOUTH_TO_NORTH.x, ROUTE_FALADOR_SOUTH_TO_NORTH.z);
+    await bot.walkToWithPathfinding(ROUTE_FALADOR_PARK.x, ROUTE_FALADOR_PARK.z);
+    await bot.walkToWithPathfinding(ROUTE_TAVERLEY_VILLAGE.x, ROUTE_TAVERLEY_VILLAGE.z);
     await bot.walkToWithPathfinding(DRUID_CIRCLE_X, DRUID_CIRCLE_Z);
     bot.log('STATE', `At Druid Circle: pos=(${bot.player.x},${bot.player.z})`);
 }
 
 /**
- * Walk from the bear area to Taverley.
- * Bears are south of Varrock; route west through Barbarian Village to Taverley.
+ * Walk from the Lumbridge area to Taverley.
+ * Route west through Draynor to Falador, then north to Taverley.
  */
-async function walkFromBearAreaToTaverley(bot: BotAPI): Promise<void> {
-    bot.log('STATE', '=== Walking from bear area to Taverley ===');
-    // Go west from Varrock area toward Barbarian Village
-    await bot.walkToWithPathfinding(3082, 3420); // Barbarian Village
-    await bot.walkToWithPathfinding(2945, 3400); // North of Falador
+async function walkToTaverleyFromLumbridge(bot: BotAPI): Promise<void> {
+    bot.log('STATE', '=== Walking from Lumbridge area to Taverley ===');
+    await bot.walkToWithPathfinding(ROUTE_LUMBRIDGE_TO_DRAYNOR.x, ROUTE_LUMBRIDGE_TO_DRAYNOR.z);
+    await bot.walkToWithPathfinding(ROUTE_DRAYNOR_TO_FALADOR_SOUTH.x, ROUTE_DRAYNOR_TO_FALADOR_SOUTH.z);
+    await bot.walkToWithPathfinding(ROUTE_FALADOR_SOUTH_GATE.x, ROUTE_FALADOR_SOUTH_GATE.z);
+    await bot.walkToWithPathfinding(ROUTE_FALADOR_SOUTH_TO_NORTH.x, ROUTE_FALADOR_SOUTH_TO_NORTH.z);
+    await bot.walkToWithPathfinding(ROUTE_FALADOR_PARK.x, ROUTE_FALADOR_PARK.z);
+    await bot.walkToWithPathfinding(ROUTE_TAVERLEY_VILLAGE.x, ROUTE_TAVERLEY_VILLAGE.z);
     await bot.walkToWithPathfinding(DRUID_CIRCLE_X, DRUID_CIRCLE_Z);
     bot.log('STATE', `At Druid Circle: pos=(${bot.player.x},${bot.player.z})`);
 }
@@ -625,12 +691,37 @@ async function talkToSanfew(bot: BotAPI): Promise<void> {
 async function goDownFromSanfew(bot: BotAPI): Promise<void> {
     if ((bot.player.level as number) !== 1) return;
 
-    // Walk to stairwell area on level 1
-    await bot.walkToWithPathfinding(SANFEW_STAIRS_X, SANFEW_STAIRS_Z);
+    // The bot lands at (2898,3427) after climbing up, but the down-stairs (loc_1739)
+    // are at (2898,3428). There's a wall between these tiles on level 1, so we can't
+    // walkToWithPathfinding to the stairs. Try both loc_1739 and loc_1743 (alternate
+    // stair type with same model). If neither is found by debugname, search by
+    // display name "Staircase".
+    let stairs = bot.findNearbyLoc('loc_1739', 10);
+    if (!stairs) {
+        stairs = bot.findNearbyLoc('loc_1743', 10);
+    }
+    if (!stairs) {
+        // Try by display name
+        stairs = bot.findNearbyLocByDisplayName('Staircase', 10);
+    }
+    if (!stairs) {
+        // Debug: log all nearby locs on this level
+        const allLocs = bot.findAllNearbyLocs(10);
+        for (const locInfo of allLocs) {
+            bot.log('STATE', `  Level 1 loc: ${locInfo.debugname} "${locInfo.displayName}" at (${locInfo.x},${locInfo.z})`);
+        }
+        throw new Error(`goDownFromSanfew: no staircase found on level 1 at (${bot.player.x},${bot.player.z})`);
+    }
 
-    // loc_1739 is mid-level stairs with op2=Climb-up, op3=Climb-down
-    await bot.climbStairs('loc_1739', 3); // op3 = Climb-down
-    await bot.waitForTicks(3);
+    bot.log('STATE', `goDownFromSanfew: using staircase "${stairs.type}" at (${stairs.x},${stairs.z})`);
+    await bot.interactLoc(stairs, 3); // op3 = Climb-down
+    await bot.waitForTicks(5);
+
+    if ((bot.player.level as number) !== 0) {
+        // Try op1 (Climb) which on some staircase types handles both up and down
+        await bot.interactLoc(stairs, 1);
+        await bot.waitForTicks(5);
+    }
 
     if ((bot.player.level as number) !== 0) {
         throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
@@ -639,76 +730,117 @@ async function goDownFromSanfew(bot: BotAPI): Promise<void> {
 }
 
 /**
+ * Open the prison doors in Taverley dungeon.
+ *
+ * Opening from outside triggers suits of armour (level 19, 29 HP). The door
+ * script (prison_doors.rs2) checks for suitofarmour_darkknight locs:
+ *   - First interaction: activates northern suit, loc_del(500), door stays closed
+ *   - Second interaction: activates southern suit, loc_del(500), door stays closed
+ *   - Third interaction: both locs deleted → door opens
+ *
+ * Strategy: interact 3 times rapidly, triggering both suits but not fighting
+ * them. The suits attack but the bot just needs to survive long enough to open
+ * the door and walk through. The suits will be left behind in the corridor.
+ *
+ * Bot must be at (2885, 9830) — end of the corridor, west of the doors.
+ */
+async function openPrisonDoorsAndFightSuits(bot: BotAPI): Promise<void> {
+    bot.log('STATE', '=== Opening prison doors ===');
+
+    // The prison_doors.rs2 script works like this:
+    // - 1st interaction from outside: deletes northern suitofarmour_darkknight loc (500 ticks), spawns NPC
+    // - 2nd interaction: deletes southern suit loc (500 ticks), spawns NPC
+    // - 3rd interaction: both locs deleted → door opens
+    // Strategy: interact 3 times rapidly. Don't fight the suits — just survive the hits.
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const door = bot.findNearbyLoc('cauldrondoor', 15) ?? bot.findNearbyLoc('cauldrondoor_l', 15);
+        if (!door) {
+            bot.log('STATE', 'No prison door found, may already be open');
+            break;
+        }
+
+        bot.log('STATE', `Interacting with prison door at (${door.x},${door.z}), attempt ${attempt + 1}`);
+
+        // Clear any busy/modal state before interacting
+        bot.dismissModals();
+        if (bot.player.delayed) {
+            await bot.waitForCondition(() => !bot.player.delayed, 20);
+            if (bot.player.delayed) bot.player.delayed = false;
+        }
+        if (bot.player.containsModalInterface()) bot.player.closeModal();
+
+        await bot.interactLoc(door, 1); // op1 = Open
+        await bot.waitForTicks(2);
+
+        if (bot.isDead()) {
+            throw new Error('Bot died at prison doors');
+        }
+    }
+
+    // Walk through the now-open door to the cauldron area
+    await bot.walkToWithPathfinding(2892, 9831);
+    bot.log('STATE', `Through prison doors: pos=(${bot.player.x},${bot.player.z})`);
+}
+
+/**
  * Enter Taverley dungeon and enchant all 4 raw meats at the Cauldron of Thunder.
- * The dungeon entrance is a ladder (loc_1754) south of Taverley.
+ * The dungeon entrance is a ladder (loc_1759) south of Taverley.
+ *
+ * Dungeon layout (from map m45_153):
+ *   Entrance ladder (loc_1755) at (2884, 9797) — lands at ~(2885, 9797)
+ *   Corridor goes north through x=2883-2885, walls on both sides
+ *   Prison doors (cauldrondoor/cauldrondoor_l) at (2889, 9830-9831) — blocks west side
+ *   Cauldron of Thunder at (2893, 9831)
+ *
+ * The pathfinder has a 25-tile search radius, so the 33-tile corridor needs
+ * intermediate waypoints.
  */
 async function enchantMeatsAtCauldron(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Entering Taverley dungeon to enchant meats ===');
 
-    // Walk to dungeon entrance
-    await bot.walkToWithPathfinding(DUNGEON_ENTRANCE_X, DUNGEON_ENTRANCE_Z);
-    bot.log('STATE', `At dungeon entrance: pos=(${bot.player.x},${bot.player.z})`);
+    // If still upstairs in Sanfew's house (level 1), climb down first
+    if ((bot.player.level as number) === 1) {
+        bot.log('STATE', `Still on level 1 at (${bot.player.x},${bot.player.z}), climbing down`);
+        await goDownFromSanfew(bot);
+    }
 
-    // Climb down the ladder (loc_1754, op1=Climb-down, z+6400)
-    await bot.climbStairs('loc_1754', 1);
-    await bot.waitForTicks(3);
+    // If already underground (e.g. from a failed retry), skip the entrance walk
+    const alreadyUnderground = bot.player.z >= UNDERGROUND_Z_OFFSET;
+    if (!alreadyUnderground) {
+        // Walk to dungeon entrance
+        await bot.walkToWithPathfinding(DUNGEON_ENTRANCE_X, DUNGEON_ENTRANCE_Z);
+        bot.log('STATE', `At dungeon entrance: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Verify we're underground
-    if (bot.player.z < UNDERGROUND_Z_OFFSET) {
-        throw new Error(`Failed to enter dungeon: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        // Climb down the ladder (loc_1759, op1=Climb-down, z+6400)
+        await bot.climbStairs('loc_1759', 1);
+        await bot.waitForTicks(3);
+
+        // Verify we're underground
+        if (bot.player.z < UNDERGROUND_Z_OFFSET) {
+            throw new Error(`Failed to enter dungeon: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        }
     }
     bot.log('STATE', `In dungeon: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Navigate toward the Cauldron of Thunder.
-    // The cauldron is in a room accessible shortly after the entrance.
-    // We need to navigate through the dungeon to find it.
-    // The dungeon entrance drops us at approx (DUNGEON_ENTRANCE_X, DUNGEON_ENTRANCE_Z + 6400).
-    // The cauldron room has prison doors that need to be opened (cauldrondoor).
+    // Navigate through the dungeon corridor to the prison doors.
+    // The corridor runs north (x=2883-2885) from entrance ~(2885, 9797) to ~(2885, 9830).
+    // Pathfinder search radius is 25 tiles, so we need intermediate waypoints
+    // for the 33-tile corridor.
+    await bot.walkToWithPathfinding(2885, 9815); // mid-corridor waypoint
+    await bot.walkToWithPathfinding(2885, 9830); // end of corridor
 
-    // Walk south-east in the dungeon toward the cauldron area
-    // The prison doors are at approx (2887, 9829) based on the script coords
-    const prisonDoorX = 2887;
-    const prisonDoorZ = 9829;
+    // Prison doors (cauldrondoor/cauldrondoor_l) at (2889, 9830-9831).
+    // Opening from outside triggers suits of armour. Interact 3 times to open.
+    await openPrisonDoorsAndFightSuits(bot);
 
-    await bot.walkToWithPathfinding(prisonDoorX, prisonDoorZ);
-    bot.log('STATE', `Near prison doors: pos=(${bot.player.x},${bot.player.z})`);
-
-    // Open the prison door (cauldrondoor) to access the cauldron room
-    // These are double doors - try to open the right-side one first
-    let door = bot.findNearbyLoc('cauldrondoor', 10);
-    if (!door) {
-        door = bot.findNearbyLoc('cauldrondoor_l', 10);
-    }
-    if (door) {
-        bot.log('STATE', `Opening prison door at (${door.x},${door.z})`);
-        await bot.interactLoc(door, 1);
-        await bot.waitForTicks(3);
-    } else {
-        bot.log('STATE', 'Prison door not found - may already be open');
-    }
-
-    // Walk through the door into the cauldron room
-    // The cauldron should be south of the prison doors
-    await bot.walkToWithPathfinding(prisonDoorX + 2, prisonDoorZ + 2);
-    await bot.waitForTicks(1);
+    // Walk adjacent to the cauldron at (2893, 9831). The cauldron is a centrepiece
+    // that blocks its tile, so walk to (2892, 9831) — one tile west.
+    await bot.walkToWithPathfinding(2892, 9831);
+    bot.log('STATE', `Adjacent to cauldron: pos=(${bot.player.x},${bot.player.z})`);
 
     // Find the cauldron
-    let cauldron = bot.findNearbyLoc('cauldron_of_thunder', 20);
+    const cauldron = bot.findNearbyLoc('cauldron_of_thunder', 20);
     if (!cauldron) {
-        // Search more broadly
-        bot.log('STATE', 'Cauldron not found nearby, searching broader area...');
-        const allLocs = bot.findAllNearbyLocs(30);
-        for (const locInfo of allLocs) {
-            if (locInfo.debugname.includes('cauldron') || locInfo.displayName.includes('Cauldron')) {
-                bot.log('STATE', `Found cauldron-like loc: ${locInfo.debugname} "${locInfo.displayName}" at (${locInfo.x},${locInfo.z})`);
-                cauldron = locInfo.loc;
-                break;
-            }
-        }
-    }
-
-    if (!cauldron) {
-        // Log all nearby locs for debugging
         const allLocs = bot.findAllNearbyLocs(30);
         for (const locInfo of allLocs) {
             bot.log('STATE', `  Nearby loc: ${locInfo.debugname} "${locInfo.displayName}" at (${locInfo.x},${locInfo.z})`);
@@ -745,30 +877,19 @@ async function enchantMeatsAtCauldron(bot: BotAPI): Promise<void> {
 
     bot.log('EVENT', 'All meats enchanted!');
 
-    // Exit the dungeon - climb back up the ladder
+    // Exit the dungeon - walk back through corridor with waypoints, climb ladder
     bot.log('STATE', 'Exiting dungeon...');
 
-    // Walk back to the entrance ladder area
+    // Walk back west out of cauldron room, then south through corridor
+    await bot.walkToWithPathfinding(2885, 9830);
+    await bot.walkToWithPathfinding(2885, 9815);
+
+    // Walk to the entrance ladder area
     const entranceUndergroundZ = DUNGEON_ENTRANCE_Z + UNDERGROUND_Z_OFFSET;
     await bot.walkToWithPathfinding(DUNGEON_ENTRANCE_X, entranceUndergroundZ);
 
     // Find and climb the exit ladder (loc_1755, Climb-up)
-    let exitLadder = bot.findNearbyLoc('loc_1755', 30);
-    if (!exitLadder) {
-        exitLadder = bot.findNearbyLoc('loc_1757', 30);
-    }
-    if (!exitLadder) {
-        // Search by display name
-        const allLocs = bot.findAllNearbyLocs(30);
-        for (const locInfo of allLocs) {
-            if (locInfo.displayName === 'Ladder') {
-                bot.log('STATE', `Found ladder: ${locInfo.debugname} at (${locInfo.x},${locInfo.z})`);
-                exitLadder = locInfo.loc;
-                break;
-            }
-        }
-    }
-
+    const exitLadder = bot.findNearbyLoc('loc_1755', 10);
     if (!exitLadder) {
         throw new Error(`No exit ladder found at (${bot.player.x},${bot.player.z})`);
     }
@@ -907,12 +1028,28 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
                 name: 'train-combat',
                 isComplete: () => {
                     const atk = bot.getSkill('Attack').baseLevel;
-                    return (atk as number) >= 8 && bot.findItem('Raw chicken') !== null;
+                    const str = bot.getSkill('Strength').baseLevel;
+                    // Need attack 15+ and strength 10+ to fight bears (level 21).
+                    // Prison doors are handled by interacting 3 times without fighting.
+                    return (atk as number) >= 15 && (str as number) >= 10 && bot.findItem('Raw chicken') !== null;
                 },
                 maxRetries: 5,
                 run: async () => {
                     bot.enableRun(true);
-                    await killChickensForMeatAndXP(bot, 8);
+                    await killChickensForMeatAndXP(bot, 15, 10);
+                }
+            },
+            // Fight bear FIRST while inventory is minimal (Raw chicken + equipped pickaxe = 2 items).
+            // On death, all items are kept (you keep 3 most valuable).
+            // After this, collect beef and rat meat — those fights are easier.
+            {
+                name: 'collect-raw-bear-meat',
+                isComplete: () => bot.findItem('Raw bear meat') !== null || bot.findItem('Enchanted bear') !== null,
+                maxRetries: 10,
+                stuckThreshold: 3000,
+                progressThreshold: 5000,
+                run: async () => {
+                    await killBearForMeat(bot);
                 }
             },
             {
@@ -932,18 +1069,17 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
                 }
             },
             {
-                name: 'collect-raw-bear-meat',
-                isComplete: () => bot.findItem('Raw bear meat') !== null || bot.findItem('Enchanted bear') !== null,
-                maxRetries: 5,
-                run: async () => {
-                    await killBearForMeat(bot);
-                }
-            },
-            {
                 name: 'start-quest',
                 isComplete: () => bot.getQuestProgress(DRUIDIC_RITUAL_VARP) >= STAGE_STARTED,
                 run: async () => {
-                    await walkFromBearAreaToTaverley(bot);
+                    // If already near Taverley/druid circle (e.g. on retry), skip the long walk
+                    const distToCircle = Math.abs(bot.player.x - DRUID_CIRCLE_X) + Math.abs(bot.player.z - DRUID_CIRCLE_Z);
+                    if (distToCircle > 200) {
+                        await walkToTaverleyFromLumbridge(bot);
+                    } else {
+                        bot.log('STATE', `Already near Taverley (dist=${distToCircle}), walking directly to druid circle`);
+                        await bot.walkToWithPathfinding(DRUID_CIRCLE_X, DRUID_CIRCLE_Z);
+                    }
                     await talkToKaqemeexStart(bot);
                 }
             },
@@ -1018,7 +1154,7 @@ export const metadata: ScriptMeta = {
     type: 'quest',
     varpId: DRUIDIC_RITUAL_VARP,
     varpComplete: STAGE_COMPLETE,
-    maxTicks: 40000,
+    maxTicks: 90000, // Combat training + 4 meat types + dungeon navigation
     run: druidicRitual,
     buildStates: buildDruidicRitualStates,
 };

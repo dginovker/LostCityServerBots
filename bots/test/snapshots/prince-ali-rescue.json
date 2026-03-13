@@ -10,7 +10,7 @@
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -99,7 +99,7 @@
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -183,12 +183,12 @@
       "path": "prince-ali-rescue/start-quest",
       "snapshot": {
         "position": {
-          "x": 3214,
+          "x": 3221,
           "z": 3218,
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -277,7 +277,7 @@
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -361,12 +361,12 @@
       "path": "prince-ali-rescue/gather-and-prepare",
       "snapshot": {
         "position": {
-          "x": 3286,
-          "z": 3183,
+          "x": 3288,
+          "z": 3182,
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -450,12 +450,12 @@
       "path": "prince-ali-rescue/get-joe-drunk",
       "snapshot": {
         "position": {
-          "x": 3115,
-          "z": 3262,
+          "x": 3114,
+          "z": 3260,
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -589,12 +589,12 @@
       "path": "prince-ali-rescue/tie-up-keli",
       "snapshot": {
         "position": {
-          "x": 3125,
-          "z": 3244,
+          "x": 3127,
+          "z": 3247,
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -713,12 +713,12 @@
       "path": "prince-ali-rescue/rescue-prince",
       "snapshot": {
         "position": {
-          "x": 3129,
-          "z": 3244,
+          "x": 3128,
+          "z": 3248,
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,
@@ -837,7 +837,7 @@
           "level": 0
         },
         "skills": {
-          "ATTACK": 17,
+          "ATTACK": 16,
           "DEFENCE": 1,
           "STRENGTH": 1,
           "HITPOINTS": 14,

@@ -17,7 +17,7 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
@@ -40,12 +40,27 @@
             "id": 1265,
             "name": "Bronze pickaxe",
             "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           }
         ]
       }
     },
     {
-      "path": "sheep-shearer/earn-coins",
+      "path": "sheep-shearer/buy-shears",
       "snapshot": {
         "position": {
           "x": 3222,
@@ -60,50 +75,7 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
-          "WOODCUTTING": 1,
-          "FLETCHING": 1,
-          "FISHING": 1,
-          "FIREMAKING": 1,
-          "CRAFTING": 1,
-          "SMITHING": 1,
-          "MINING": 1,
-          "HERBLORE": 1,
-          "AGILITY": 1,
-          "THIEVING": 1,
-          "STAT18": 1,
-          "STAT19": 1,
-          "RUNECRAFT": 1
-        },
-        "varps": {
-          "179": 0
-        },
-        "items": [
-          {
-            "id": 1265,
-            "name": "Bronze pickaxe",
-            "count": 1
-          }
-        ]
-      }
-    },
-    {
-      "path": "sheep-shearer/buy-shears",
-      "snapshot": {
-        "position": {
-          "x": 3219,
-          "z": 3218,
-          "level": 0
-        },
-        "skills": {
-          "ATTACK": 1,
-          "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
-          "RANGED": 1,
-          "PRAYER": 1,
-          "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
@@ -128,9 +100,19 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 995,
             "name": "Coins",
-            "count": 6
+            "count": 9
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           }
         ]
       }
@@ -140,7 +122,7 @@
       "snapshot": {
         "position": {
           "x": 3210,
-          "z": 3249,
+          "z": 3244,
           "level": 0
         },
         "skills": {
@@ -151,7 +133,7 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
@@ -176,9 +158,19 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 995,
             "name": "Coins",
-            "count": 5
+            "count": 8
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           },
           {
             "id": 1735,
@@ -192,8 +184,8 @@
       "path": "sheep-shearer/deliver-wool",
       "snapshot": {
         "position": {
-          "x": 3189,
-          "z": 3274,
+          "x": 3186,
+          "z": 3273,
           "level": 0
         },
         "skills": {
@@ -204,7 +196,7 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
@@ -229,9 +221,19 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 995,
             "name": "Coins",
-            "count": 5
+            "count": 8
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           },
           {
             "id": 1735,

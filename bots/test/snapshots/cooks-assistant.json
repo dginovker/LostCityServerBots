@@ -40,6 +40,11 @@
             "id": 1265,
             "name": "Bronze pickaxe",
             "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           }
         ]
       }
@@ -83,6 +88,11 @@
             "id": 1265,
             "name": "Bronze pickaxe",
             "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           }
         ]
       }
@@ -91,8 +101,8 @@
       "path": "cooks-assistant/buy-supplies",
       "snapshot": {
         "position": {
-          "x": 3222,
-          "z": 3221,
+          "x": 3220,
+          "z": 3216,
           "level": 0
         },
         "skills": {
@@ -128,6 +138,11 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 995,
             "name": "Coins",
             "count": 12
@@ -139,8 +154,8 @@
       "path": "cooks-assistant/start-quest",
       "snapshot": {
         "position": {
-          "x": 3211,
-          "z": 3247,
+          "x": 3212,
+          "z": 3246,
           "level": 0
         },
         "skills": {
@@ -170,6 +185,11 @@
           "29": 0
         },
         "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
           {
             "id": 1265,
             "name": "Bronze pickaxe",
@@ -197,8 +217,8 @@
       "path": "cooks-assistant/get-egg",
       "snapshot": {
         "position": {
-          "x": 3210,
-          "z": 3211,
+          "x": 3207,
+          "z": 3213,
           "level": 0
         },
         "skills": {
@@ -228,6 +248,11 @@
           "29": 1
         },
         "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
           {
             "id": 1265,
             "name": "Bronze pickaxe",
@@ -292,6 +317,11 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 995,
             "name": "Coins",
             "count": 9
@@ -318,8 +348,8 @@
       "path": "cooks-assistant/get-flour",
       "snapshot": {
         "position": {
-          "x": 3257,
-          "z": 3272,
+          "x": 3253,
+          "z": 3274,
           "level": 0
         },
         "skills": {
@@ -349,6 +379,11 @@
           "29": 1
         },
         "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
           {
             "id": 1265,
             "name": "Bronze pickaxe",
@@ -412,6 +447,11 @@
           "29": 1
         },
         "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
           {
             "id": 1265,
             "name": "Bronze pickaxe",

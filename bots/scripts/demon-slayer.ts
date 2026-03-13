@@ -136,12 +136,26 @@ async function enterChickenPen(bot: BotAPI): Promise<void> {
 async function exitChickenPen(bot: BotAPI): Promise<void> {
     bot.log('STATE', `Exiting chicken pen from pos=(${bot.player.x},${bot.player.z})`);
 
-    // Walk to well inside the pen (3+ tiles from fence at x=3236) to avoid
-    // walkTo's 1-tile tolerance landing us ON the fence collision.
-    await bot.walkTo(CHICKEN_GATE_X - 3, CHICKEN_GATE_Z);
+    // Walk to just west of the gate (inside the pen, 2 tiles from fence at x=3236)
+    await bot.walkTo(CHICKEN_GATE_X - 2, CHICKEN_GATE_Z);
 
-    // Use walkToWithPathfinding which auto-opens doors/gates when path is blocked
-    await bot.walkToWithPathfinding(CHICKEN_GATE_X + 4, CHICKEN_GATE_Z);
+    // The chicken pen gate (loc_1551/loc_1553) is not a wall-shape loc, so
+    // walkToWithPathfinding's ghost door detection can't route through it.
+    // Explicitly open the gate, then walk east past the fence.
+    await bot.openGate(5);
+    await bot.waitForTicks(1);
+    await bot.openGate(5);
+    await bot.waitForTicks(2);
+
+    // Walk through the opened gate to east of the fence
+    try {
+        await bot.walkTo(CHICKEN_GATE_X + 4, CHICKEN_GATE_Z);
+    } catch {
+        // If walkTo fails (gate may not have opened), try again
+        await bot.openGate(5);
+        await bot.waitForTicks(2);
+        await bot.walkTo(CHICKEN_GATE_X + 4, CHICKEN_GATE_Z);
+    }
     bot.log('STATE', `Exited chicken pen: pos=(${bot.player.x},${bot.player.z})`);
 }
 
@@ -1916,6 +1930,15 @@ export function buildDemonSlayerStates(bot: BotAPI): BotState {
                     if ((bot.player.level as number) !== 0) {
                         bot.log('STATE', `On level ${bot.player.level}, exiting Wizard Tower first`);
                         await exitWizardTowerFromLevel1(bot);
+                    }
+
+                    // If near the chicken pen fence (x~3236, z~3291-3301), the pathfinder
+                    // can't route through the fence gates (not wall-shape locs). Explicitly
+                    // open the gate and walk east past the fence before pathfinding.
+                    if (Math.abs(bot.player.x - CHICKEN_GATE_X) <= 3 &&
+                        bot.player.z >= 3291 && bot.player.z <= 3301) {
+                        bot.log('STATE', `Near chicken pen fence at (${bot.player.x},${bot.player.z}), escaping east`);
+                        await exitChickenPen(bot);
                     }
 
                     await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);

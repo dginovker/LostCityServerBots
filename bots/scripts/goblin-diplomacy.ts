@@ -4,6 +4,7 @@ import { skipTutorial } from './skip-tutorial.js';
 import { type BotState, runStateMachine } from '../runtime/state-machine.js';
 import type { ScriptMeta } from '../runtime/script-meta.js';
 import { findPathSegment } from '../runtime/pathfinding.js';
+import { ensureWestOfTollGate } from './shared-routes.js';
 
 // Varp ID for Goblin Diplomacy quest progress (from content/pack/varp.pack: 62=goblinquest)
 export const GOBLIN_QUEST_VARP = 62;
@@ -37,9 +38,10 @@ const LUMBRIDGE_SPAWN_Z = 3218;
 const PORT_SARIM_BAR_X = 3047;
 const PORT_SARIM_BAR_Z = 3257;
 
-// Goblin Village: north of Falador (~2957, 3512)
-const GOBLIN_VILLAGE_X = 2957;
-const GOBLIN_VILLAGE_Z = 3512;
+// Goblin Village: north of Falador
+// The generals are around (2957,3514). Approach from the east on the open path.
+const GOBLIN_VILLAGE_X = 2963;
+const GOBLIN_VILLAGE_Z = 3514;
 
 // Onion field south of Fred's farm
 // Entry via gate at (3186,3268)/(3186,3269). Approach from west.
@@ -61,16 +63,17 @@ const FALADOR_PARK_Z = 3376;
 const WYDIN_X = 3014;
 const WYDIN_Z = 3204;
 
-// Goblin patrol route for hunting (goblins near Lumbridge, east of river)
-// IMPORTANT: Use coordinates in OPEN areas without fences. The cow field
-// fence (z~3268) and chicken coop fences cause LOS failures.
-// Stay south of z=3260 to avoid the cow field fence area.
+// Goblin patrol route for hunting (goblins WEST of the River Lum, near Lumbridge).
+// Goblin spawns west of river: (3211,3247), (3212,3220), (3215,3237), (3215,3240).
+// (3213,3228) is inside Lumbridge castle walls — avoid it.
+// Staying west avoids the Al Kharid toll gate at x=3268 and fenced fields east
+// of the bridge. The open field is around x=3208-3220, z=3232-3250.
 const GOBLIN_PATROL_ROUTE = [
-    { x: 3259, z: 3228, name: 'Road to Al-Kharid (open)' },
-    { x: 3252, z: 3237, name: 'South of bridge (open)' },
-    { x: 3268, z: 3225, name: 'East road (open)' },
-    { x: 3245, z: 3240, name: 'Near bridge south (open)' },
-    { x: 3260, z: 3245, name: 'East field (open)' },
+    { x: 3215, z: 3237, name: 'Goblin spawn mid (open)' },
+    { x: 3215, z: 3240, name: 'Goblin spawn north (open)' },
+    { x: 3211, z: 3247, name: 'Goblin spawn far north (open)' },
+    { x: 3210, z: 3240, name: 'West field (open)' },
+    { x: 3212, z: 3232, name: 'South field (open)' },
 ];
 
 // ---- Utility functions ----
@@ -250,8 +253,21 @@ async function pickUpGoblinArmour(bot: BotAPI, deathX: number, deathZ: number): 
 /**
  * Check if an NPC is reachable (no fence/wall between bot and NPC).
  * Uses pathfinding to verify the bot can path to adjacent tiles.
+ * For nearby NPCs (within 5 tiles), skips the strict pathfinding check
+ * because walls between adjacent tiles (e.g. low fences near goblin spawns)
+ * may block the pathfinder but not actual combat interactions.
  */
 function isNpcReachable(bot: BotAPI, npc: import('../../src/engine/entity/Npc.js').default): boolean {
+    const dist = Math.max(Math.abs(bot.player.x - npc.x), Math.abs(bot.player.z - npc.z));
+
+    // For nearby NPCs (within findNearbyNpc search radius), skip the strict
+    // pathfinding check. The western Lumbridge goblin area has walls/fences
+    // that block the pathfinder but not actual combat interactions (the player
+    // walks to the nearest accessible adjacent tile and attacks from there).
+    if (dist <= 10) {
+        return true;
+    }
+
     const level = bot.player.level as number;
     const pathResult = findPathSegment(level, bot.player.x, bot.player.z, npc.x, npc.z);
     if (pathResult.length === 0) {
@@ -261,8 +277,8 @@ function isNpcReachable(bot: BotAPI, npc: import('../../src/engine/entity/Npc.js
     const lastWaypoint = pathResult[pathResult.length - 1]!;
     const wx = lastWaypoint & 0x3FFF;
     const wz = (lastWaypoint >> 14) & 0x3FFF;
-    const dist = Math.max(Math.abs(wx - npc.x), Math.abs(wz - npc.z));
-    return dist <= 2;
+    const endDist = Math.max(Math.abs(wx - npc.x), Math.abs(wz - npc.z));
+    return endDist <= 2;
 }
 
 /**
@@ -301,8 +317,11 @@ async function collectGoblinMails(bot: BotAPI, targetCount: number): Promise<voi
         bot.log('EVENT', 'Equipped bronze pickaxe');
     }
 
-    // Walk to open goblin area south of Lumbridge bridge (no fences)
-    await bot.walkToWithPathfinding(3259, 3228);
+    // Walk to goblin area west of the River Lum (near Lumbridge spawn).
+    // Goblins spawn at x=3211-3215, z=3232-3247 — all west of the river.
+    // Staying west avoids the Al Kharid toll gate and fenced fields entirely.
+    // Avoid (3213,3228) which is inside Lumbridge castle walls.
+    await bot.walkToWithPathfinding(3215, 3237);
 
     let goblinsKilled = 0;
     let totalTicks = 0;
@@ -569,20 +588,10 @@ async function buyWoadLeaves(bot: BotAPI): Promise<void> {
 }
 
 /**
- * Buy redberries from Wydin's food store in Port Sarim.
+ * Open Wydin's shop via dialog and buy items.
+ * Returns with the shop interface still open.
  */
-async function buyRedberries(bot: BotAPI): Promise<void> {
-    bot.log('STATE', '=== Buying redberries from Wydin ===');
-
-    await bot.walkToWithPathfinding(WYDIN_X, WYDIN_Z);
-    bot.log('STATE', `At Wydin: pos=(${bot.player.x},${bot.player.z})`);
-
-    const wydin = bot.findNearbyNpc('Wydin');
-    if (!wydin) {
-        throw new Error(`Wydin not found near (${bot.player.x},${bot.player.z})`);
-    }
-
-    // Talk to Wydin to open shop
+async function openWydinShop(bot: BotAPI): Promise<void> {
     await bot.talkToNpc('Wydin');
     await bot.waitForDialog(15);
     await bot.continueDialog(); // "Welcome to my food store..."
@@ -596,15 +605,71 @@ async function buyRedberries(bot: BotAPI): Promise<void> {
 
     // p_opnpc(3) opens the shop
     await bot.waitForTicks(5);
+}
 
-    // Buy 3 redberries
-    await bot.buyFromShop('Redberries', 3);
-    await bot.waitForTicks(1);
-    bot.dismissModals();
+/**
+ * Buy redberries from Wydin's food store in Port Sarim.
+ *
+ * Wydin stocks only 1 redberry at a time (restocks every 100 ticks).
+ * To get 3, buy 1, wait for restock, reopen the shop, and repeat.
+ */
+async function buyRedberries(bot: BotAPI): Promise<void> {
+    const TARGET = 3;
+    const alreadyHave = countItem(bot, 'Redberries');
+    if (alreadyHave >= TARGET) {
+        bot.log('STATE', `Already have ${alreadyHave} redberries, skipping shop`);
+        return;
+    }
+    const needed = TARGET - alreadyHave;
+    bot.log('STATE', `=== Buying ${needed} redberries from Wydin (have ${alreadyHave}, need ${TARGET}) ===`);
+
+    // Navigate to Port Sarim via waypoints (pathfinder can't cross long distances directly)
+    await bot.walkToWithPathfinding(3047, 3237); // Port Sarim area
+    await bot.walkToWithPathfinding(WYDIN_X, WYDIN_Z);
+    bot.log('STATE', `At Wydin: pos=(${bot.player.x},${bot.player.z})`);
+
+    const wydin = bot.findNearbyNpc('Wydin');
+    if (!wydin) {
+        throw new Error(`Wydin not found near (${bot.player.x},${bot.player.z})`);
+    }
+
+    // The shop restocks 1 redberry every 100 ticks. Buy 1, wait, repeat.
+    // Restock fires when (tick % stockrate === 0), so we may need up to 100 ticks.
+    const RESTOCK_WAIT = 110; // slightly more than 100 to ensure restock fires
+
+    for (let bought = 0; bought < needed; bought++) {
+        if (bought > 0) {
+            // Wait for restock before reopening
+            bot.log('STATE', `Waiting ~${RESTOCK_WAIT} ticks for redberry restock (${alreadyHave + bought}/${TARGET} have)...`);
+            await bot.waitForTicks(RESTOCK_WAIT);
+        }
+
+        // Clear any lingering state from previous shop visit
+        bot.dismissModals();
+        if (bot.player.delayed) {
+            await bot.waitForCondition(() => !bot.player.delayed, 20);
+            if (bot.player.delayed) bot.player.delayed = false;
+        }
+        if (bot.player.containsModalInterface()) bot.player.closeModal();
+
+        // Walk back to Wydin (bot may have drifted during restock wait)
+        await bot.walkToWithPathfinding(WYDIN_X, WYDIN_Z);
+
+        // Open shop fresh each time
+        await openWydinShop(bot);
+
+        // Buy 1 redberry
+        await bot.buyFromShop('Redberries', 1);
+        await bot.waitForTicks(1);
+        bot.dismissModals();
+
+        const current = countItem(bot, 'Redberries');
+        bot.log('EVENT', `Bought redberry ${alreadyHave + bought + 1}/${TARGET} (have ${current})`);
+    }
 
     const redberryCount = countItem(bot, 'Redberries');
-    if (redberryCount < 3) {
-        throw new Error(`Expected 3 redberries, got ${redberryCount}`);
+    if (redberryCount < TARGET) {
+        throw new Error(`Expected ${TARGET} redberries, got ${redberryCount}`);
     }
     bot.log('EVENT', `Bought ${redberryCount} redberries from Wydin`);
 }
@@ -674,6 +739,45 @@ async function talkToGenerals(bot: BotAPI): Promise<void> {
     // Walk to Goblin Village
     await bot.walkToWithPathfinding(GOBLIN_VILLAGE_X, GOBLIN_VILLAGE_Z);
     bot.log('STATE', `At Goblin Village: pos=(${bot.player.x},${bot.player.z})`);
+
+    // Clear any lingering state
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) bot.player.delayed = false;
+    }
+    if (bot.player.containsModalInterface()) bot.player.closeModal();
+
+    // The generals spawn around (2957,3511). Try multiple positions to find
+    // one that's reachable and adjacent to the generals.
+    const wartface = bot.findNearbyNpc('General Wartface', 30);
+    if (!wartface) {
+        throw new Error(`General Wartface not found near (${bot.player.x},${bot.player.z})`);
+    }
+    bot.log('STATE', `Wartface at (${wartface.x},${wartface.z}), bot at (${bot.player.x},${bot.player.z})`);
+
+    // Try walking to nearby open tiles around the general
+    const offsets = [
+        { dx: 0, dz: 1 }, { dx: 1, dz: 0 }, { dx: 0, dz: -1 }, { dx: -1, dz: 0 },
+        { dx: 1, dz: 1 }, { dx: -1, dz: 1 }, { dx: 1, dz: -1 }, { dx: -1, dz: -1 },
+        { dx: 0, dz: 2 }, { dx: 2, dz: 0 }, { dx: 0, dz: -2 }, { dx: -2, dz: 0 },
+    ];
+    let reached = false;
+    for (const { dx, dz } of offsets) {
+        const tx = wartface.x + dx;
+        const tz = wartface.z + dz;
+        try {
+            await bot.walkToWithPathfinding(tx, tz);
+            bot.log('STATE', `Reached (${tx},${tz}) near Wartface`);
+            reached = true;
+            break;
+        } catch {
+            bot.log('STATE', `Can't reach (${tx},${tz}), trying next`);
+        }
+    }
+    if (!reached) {
+        throw new Error(`Cannot reach any tile adjacent to General Wartface at (${wartface.x},${wartface.z}) from (${bot.player.x},${bot.player.z})`);
+    }
 
     // Talk to General Wartface (simpler script, no treasure trail branching)
     await bot.talkToNpc('General Wartface');
@@ -826,10 +930,17 @@ async function talkToGenerals(bot: BotAPI): Promise<void> {
 async function walkToGoblinVillage(bot: BotAPI): Promise<void> {
     bot.log('STATE', 'Walking to Goblin Village...');
 
-    // Go via Draynor/Falador road
+    // Skip if already near Goblin Village (handles retries)
+    const dist = Math.max(Math.abs(bot.player.x - GOBLIN_VILLAGE_X), Math.abs(bot.player.z - GOBLIN_VILLAGE_Z));
+    if (dist <= 20) {
+        bot.log('STATE', `Already near Goblin Village at (${bot.player.x},${bot.player.z}), dist=${dist}`);
+        return;
+    }
+
+    // Go via Draynor/Falador road, avoiding statue at (2964,3380)
     await bot.walkToWithPathfinding(3110, 3260); // Draynor area
     await bot.walkToWithPathfinding(3007, 3327); // West toward Falador
-    await bot.walkToWithPathfinding(2965, 3380); // North toward Falador
+    await bot.walkToWithPathfinding(2968, 3382); // North toward Falador (offset east to avoid statue)
     await bot.walkToWithPathfinding(2965, 3440); // Continue north
     await bot.walkToWithPathfinding(GOBLIN_VILLAGE_X, GOBLIN_VILLAGE_Z);
 
@@ -843,7 +954,7 @@ async function _walkFromGoblinVillageToLumbridge(bot: BotAPI): Promise<void> {
     bot.log('STATE', 'Walking from Goblin Village to Lumbridge area...');
 
     await bot.walkToWithPathfinding(2965, 3440);
-    await bot.walkToWithPathfinding(2965, 3380);
+    await bot.walkToWithPathfinding(2968, 3382); // offset east to avoid statue at (2964,3380)
     await bot.walkToWithPathfinding(3007, 3327);
     await bot.walkToWithPathfinding(3110, 3260);
     await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
@@ -886,6 +997,9 @@ export function buildGoblinDiplomacyStates(bot: BotAPI): BotState {
                     return countItem(bot, 'Onion') >= 2 || (bot.findItem('Yellow dye') !== null || bot.findItem('Orange dye') !== null);
                 },
                 run: async () => {
+                    // Safety: ensure we're west of the Al Kharid toll gate
+                    // before navigating to Lumbridge/onion field.
+                    await ensureWestOfTollGate(bot);
                     await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
                     await pickOnions(bot, 2);
                 }
@@ -911,46 +1025,102 @@ export function buildGoblinDiplomacyStates(bot: BotAPI): BotState {
                     return bot.findItem('Orange goblin mail') !== null && bot.findItem('Blue goblin mail') !== null && bot.findItem('Goblin mail') !== null;
                 },
                 run: async () => {
-                    // Buy redberries from Wydin
-                    await buyRedberries(bot);
+                    // Calculate how many coins we still need:
+                    // Redberries: 3gp each * (3 - already owned)
+                    // Yellow dye: 5gp, Red dye: 5gp, Woad leaves: 20gp
+                    const redberriesOwned = countItem(bot, 'Redberries');
+                    const redberryCost = (3 - redberriesOwned) * 3;
+                    const dyeCost = (bot.findItem('Yellow dye') || bot.findItem('Orange dye')) ? 0 : 5;
+                    const redDyeCost = bot.findItem('Red dye') ? 0 : 5;
+                    const woadCost = (countItem(bot, 'Woad leaf') >= 2 || bot.findItem('Blue dye')) ? 0 : 20;
+                    const COINS_NEEDED = Math.max(0, redberryCost + dyeCost + redDyeCost + woadCost) + 5; // +5 safety margin
+                    const currentCoins = bot.findItem('Coins');
+                    const currentGp = currentCoins ? currentCoins.count : 0;
+                    if (currentGp < COINS_NEEDED) {
+                        bot.log('STATE', `Only ${currentGp}gp, need ${COINS_NEEDED}gp — earning more by pickpocketing`);
+                        await ensureWestOfTollGate(bot);
+                        // Navigate to Lumbridge via waypoints (pathfinder can't cross long distances)
+                        await bot.walkToWithPathfinding(3047, 3237); // Port Sarim area
+                        await bot.walkToWithPathfinding(3110, 3260); // Draynor area
+                        await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
+                        await earnCoins(bot, COINS_NEEDED);
+                    }
 
-                    // Get dyes from Aggie
-                    await bot.walkToWithPathfinding(3110, 3260);
-                    await walkToAggie(bot);
-                    await getYellowDyeFromAggie(bot);
-                    await getRedDyeFromAggie(bot);
-                    await makeOrangeDye(bot);
+                    // Each step checks if already done so retries are idempotent.
 
-                    await bot.openDoor('inaccastledoubledoorropen');
-                    await bot.waitForTicks(1);
+                    // Step 1: Get onions (if we don't have dyes yet)
+                    if (!bot.findItem('Yellow dye') && !bot.findItem('Orange dye') && !bot.findItem('Orange goblin mail')) {
+                        if (countItem(bot, 'Onion') < 2) {
+                            bot.log('STATE', 'Need onions — picking from field');
+                            await ensureWestOfTollGate(bot);
+                            await bot.walkToWithPathfinding(3110, 3260);
+                            await bot.walkToWithPathfinding(LUMBRIDGE_SPAWN_X, LUMBRIDGE_SPAWN_Z);
+                            await pickOnions(bot, 2);
+                        }
+                    }
 
-                    // Buy woad leaves, get blue dye
-                    await bot.walkToWithPathfinding(3007, 3327);
-                    await buyWoadLeaves(bot);
+                    // Step 2: Get redberries (if we don't have red dye yet)
+                    if (!bot.findItem('Red dye') && !bot.findItem('Orange dye') && !bot.findItem('Orange goblin mail')) {
+                        await buyRedberries(bot);
+                    }
 
-                    await bot.walkToWithPathfinding(3110, 3260);
-                    await walkToAggie(bot);
-                    await getBlueDyeFromAggie(bot);
+                    // Step 3: Make orange dye (yellow + red -> orange)
+                    if (!bot.findItem('Orange dye') && !bot.findItem('Orange goblin mail')) {
+                        // Navigate to Aggie via waypoints from wherever we are
+                        await bot.walkToWithPathfinding(3047, 3237); // Port Sarim north
+                        await bot.walkToWithPathfinding(3110, 3260); // Draynor
+                        await walkToAggie(bot);
 
-                    await bot.openDoor('inaccastledoubledoorropen');
-                    await bot.waitForTicks(1);
+                        if (!bot.findItem('Yellow dye')) {
+                            await getYellowDyeFromAggie(bot);
+                        }
+                        if (!bot.findItem('Red dye')) {
+                            await getRedDyeFromAggie(bot);
+                        }
+                        await makeOrangeDye(bot);
 
-                    // Dye the goblin mails
-                    await bot.useItemOnItem('Orange dye', 'Goblin mail');
-                    await bot.waitForTicks(3);
-                    bot.dismissModals();
+                        await bot.openDoor('inaccastledoubledoorropen');
+                        await bot.waitForTicks(1);
+                    }
+
+                    // Step 4: Get woad leaves + blue dye
+                    if (!bot.findItem('Blue dye') && !bot.findItem('Blue goblin mail')) {
+                        if (countItem(bot, 'Woad leaf') < 2) {
+                            await bot.walkToWithPathfinding(3007, 3327); // Falador south
+                            await buyWoadLeaves(bot);
+                        }
+
+                        // Navigate from Falador Park back to Draynor via waypoints
+                        await bot.walkToWithPathfinding(3007, 3327); // Falador south
+                        await bot.walkToWithPathfinding(3047, 3237); // Port Sarim area
+                        await bot.walkToWithPathfinding(3110, 3260); // Draynor
+                        await walkToAggie(bot);
+                        await getBlueDyeFromAggie(bot);
+
+                        await bot.openDoor('inaccastledoubledoorropen');
+                        await bot.waitForTicks(1);
+                    }
+
+                    // Step 5: Dye the goblin mails
                     if (!bot.findItem('Orange goblin mail')) {
-                        throw new Error('Failed to dye goblin mail orange');
+                        await bot.useItemOnItem('Orange dye', 'Goblin mail');
+                        await bot.waitForTicks(3);
+                        bot.dismissModals();
+                        if (!bot.findItem('Orange goblin mail')) {
+                            throw new Error('Failed to dye goblin mail orange');
+                        }
+                        bot.log('EVENT', 'Dyed goblin mail orange');
                     }
-                    bot.log('EVENT', 'Dyed goblin mail orange');
 
-                    await bot.useItemOnItem('Blue dye', 'Goblin mail');
-                    await bot.waitForTicks(3);
-                    bot.dismissModals();
                     if (!bot.findItem('Blue goblin mail')) {
-                        throw new Error('Failed to dye goblin mail blue');
+                        await bot.useItemOnItem('Blue dye', 'Goblin mail');
+                        await bot.waitForTicks(3);
+                        bot.dismissModals();
+                        if (!bot.findItem('Blue goblin mail')) {
+                            throw new Error('Failed to dye goblin mail blue');
+                        }
+                        bot.log('EVENT', 'Dyed goblin mail blue');
                     }
-                    bot.log('EVENT', 'Dyed goblin mail blue');
 
                     if (!bot.findItem('Goblin mail')) {
                         throw new Error('No brown goblin mail remaining in inventory');

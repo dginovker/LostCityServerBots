@@ -21,14 +21,18 @@ const ATTACK_OP = 2;
 
 // ---- Key locations ----
 
-// Imp search patrol route — stay near Lumbridge/road area for reliable pathfinding.
+// Imp search patrol route — cover a wide area near Lumbridge for reliable pathfinding.
 // Imps wander with range 27 from their spawns, so they pass through these areas.
+// Extended route covers more ground to find imps faster.
 const IMP_PATROL_ROUTE = [
     { x: 3222, z: 3218, name: 'Lumbridge spawn' },
     { x: 3208, z: 3218, name: 'Lumbridge west' },
     { x: 3195, z: 3218, name: 'Road west' },
+    { x: 3195, z: 3230, name: 'Road northwest' },
     { x: 3208, z: 3230, name: 'North Lumbridge' },
     { x: 3222, z: 3240, name: 'Northeast Lumbridge' },
+    { x: 3235, z: 3225, name: 'East Lumbridge' },
+    { x: 3235, z: 3210, name: 'Southeast Lumbridge' },
 ];
 
 // Wizard Tower entrance (ground level, south of Lumbridge across the bridge)
@@ -76,7 +80,22 @@ function hasAllBeads(bot: BotAPI): boolean {
  * or null if the imp escaped/disappeared.
  */
 async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entity/Npc.ts').default): Promise<{ x: number; z: number } | null> {
-    bot.log('ACTION', `Attacking imp at (${imp.x},${imp.z}), bot at (${bot.player.x},${bot.player.z})`);
+    const dist = Math.max(Math.abs(imp.x - bot.player.x), Math.abs(imp.z - bot.player.z));
+    bot.log('ACTION', `Attacking imp at (${imp.x},${imp.z}), bot at (${bot.player.x},${bot.player.z}), dist=${dist}`);
+
+    // Clear any stale state that would block canAccess() from firing the attack.
+    // player.delayed or containsModalInterface() → canAccess() returns false →
+    // setInteraction dispatches but tryInteract() never fires the OP trigger.
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) {
+            bot.player.delayed = false;
+        }
+    }
+    if (bot.player.containsModalInterface()) {
+        bot.player.closeModal();
+    }
 
     // Enable running to close the gap to the imp quickly. Imps have givechase=false,
     // meaning they reset to wandering after each retaliation and can wander up to
@@ -96,17 +115,18 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
     // Wait for combat to resolve. The imp has 8 HP.
     // Imps wander randomly (givechase=false) so the distance fluctuates.
     // If the imp gets too far away, give up and find a closer one.
-    const startX = imp.x;
-    const startZ = imp.z;
     let lastKnownX = imp.x;
     let lastKnownZ = imp.z;
-    const _reengageCount = 0;
     let ticksAtDistance = 0; // Count ticks where imp is far away
-    const MAX_DRIFT = 80; // Allow imps to wander far - they have wanderrange=27 from spawn
-    const COMBAT_TIMEOUT = 300;
+    let ticksNoHit = 0; // Count ticks where imp stays at full HP despite being close
+    let reengageCount = 0;
+    const MAX_REENGAGES = 3;
+    const COMBAT_TIMEOUT = 200;
 
     // NpcStat.HITPOINTS = 3 (from const enum NpcStat in NpcStat.ts)
     const HITPOINTS_STAT = 3;
+    const startHP = imp.levels[HITPOINTS_STAT] ?? 8;
+    let lastSeenHP = startHP;
 
     for (let tick = 0; tick < COMBAT_TIMEOUT; tick++) {
         await bot.waitForTick();
@@ -119,10 +139,6 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
 
         // Imp died — it becomes inactive after death animation
         if (!imp.isActive) {
-            // Disable running to conserve energy for next combat
-            if (bot.player.run) {
-                bot.enableRun(false);
-            }
             bot.log('EVENT', `Imp died at (${lastKnownX},${lastKnownZ}) after ~${tick} ticks`);
             // Wait a couple more ticks for drops to appear
             await bot.waitForTicks(2);
@@ -130,51 +146,74 @@ async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entit
         }
 
         const impHP = imp.levels[HITPOINTS_STAT];
-        const dist = Math.max(Math.abs(imp.x - bot.player.x), Math.abs(imp.z - bot.player.z));
+        const curDist = Math.max(Math.abs(imp.x - bot.player.x), Math.abs(imp.z - bot.player.z));
 
         // Keep running enabled if energy allows and imp is far
-        if (!bot.player.run && bot.player.runenergy >= 500 && dist > 2) {
+        if (!bot.player.run && bot.player.runenergy >= 500 && curDist > 3) {
             bot.enableRun(true);
         }
 
-        // Track time spent chasing at distance. If we spend too long far away,
-        // the imp has wandered off and we should find a new one.
-        if (dist > 5) {
+        // Track whether we're landing hits. If impHP decreased, reset the counter.
+        if (impHP < lastSeenHP) {
+            ticksNoHit = 0;
+            lastSeenHP = impHP;
+        } else if (curDist <= 2) {
+            // We're close but not dealing damage — combat loop may have broken
+            ticksNoHit++;
+        }
+
+        // Re-engage if combat is clearly not working: close to imp but no damage dealt
+        // for 25+ ticks. The engine's p_opnpc(2) self-loop can break if the bot's
+        // interaction was cleared or if canAccess() blocked. Re-engaging restarts it.
+        if (ticksNoHit >= 25 && impHP >= startHP && reengageCount < MAX_REENGAGES) {
+            reengageCount++;
+            ticksNoHit = 0;
+            bot.log('STATE', `Re-engaging imp (attempt ${reengageCount}/${MAX_REENGAGES}): impHP=${impHP}/${startHP} dist=${curDist}`);
+
+            // Clear any blocking state before re-engaging
+            bot.dismissModals();
+            if (bot.player.delayed) {
+                bot.player.delayed = false;
+            }
+            if (bot.player.containsModalInterface()) {
+                bot.player.closeModal();
+            }
+
+            try {
+                await bot.interactNpc(imp, ATTACK_OP);
+            } catch {
+                bot.log('STATE', 'Re-engage failed');
+                return null;
+            }
+            continue;
+        }
+
+        // If we've exhausted re-engages and still no damage, give up on this imp
+        if (ticksNoHit >= 25 && impHP >= startHP && reengageCount >= MAX_REENGAGES) {
+            bot.log('STATE', `Giving up — combat not connecting after ${MAX_REENGAGES} re-engages (impHP=${impHP}/${startHP})`);
+            return null;
+        }
+
+        // Track time spent chasing at distance > 10 (actually far away, not just 5-6)
+        if (curDist > 10) {
             ticksAtDistance++;
         } else {
             ticksAtDistance = 0;
         }
-        // Give up if we've been chasing for 40+ ticks without getting close
-        if (ticksAtDistance > 40) {
-            if (bot.player.run) { bot.enableRun(false); }
-            bot.log('STATE', `Giving up — imp too far for too long (dist=${dist}, ticksChasing=${ticksAtDistance})`);
+        // Give up if we've been very far for 50+ ticks
+        if (ticksAtDistance > 50) {
+            bot.log('STATE', `Giving up — imp too far for too long (dist=${curDist}, ticksChasing=${ticksAtDistance})`);
             return null;
         }
 
-        // Log combat state every 20 ticks
-        if (tick % 20 === 0 && tick > 0) {
-            bot.log('STATE', `Combat tick ${tick}: impHP=${impHP}/8 dist=${dist} run=${bot.player.run} energy=${bot.player.runenergy}`);
+        // Log combat state every 30 ticks
+        if (tick % 30 === 0 && tick > 0) {
+            bot.log('STATE', `Combat tick ${tick}: impHP=${impHP}/${startHP} dist=${curDist} run=${bot.player.run} energy=${bot.player.runenergy} noHit=${ticksNoHit}`);
         }
-
-        // Check if the imp has drifted too far from the start
-        const impDrift = Math.max(Math.abs(imp.x - startX), Math.abs(imp.z - startZ));
-        if (impDrift > MAX_DRIFT) {
-            if (bot.player.run) { bot.enableRun(false); }
-            bot.log('STATE', `Giving up on imp — drifted too far (imp drift=${impDrift})`);
-            return null;
-        }
-
-        // Do NOT re-engage — the engine's player_melee_attack script ends with
-        // p_opnpc(2) which self-sustains the combat loop. Re-engaging cancels the
-        // pending p_opnpc(2), resetting the combat cycle and preventing hits.
     }
 
     const finalImpHP = imp.levels[HITPOINTS_STAT];
-    // Disable running after combat to conserve energy for patrolling
-    if (bot.player.run) {
-        bot.enableRun(false);
-    }
-    bot.log('STATE', `Combat timed out after ${COMBAT_TIMEOUT} ticks, impHP=${finalImpHP}/8`);
+    bot.log('STATE', `Combat timed out after ${COMBAT_TIMEOUT} ticks, impHP=${finalImpHP}/${startHP}`);
     return null;
 }
 
@@ -193,7 +232,7 @@ async function pickUpBeadDrops(bot: BotAPI, _deathX: number, _deathZ: number): P
             continue;
         }
 
-        const groundItem = bot.findNearbyGroundItem(beadName, 3);
+        const groundItem = bot.findNearbyGroundItem(beadName, 5);
         if (groundItem) {
             bot.log('ACTION', `Found ${beadName} on ground at (${groundItem.x},${groundItem.z})`);
             try {
@@ -235,16 +274,16 @@ async function tryWalkTo(bot: BotAPI, x: number, z: number): Promise<boolean> {
  */
 async function patrolForImps(bot: BotAPI): Promise<import('../../src/engine/entity/Npc.ts').default | null> {
     for (const point of IMP_PATROL_ROUTE) {
-        // Check if there's already an imp nearby before walking
-        const nearbyImp = bot.findNearbyNpc('Imp', 10);
+        // Check if there's already an imp nearby before walking (wide search radius)
+        const nearbyImp = bot.findNearbyNpc('Imp', 20);
         if (nearbyImp) {
             return nearbyImp;
         }
 
         await tryWalkTo(bot, point.x, point.z);
-        await bot.waitForTicks(2);
+        await bot.waitForTicks(3);
 
-        const imp = bot.findNearbyNpc('Imp', 10);
+        const imp = bot.findNearbyNpc('Imp', 20);
         if (imp) {
             bot.log('EVENT', `Found imp near ${point.name} at (${imp.x},${imp.z})`);
             return imp;
@@ -481,56 +520,61 @@ async function collectBeads(bot: BotAPI): Promise<void> {
     }
 
     let impsKilled = 0;
-    let totalTicks = 0;
-    const MAX_TICKS = 50000;
+    let combatAttempts = 0;
 
-    while (!hasAllBeads(bot) && totalTicks < MAX_TICKS) {
+    while (!hasAllBeads(bot)) {
         const missing = getMissingBeads(bot);
-        if (impsKilled % 5 === 0 || impsKilled === 0) {
-            bot.log('STATE', `Beads missing: [${missing.join(', ')}], imps killed: ${impsKilled}, ticks: ${totalTicks}`);
+        if (combatAttempts % 5 === 0) {
+            bot.log('STATE', `Beads missing: [${missing.join(', ')}], imps killed: ${impsKilled}, attempts: ${combatAttempts}`);
         }
 
+        // Clear any stale interaction state before searching for new imps
         bot.dismissModals();
-
         if (bot.player.delayed) {
             await bot.waitForCondition(() => !bot.player.delayed, 20);
+            if (bot.player.delayed) {
+                bot.player.delayed = false;
+            }
+        }
+        if (bot.player.containsModalInterface()) {
+            bot.player.closeModal();
         }
 
+        // Disable running during patrol to conserve energy for combat chasing
         if (bot.player.run) {
             bot.enableRun(false);
         }
 
-        if (bot.player.runenergy < 3000) {
-            const restTicks = Math.min(30, Math.floor((3000 - bot.player.runenergy) / 80));
-            if (restTicks > 5) {
+        // Only rest if energy is critically low — short rest, don't waste too many ticks
+        if (bot.player.runenergy < 1000) {
+            const restTicks = Math.min(15, Math.floor((1500 - bot.player.runenergy) / 80));
+            if (restTicks > 3) {
                 bot.log('STATE', `Resting ${restTicks} ticks to recover run energy (${bot.player.runenergy})`);
                 await bot.waitForTicks(restTicks);
-                totalTicks += restTicks;
             }
         }
 
-        let imp = bot.findNearbyNpc('Imp', 10);
+        // Search wide for imps — they wander far (range 27)
+        let imp = bot.findNearbyNpc('Imp', 20);
 
         if (!imp) {
             imp = await patrolForImps(bot);
-            totalTicks += 30;
 
             if (!imp) {
-                await bot.waitForTicks(10);
-                totalTicks += 10;
+                // No imps found on full patrol — wait a bit and try again
+                await bot.waitForTicks(5);
                 continue;
             }
         }
 
+        combatAttempts++;
         const deathPos = await attackImpAndWait(bot, imp);
-        totalTicks += 15;
 
         if (deathPos) {
             impsKilled++;
             bot.dismissModals();
 
             const beadsPickedUp = await pickUpBeadDrops(bot, deathPos.x, deathPos.z);
-            totalTicks += 5;
 
             if (beadsPickedUp.length > 0) {
                 bot.log('EVENT', `Picked up beads: [${beadsPickedUp.join(', ')}] (total imps killed: ${impsKilled})`);
@@ -543,15 +587,9 @@ async function collectBeads(bot: BotAPI): Promise<void> {
         }
 
         await bot.waitForTicks(2);
-        totalTicks += 2;
     }
 
-    if (!hasAllBeads(bot)) {
-        const missing = getMissingBeads(bot);
-        throw new Error(`Failed to collect all beads after ${impsKilled} imp kills and ${totalTicks} ticks. Missing: [${missing.join(', ')}]`);
-    }
-
-    bot.log('EVENT', `All 4 beads collected after ${impsKilled} imp kills!`);
+    bot.log('EVENT', `All 4 beads collected after ${impsKilled} imp kills (${combatAttempts} combat attempts)!`);
 }
 
 /**
@@ -581,7 +619,8 @@ export function buildImpCatcherStates(bot: BotAPI): BotState {
             {
                 name: 'collect-beads',
                 isComplete: () => hasAllBeads(bot),
-                stuckThreshold: 3000,
+                stuckThreshold: 5000,
+                progressThreshold: 40000,
                 run: async () => {
                     await exitWizardTower(bot);
                     await collectBeads(bot);
@@ -649,7 +688,7 @@ export const metadata: ScriptMeta = {
     type: 'quest',
     varpId: IMP_CATCHER_VARP,
     varpComplete: STAGE_COMPLETE,
-    maxTicks: 40000,
+    maxTicks: 100000, // Bead drops are RNG-heavy (~1/128 per type per kill)
     run: impCatcher,
     buildStates: buildImpCatcherStates,
 };

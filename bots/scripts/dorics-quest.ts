@@ -148,41 +148,79 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
                 run: async () => {
                     await walkFromLumbridgeToDoric(bot);
 
-                    // Open Doric's house door
+                    // Open Doric's house door and walk inside
                     await bot.openDoor('inaccastledoubledoorropen');
+                    await bot.waitForTicks(2);
+
+                    // Clear any stuck state before interacting
+                    bot.dismissModals();
+                    if (bot.player.delayed) {
+                        await bot.waitForCondition(() => !bot.player.delayed, 20);
+                        if (bot.player.delayed) bot.player.delayed = false;
+                    }
+                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+
+                    // Find Doric and walk to his position so we're definitely adjacent
+                    let doric = bot.findNearbyNpc('Doric');
+                    if (!doric) {
+                        throw new Error(`Doric not found near (${bot.player.x},${bot.player.z},${bot.player.level})`);
+                    }
+                    bot.log('STATE', `Found Doric at (${doric.x},${doric.z}), walking to him...`);
+                    await bot.walkToWithPathfinding(doric.x, doric.z);
                     await bot.waitForTicks(1);
 
-                    // Talk to Doric
-                    await bot.talkToNpc('Doric');
+                    // Re-find Doric (he may have wandered)
+                    doric = bot.findNearbyNpc('Doric');
+                    if (!doric) {
+                        throw new Error(`Doric not found after walking to house at (${bot.player.x},${bot.player.z})`);
+                    }
+                    bot.log('STATE', `Talking to Doric at (${doric.x},${doric.z}), bot at (${bot.player.x},${bot.player.z})`);
+                    await bot.interactNpc(doric, 1);
 
-                    // Dialog: "Hello traveller, what brings you to my humble smithy?"
-                    // 4 choices: pick option 1 "I wanted to use your anvils."
-                    await bot.continueDialogsUntilChoice();
+                    // Wait for dialog to open with generous timeout
+                    const dialogOpened = await bot.waitForDialog(30);
+                    if (!dialogOpened) {
+                        throw new Error(`No dialog opened after talking to Doric. pos=(${bot.player.x},${bot.player.z}), Doric at (${doric.x},${doric.z})`);
+                    }
+
+                    // 1. chatnpc: "Hello traveller, what brings you to my humble smithy?" -> continue
+                    await bot.continueDialog();
+
+                    // 2. p_choice4: pick option 1 "I wanted to use your anvils."
+                    const hasChoice1 = await bot.waitForDialog(10);
+                    if (!hasChoice1) throw new Error('No dialog: expected p_choice4 for Doric');
                     await bot.selectDialogOption(1);
 
-                    // chatplayer "I wanted to use your anvils." -> continue
-                    await bot.waitForDialog(10);
+                    // 3. chatplayer "I wanted to use your anvils." -> continue
+                    const hasDialog3 = await bot.waitForDialog(10);
+                    if (!hasDialog3) throw new Error('No dialog: expected chatplayer "I wanted to use your anvils."');
                     await bot.continueDialog();
 
-                    // chatnpc "My anvils get enough work with my own use..." -> continue
-                    await bot.waitForDialog(10);
+                    // 4. chatnpc "My anvils get enough work with my own use..." -> continue
+                    const hasDialog4 = await bot.waitForDialog(10);
+                    if (!hasDialog4) throw new Error('No dialog: expected chatnpc about anvils');
                     await bot.continueDialog();
 
-                    // 2 choices: "Yes, I will get you materials." (1)
-                    await bot.waitForDialog(10);
+                    // 5. p_choice2: "Yes, I will get you materials." (1)
+                    const hasChoice2 = await bot.waitForDialog(10);
+                    if (!hasChoice2) throw new Error('No dialog: expected p_choice2 for quest accept');
                     await bot.selectDialogOption(1);
 
-                    // chatplayer "Yes, I will get you materials." -> varp set to 10
-                    await bot.waitForDialog(10);
+                    // 6. chatplayer "Yes, I will get you materials." -> varp set to 10
+                    const hasDialog6 = await bot.waitForDialog(10);
+                    if (!hasDialog6) throw new Error('No dialog: expected chatplayer "Yes, I will get you materials."');
                     await bot.continueDialog();
 
-                    // chatnpc "Well, clay is what I use more than anything..." -> continue
-                    await bot.waitForDialog(10);
+                    // 7. chatnpc "Well, clay is what I use more than anything..." -> continue
+                    const hasDialog7 = await bot.waitForDialog(10);
+                    if (!hasDialog7) throw new Error('No dialog: expected chatnpc about clay');
                     await bot.continueDialog();
 
-                    // chatplayer "Certainly, I will get them for you. Goodbye." -> continue
-                    await bot.waitForDialog(10);
-                    await bot.continueDialog();
+                    // 8. chatplayer "Certainly, I will get them for you. Goodbye." -> continue
+                    const hasDialog8 = await bot.waitForDialog(10);
+                    if (hasDialog8) {
+                        await bot.continueDialog();
+                    }
 
                     // Drain any remaining dialog
                     await bot.continueRemainingDialogs();
@@ -269,30 +307,60 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
                     // Open door and enter Doric's house
                     await bot.openDoor('inaccastledoubledoorropen');
                     await bot.waitForTicks(2);
-                    bot.log('STATE', `After door: pos=(${bot.player.x},${bot.player.z})`);
 
-                    // Talk to Doric
-                    await bot.talkToNpc('Doric');
+                    // Clear any stuck state before interacting
+                    bot.dismissModals();
+                    if (bot.player.delayed) {
+                        await bot.waitForCondition(() => !bot.player.delayed, 20);
+                        if (bot.player.delayed) bot.player.delayed = false;
+                    }
+                    if (bot.player.containsModalInterface()) bot.player.closeModal();
+
+                    // Find Doric and walk to his position so we're definitely adjacent
+                    let doric = bot.findNearbyNpc('Doric');
+                    if (!doric) {
+                        throw new Error(`Doric not found near (${bot.player.x},${bot.player.z},${bot.player.level})`);
+                    }
+                    bot.log('STATE', `Found Doric at (${doric.x},${doric.z}), walking to him...`);
+                    await bot.walkToWithPathfinding(doric.x, doric.z);
+                    await bot.waitForTicks(1);
+
+                    // Re-find Doric (he may have wandered)
+                    doric = bot.findNearbyNpc('Doric');
+                    if (!doric) {
+                        throw new Error(`Doric not found after walking to house at (${bot.player.x},${bot.player.z})`);
+                    }
+                    bot.log('STATE', `Talking to Doric at (${doric.x},${doric.z}) for delivery, bot at (${bot.player.x},${bot.player.z})`);
+                    await bot.interactNpc(doric, 1);
+
+                    // Wait for dialog to open with generous timeout
+                    const dialogOpened = await bot.waitForDialog(30);
+                    if (!dialogOpened) {
+                        throw new Error(`No dialog opened after talking to Doric for delivery. pos=(${bot.player.x},${bot.player.z}), Doric at (${doric.x},${doric.z})`);
+                    }
 
                     // Dialog flow for doric_materials (quest stage 10 with all materials):
                     // 1. chatnpc: "Have you got my materials yet, traveller?"
-                    await bot.waitForDialog(10);
                     await bot.continueDialog();
 
                     // 2. chatplayer: "I have everything you need!"
-                    await bot.waitForDialog(10);
+                    const hasDialog2 = await bot.waitForDialog(10);
+                    if (!hasDialog2) throw new Error('No dialog: expected chatplayer "I have everything you need!"');
                     await bot.continueDialog();
 
                     // 3. chatnpc: "Many thanks, pass them here please."
-                    await bot.waitForDialog(10);
+                    const hasDialog3 = await bot.waitForDialog(10);
+                    if (!hasDialog3) throw new Error('No dialog: expected chatnpc "Many thanks"');
                     await bot.continueDialog();
 
                     // 4. chatnpc: "I can spare you some coins for your trouble."
-                    await bot.waitForDialog(10);
+                    const hasDialog4 = await bot.waitForDialog(10);
+                    if (!hasDialog4) throw new Error('No dialog: expected chatnpc about coins');
                     await bot.continueDialog();
 
                     // 5. chatnpc: "Please use my anvils any time you want."
-                    await bot.waitForDialog(10);
+                    const hasDialog5 = await bot.waitForDialog(10);
+                    if (!hasDialog5) throw new Error('No dialog: expected chatnpc about anvils');
                     await bot.continueDialog();
 
                     // Drain any remaining dialog

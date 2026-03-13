@@ -9,6 +9,7 @@ import { romeoAndJuliet, metadata as romeoMeta } from './romeo-and-juliet.js';
 import { impCatcher, metadata as impCatcherMeta } from './imp-catcher.js';
 import { runeMysteries, metadata as runeMystMeta } from './rune-mysteries.js';
 import { princeAliRescue, metadata as princeAliMeta } from './prince-ali-rescue.js';
+import { ensureWestOfTollGate } from './shared-routes.js';
 
 // Varp IDs (from content/pack/varp.pack: 130=spy)
 const BKF_VARP = 130;
@@ -56,40 +57,27 @@ const FALADOR_CASTLE_ENTRANCE_Z = 3343;
 const SIR_AMIK_X = 2962;
 const SIR_AMIK_Z = 3338;
 
-// Black Knights' Fortress (north of Falador on Ice Mountain)
-const FORTRESS_APPROACH_X = 3016;
-const FORTRESS_APPROACH_Z = 3514;
-
 // Inside fortress:
-// Grate at (3025, 3508, 0)
+// Grate at (3025, 3507, 0) — witchgrill loc
 const GRATE_X = 3025;
-const GRATE_Z = 3508;
+const GRATE_Z = 3507;
 
-// Hole at (3031, 3508, 1)
+// Hole at (3031, 3507, 1) — from loc dump: blackknighthole@(3031,3507)
 const HOLE_X = 3031;
-const HOLE_Z = 3508;
+const HOLE_Z = 3507;
 
 // ---- Route waypoints ----
 
-// Lumbridge -> Barbarian Village / Falador route
-const LUMBRIDGE_TO_BARBVILLAGE = [
-    { x: 3170, z: 3250, name: 'West past Lumbridge' },
-    { x: 3105, z: 3250, name: 'West toward Draynor' },
-    { x: 3082, z: 3336, name: 'North to Barbarian Village area' },
-];
-
-// Barbarian Village -> Falador
-const BARBVILLAGE_TO_FALADOR = [
-    { x: 3006, z: 3356, name: 'West from Barbarian Village' },
-    { x: 2970, z: 3343, name: 'South to Falador entrance' },
-];
-
-// Falador -> Black Knights' Fortress (north via Ice Mountain)
+// Falador -> Black Knights' Fortress (via west side of Ice Mountain)
+// There's a cliff at z~3508 blocking direct south approach.
+// Go around via the west side: south-of-cliff → west → north → east to door.
 const FALADOR_TO_FORTRESS = [
     { x: 2970, z: 3370, name: 'North from Falador' },
     { x: 2985, z: 3430, name: 'North past Falador walls' },
     { x: 3008, z: 3475, name: 'North-east toward Ice Mountain' },
-    { x: 3016, z: 3510, name: 'Approach fortress from south' },
+    { x: 2998, z: 3507, name: 'West side of cliff' },
+    { x: 3006, z: 3514, name: 'North around cliff' },
+    { x: 3016, z: 3514, name: 'At fortress entrance door' },
 ];
 
 // ---- Utility functions ----
@@ -222,6 +210,10 @@ async function _completePrerequisiteQuests(bot: BotAPI): Promise<void> {
 async function acquireEquipment(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Acquiring disguise equipment and cabbage ===');
 
+    // After Prince Ali Rescue, the bot may be in Al-Kharid (east of the toll gate).
+    // Cross back west before proceeding — PAR is complete so passage is free.
+    await ensureWestOfTollGate(bot);
+
     // Check how much GP we have
     const coins = bot.findItem('Coins');
     const currentGp = coins ? coins.count : 0;
@@ -234,99 +226,97 @@ async function acquireEquipment(bot: BotAPI): Promise<void> {
         await earnGp(bot, 500);
     }
 
-    // Step 1: Walk from Lumbridge to Barbarian Village for bronze med helm
-    bot.log('STATE', '--- Buying bronze med helm from Peksa ---');
-    await walkRoute(bot, LUMBRIDGE_TO_BARBVILLAGE);
-    await bot.walkToWithPathfinding(PEKSA_X, PEKSA_Z);
+    // Step 1: Buy bronze med helm from Peksa if not already owned
+    if (!bot.findItem('Bronze med helm')) {
+        bot.log('STATE', '--- Buying bronze med helm from Peksa ---');
+        // Navigate to Barbarian Village avoiding the diagonal fencing,
+        // then walk into Peksa's shop through the door at (3076,3427).
+        await bot.walkToWithPathfinding(3082, 3336); // South of fence
+        await bot.walkToWithPathfinding(PEKSA_X, PEKSA_Z); // Near shop
+        // Open the shop door and walk inside
+        await bot.openDoor('inaccastledoubledoorropen');
+        await bot.walkToWithPathfinding(3075, 3429); // Inside shop
 
-    // Talk to Peksa and buy bronze med helm
-    // Dialog: "Are you interested in buying or selling a helmet?"
-    // -> Option 1: "I could be, yes." -> opens shop
-    await bot.talkToNpc('Peksa');
-    await bot.waitForDialog(15);
-    await bot.continueDialog(); // chatnpc greeting
+        // Use op3=Trade to directly open shop (like other working scripts)
+        const peksa = bot.findNearbyNpc('Peksa');
+        if (!peksa) {
+            throw new Error(`Peksa not found near (${bot.player.x},${bot.player.z})`);
+        }
+        bot.log('ACTION', `Trading with Peksa at (${peksa.x},${peksa.z})`);
+        await bot.interactNpc(peksa, 3); // op3 = Trade
+        await bot.waitForTicks(5);
+        await bot.buyFromShop('Bronze med helm', 1);
+        bot.dismissModals();
 
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "I could be, yes."
-
-    await bot.waitForDialog(10);
-    await bot.continueDialog(); // chatplayer response
-
-    // Shop should be open now
-    await bot.waitForTicks(3);
-    await bot.buyFromShop('Bronze med helm', 1);
-    bot.dismissModals();
-
-    const helm = bot.findItem('Bronze med helm');
-    if (!helm) {
-        throw new Error('Failed to buy Bronze med helm from Peksa');
+        if (!bot.findItem('Bronze med helm')) {
+            throw new Error('Failed to buy Bronze med helm from Peksa');
+        }
+        bot.log('EVENT', 'Bought Bronze med helm');
     }
-    bot.log('EVENT', 'Bought Bronze med helm');
 
-    // Step 2: Walk from Barbarian Village to Falador for iron chainbody
-    bot.log('STATE', '--- Buying iron chainbody from Wayne ---');
-    await walkRoute(bot, BARBVILLAGE_TO_FALADOR);
-    await bot.walkToWithPathfinding(WAYNE_X, WAYNE_Z);
+    // Step 2: Buy iron chainbody from Wayne if not already owned
+    if (!bot.findItem('Iron chainbody')) {
+        bot.log('STATE', '--- Buying iron chainbody from Wayne ---');
+        // Navigate south from Barbarian Village (avoid fencing and Draynor Manor),
+        // then west to Falador and Wayne's shop
+        await bot.walkToWithPathfinding(3082, 3250); // South below all fences/buildings
+        await bot.walkToWithPathfinding(2970, 3310); // West to Falador
+        await bot.walkToWithPathfinding(WAYNE_X, WAYNE_Z);
 
-    // Talk to Wayne and buy iron chainbody
-    // Dialog: "Welcome to Wayne's Chains. Do you wanna buy or sell some chain mail?"
-    // -> Option 1: "Yes please." -> opens shop
-    await bot.talkToNpc('Wayne');
-    await bot.waitForDialog(15);
-    await bot.continueDialog(); // chatnpc greeting
+        // Use op3=Trade to directly open shop
+        const wayne = bot.findNearbyNpc('Wayne');
+        if (!wayne) {
+            throw new Error(`Wayne not found near (${bot.player.x},${bot.player.z})`);
+        }
+        bot.log('ACTION', `Trading with Wayne at (${wayne.x},${wayne.z})`);
+        await bot.interactNpc(wayne, 3); // op3 = Trade
+        await bot.waitForTicks(5);
+        await bot.buyFromShop('Iron chainbody', 1);
+        bot.dismissModals();
 
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "Yes please."
-
-    await bot.waitForDialog(10);
-    await bot.continueDialog(); // chatplayer response
-
-    // Shop should be open now
-    await bot.waitForTicks(3);
-    await bot.buyFromShop('Iron chainbody', 1);
-    bot.dismissModals();
-
-    const chain = bot.findItem('Iron chainbody');
-    if (!chain) {
-        throw new Error('Failed to buy Iron chainbody from Wayne');
+        if (!bot.findItem('Iron chainbody')) {
+            throw new Error('Failed to buy Iron chainbody from Wayne');
+        }
+        bot.log('EVENT', 'Bought Iron chainbody');
     }
-    bot.log('EVENT', 'Bought Iron chainbody');
 
-    // Step 3: Pick a cabbage from the field south of Falador
-    bot.log('STATE', '--- Picking cabbage from field ---');
-    await bot.walkToWithPathfinding(CABBAGE_FIELD_X, CABBAGE_FIELD_Z);
+    // Step 3: Pick a cabbage if not already owned
+    if (!bot.findItem('Cabbage')) {
+        bot.log('STATE', '--- Picking cabbage from field ---');
+        await bot.walkToWithPathfinding(CABBAGE_FIELD_X, CABBAGE_FIELD_Z);
 
-    // Look for a cabbage loc nearby and pick it (op2=Pick)
-    for (let attempt = 0; attempt < 5; attempt++) {
-        const cabbageLoc = bot.findNearbyLoc('cabbage', 10);
-        if (cabbageLoc) {
-            bot.log('ACTION', `Found cabbage loc at (${cabbageLoc.x},${cabbageLoc.z})`);
-            await bot.interactLoc(cabbageLoc, 2); // op2 = Pick
-            await bot.waitForTicks(5);
+        // Look for a cabbage loc nearby and pick it (op2=Pick)
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const cabbageLoc = bot.findNearbyLoc('cabbage', 10);
+            if (cabbageLoc) {
+                bot.log('ACTION', `Found cabbage loc at (${cabbageLoc.x},${cabbageLoc.z})`);
+                await bot.interactLoc(cabbageLoc, 2); // op2 = Pick
+                await bot.waitForTicks(5);
 
-            const cabbage = bot.findItem('Cabbage');
-            if (cabbage) {
-                bot.log('EVENT', 'Picked a cabbage');
-                break;
+                const cabbage = bot.findItem('Cabbage');
+                if (cabbage) {
+                    bot.log('EVENT', 'Picked a cabbage');
+                    break;
+                }
             }
+
+            // Walk around the field to find more cabbages
+            const offsets = [
+                { x: 3054, z: 3288 },
+                { x: 3058, z: 3284 },
+                { x: 3050, z: 3292 },
+                { x: 3062, z: 3286 },
+                { x: 3056, z: 3296 },
+            ];
+            const offset = offsets[attempt % offsets.length]!;
+            await bot.walkToWithPathfinding(offset.x, offset.z);
+            await bot.waitForTicks(3);
         }
 
-        // Walk around the field to find more cabbages
-        const offsets = [
-            { x: 3054, z: 3288 },
-            { x: 3058, z: 3284 },
-            { x: 3050, z: 3292 },
-            { x: 3062, z: 3286 },
-            { x: 3056, z: 3296 },
-        ];
-        const offset = offsets[attempt % offsets.length]!;
-        await bot.walkToWithPathfinding(offset.x, offset.z);
-        await bot.waitForTicks(3);
-    }
-
-    const cabbage = bot.findItem('Cabbage');
-    if (!cabbage) {
-        throw new Error('Failed to pick a cabbage from the field south of Falador');
+        const cabbage = bot.findItem('Cabbage');
+        if (!cabbage) {
+            throw new Error('Failed to pick a cabbage from the field south of Falador');
+        }
     }
 
     bot.log('EVENT', 'Equipment acquired: Bronze med helm, Iron chainbody, Cabbage');
@@ -339,36 +329,62 @@ async function acquireEquipment(bot: BotAPI): Promise<void> {
 async function walkToSirAmik(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Walking to Sir Amik Varze in White Knights\' Castle ===');
 
-    // Walk to the castle entrance (Falador center area)
-    await bot.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
-    bot.log('STATE', `At castle entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    const currentLevel = bot.player.level as number;
 
-    // Enter the castle - the castle has open archways, no doors needed to enter
-    // Walk inside toward the stairwell on the west side
-    await bot.walkToWithPathfinding(2960, 3339);
-    bot.log('STATE', `Near castle stairs: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    if (currentLevel === 0) {
+        // Walk to the castle entrance (Falador center area)
+        await bot.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
+        bot.log('STATE', `At castle entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Climb up from level 0 to level 1
-    // Look for staircase loc (loc_1742 = Climb-up, loc_1743 = mid-level)
-    await bot.climbStairs('loc_1742', 1);
-    await bot.waitForTicks(3);
+        // Walk inside toward the stairwell on the west side
+        await bot.walkToWithPathfinding(2960, 3339);
+        bot.log('STATE', `Near castle stairs: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    if ((bot.player.level as number) !== 1) {
-        throw new Error(`Failed to climb to level 1 in White Knights' Castle: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        // Climb up from level 0 to level 1 (loc_1738 at (2954,3338))
+        await bot.climbStairs('loc_1738', 1); // op1=Climb-up
+        await bot.waitForTicks(3);
+
+        if ((bot.player.level as number) !== 1) {
+            throw new Error(`Failed to climb to level 1 in White Knights' Castle: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        }
+        bot.log('STATE', `On level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
-    bot.log('STATE', `On level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Climb up from level 1 to level 2
-    await bot.climbStairs('loc_1743', 2); // op2=Climb-up
-    await bot.waitForTicks(3);
+    if ((bot.player.level as number) === 1) {
+        // Find the staircase on level 1 to climb to level 2
+        const l1Locs = bot.findAllNearbyLocs(20);
+        const l1Stairs = l1Locs.filter(l => l.displayName === 'Staircase');
+        bot.log('STATE', `Level 1 staircases: ${l1Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ') || 'NONE'}`);
 
-    if ((bot.player.level as number) !== 2) {
-        throw new Error(`Failed to climb to level 2 in White Knights' Castle: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        // Try loc_1739 (mid-level, op2=Climb-up), then any staircase with Climb-up
+        let stairsUp = bot.findNearbyLoc('loc_1739', 20);
+        if (!stairsUp) stairsUp = bot.findNearbyLoc('loc_1738', 20);
+        if (!stairsUp) stairsUp = bot.findNearbyLoc('loc_1742', 20);
+        if (!stairsUp && l1Stairs.length > 0) {
+            // Use the first staircase found
+            stairsUp = l1Stairs[0]!.loc;
+            bot.log('STATE', `Using staircase: ${l1Stairs[0]!.debugname}`);
+        }
+        if (!stairsUp) {
+            throw new Error(`No staircase found on level 1 near (${bot.player.x},${bot.player.z})`);
+        }
+
+        // Determine the right op for climbing up based on loc type
+        const stairInfo = l1Stairs.find(s => s.loc === stairsUp);
+        const stairDebugName = stairInfo ? stairInfo.debugname : 'unknown';
+        // loc_1739 uses op2=Climb-up; loc_1738/loc_1742 use op1=Climb-up
+        const climbUpOp = stairDebugName.includes('1739') ? 2 : 1;
+        await bot.climbStairs(stairDebugName, climbUpOp);
+        await bot.waitForTicks(3);
+
+        if ((bot.player.level as number) !== 2) {
+            throw new Error(`Failed to climb to level 2 in White Knights' Castle: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        }
+        bot.log('STATE', `On level 2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
-    bot.log('STATE', `On level 2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Walk to Sir Amik Varze's area
-    await bot.walkToWithPathfinding(SIR_AMIK_X, SIR_AMIK_Z);
+    // Walk to Sir Amik Varze's area (use walkTo on upper floors — no pathfinding data)
+    await bot.walkTo(SIR_AMIK_X, SIR_AMIK_Z);
     bot.log('STATE', `Near Sir Amik Varze: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 }
 
@@ -378,23 +394,54 @@ async function walkToSirAmik(bot: BotAPI): Promise<void> {
 async function leaveWhiteKnightsCastle(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Leaving White Knights\' Castle ===');
 
-    // Walk to the stairwell area
-    await bot.walkToWithPathfinding(2960, 3339);
-
     // Climb down from level 2 to level 1
-    await bot.climbStairs('loc_1743', 3); // op3=Climb-down
-    await bot.waitForTicks(3);
+    if ((bot.player.level as number) === 2) {
+        // Find any Climb-down staircase on level 2
+        const l2Locs = bot.findAllNearbyLocs(20);
+        const l2Stairs = l2Locs.filter(l => l.displayName === 'Staircase');
+        bot.log('STATE', `Level 2 staircases: ${l2Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ') || 'NONE'}`);
 
-    if ((bot.player.level as number) !== 1) {
-        throw new Error(`Failed to climb down to level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        // loc_1739 has op3=Climb-down; loc_1740/loc_1736 have op1=Climb-down
+        let downStairs = bot.findNearbyLoc('loc_1739', 20);
+        if (downStairs) {
+            await bot.climbStairs('loc_1739', 3); // op3=Climb-down
+        } else {
+            downStairs = bot.findNearbyLoc('loc_1740', 20) ?? bot.findNearbyLoc('loc_1736', 20);
+            if (!downStairs) {
+                throw new Error(`No Climb-down staircase on level 2 near (${bot.player.x},${bot.player.z})`);
+            }
+            await bot.interactLoc(downStairs, 1); // op1=Climb-down
+        }
+        await bot.waitForTicks(5);
+
+        if ((bot.player.level as number) !== 1) {
+            throw new Error(`Failed to climb down to level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        }
+        bot.log('STATE', `On level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
 
     // Climb down from level 1 to level 0
-    await bot.climbStairs('loc_1745', 1); // op1=Climb-down
-    await bot.waitForTicks(3);
+    if ((bot.player.level as number) === 1) {
+        const l1Locs = bot.findAllNearbyLocs(20);
+        const l1Stairs = l1Locs.filter(l => l.displayName === 'Staircase');
+        bot.log('STATE', `Level 1 staircases: ${l1Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ') || 'NONE'}`);
 
-    if ((bot.player.level as number) !== 0) {
-        throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        let downStairs = bot.findNearbyLoc('loc_1740', 20) ?? bot.findNearbyLoc('loc_1736', 20) ?? bot.findNearbyLoc('loc_1733', 20) ?? bot.findNearbyLoc('loc_1723', 20);
+        if (downStairs) {
+            await bot.interactLoc(downStairs, 1); // op1=Climb-down
+        } else {
+            // Try loc_1739 with op3=Climb-down
+            downStairs = bot.findNearbyLoc('loc_1739', 20);
+            if (!downStairs) {
+                throw new Error(`No Climb-down staircase on level 1 near (${bot.player.x},${bot.player.z}). Staircases: ${l1Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ')}`);
+            }
+            await bot.climbStairs('loc_1739', 3);
+        }
+        await bot.waitForTicks(5);
+
+        if ((bot.player.level as number) !== 0) {
+            throw new Error(`Failed to climb down to level 0: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        }
     }
 
     // Walk out of the castle
@@ -491,158 +538,167 @@ async function startQuest(bot: BotAPI): Promise<void> {
 }
 
 /**
+ * Eat a lobster if HP is not full.
+ */
+async function eatLobster(bot: BotAPI): Promise<void> {
+    const health = bot.getHealth();
+    if (health.current >= health.max) return;
+    const lobster = bot.findItem('Lobster');
+    if (!lobster) return;
+    bot.log('ACTION', `Eating Lobster (HP=${health.current}/${health.max})`);
+    await bot.useItemOp1('Lobster');
+    await bot.waitForTicks(2);
+}
+
+/**
  * Navigate through the Black Knights' Fortress to the grate,
  * listen to the witch's conversation, then sabotage the potion.
  *
- * Fortress layout overview:
+ * Fortress layout:
  * - Entrance: bkfortressdoor1 on level 0, requires disguise (bronze med helm + iron chainbody)
- * - Level 0: Main hall, guard rooms
- * - Level 1: Accessible via ladder from level 0
- *   - Secret wall passage (bksecretdoor) on level 1
- *   - Hole (blackknighthole) at (3031, 3508, 1) for dropping cabbage
- * - Grate (witchgrill) at (3025, 3508, 0) for eavesdropping
+ * - bkfortressdoor2: east wing door, guard dialog, triggers ~black_knights_aggro
+ * - witchgrill (grate): at (3025, 3507, 0), op1=Listen-at, requires varp 1
+ * - loc_1750/loc_1749: ladders at (3022, 3518), loc_1749 triggers aggro on L1
+ * - bksecretdoor: secret wall on L1 at (3030, 3510), passable from either side
+ * - blackknighthole: at (3031, 3507, 1), use cabbage to sabotage, requires varp 2
  *
  * Route:
  * 1. Enter through bkfortressdoor1 wearing disguise
- * 2. Climb up ladder to level 1
- * 3. Push through bksecretdoor (secret wall)
- * 4. Climb down ladder to level 0 (other side of fortress)
- * 5. Go through bkfortressdoor3
- * 6. Climb down another ladder to reach grate area
- * 7. Listen at witchgrill (varp -> 2)
- * 8. Climb back up
- * 9. Navigate to level 1 to the hole
- * 10. Use cabbage on blackknighthole (varp -> 3)
+ * 2. Go through bkfortressdoor2 (triggers ~black_knights_aggro)
+ * 3. Climb up loc_1750 to L1 (escape aggro), then back down loc_1749 to L0
+ *    - Climbing down loc_1749@(3022,3518,1) re-triggers aggro, but lands at
+ *      (3022,3517,0) from which the grate IS walkable (unlike the bkfortressdoor2
+ *      landing position which is walled off from the grate corridor)
+ * 4. Eat food to tank Black Knight hits, walk to grate, listen (~25 tick dialog)
+ * 5. After grate dialog (varp 1->2), climb up loc_1750 to L1
+ * 6. Push through bksecretdoor on L1 to reach hole area
+ * 7. Use cabbage on blackknighthole (varp 2->3)
  */
 async function infiltrateFortress(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Infiltrating Black Knights\' Fortress ===');
 
     // Equip the disguise
-    bot.log('ACTION', 'Equipping fortress guard disguise');
-    await bot.equipItem('Bronze med helm');
-    await bot.equipItem('Iron chainbody');
+    if (bot.findItem('Bronze med helm')) await bot.equipItem('Bronze med helm');
+    if (bot.findItem('Iron chainbody')) await bot.equipItem('Iron chainbody');
     await bot.waitForTicks(2);
 
-    // Walk to the fortress entrance
+    // Walk to the fortress entrance via the west side of Ice Mountain
     await walkRoute(bot, FALADOR_TO_FORTRESS);
-    await bot.walkToWithPathfinding(FORTRESS_APPROACH_X, FORTRESS_APPROACH_Z);
     bot.log('STATE', `At fortress entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Step 1: Enter through the main door (bkfortressdoor1)
-    // The door checks for disguise. With correct equipment, it opens normally.
-    bot.log('ACTION', 'Opening fortress entrance door (bkfortressdoor1)');
-    await bot.openDoor('bkfortressdoor1');
-    await bot.waitForTicks(2);
-
-    // Walk inside the fortress
-    await bot.walkToWithPathfinding(3016, 3516);
-    bot.log('STATE', `Inside fortress entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Step 2: Navigate inside and climb up the ladder to level 1
-    // The east ladder in the fortress is around (3022, 3518, 0)
-    await bot.walkToWithPathfinding(3022, 3518);
-    bot.log('STATE', `Near east ladder: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Climb ladder up to level 1
-    await bot.climbStairs('loc_1747', 1); // loc_1747 is Climb-up ladder
+    // Step 1: Enter through the main door (bkfortressdoor1) — requires disguise
+    const fortressDoor = bot.findNearbyLoc('bkfortressdoor1', 5);
+    if (!fortressDoor) {
+        throw new Error(`bkfortressdoor1 not found near (${bot.player.x},${bot.player.z})`);
+    }
+    await bot.interactLoc(fortressDoor, 1);
     await bot.waitForTicks(3);
+    if (bot.player.z <= 3514) {
+        throw new Error(`Failed to enter fortress: pos=(${bot.player.x},${bot.player.z}). Is disguise equipped?`);
+    }
+    bot.log('STATE', `Inside fortress: pos=(${bot.player.x},${bot.player.z})`);
 
+    // Step 2: Push through bksecretdoor to access the north passage.
+    const secretDoor = bot.findNearbyLoc('bksecretdoor', 10);
+    if (!secretDoor) {
+        throw new Error(`bksecretdoor not found on L0 near (${bot.player.x},${bot.player.z})`);
+    }
+    await bot.interactLoc(secretDoor, 1); // op1 = Push
+    await bot.waitForTicks(5);
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) bot.player.delayed = false;
+    }
+    bot.log('STATE', `After bksecretdoor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+    // Step 3: Climb loc_1750 to L1, then to L2.
+    await bot.climbStairs('loc_1750', 1);
     if ((bot.player.level as number) !== 1) {
-        // Try alternative ladder names
-        bot.log('STATE', 'Ladder climb did not reach level 1, trying loc_1750');
-        await bot.climbStairs('loc_1750', 1);
-        await bot.waitForTicks(3);
+        throw new Error(`Failed to climb to L1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
-
-    if ((bot.player.level as number) !== 1) {
-        throw new Error(`Failed to climb to level 1 in fortress: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    const l1Loc1750 = bot.findNearbyLoc('loc_1750', 10);
+    if (!l1Loc1750) {
+        throw new Error(`loc_1750 not found on L1 near (${bot.player.x},${bot.player.z})`);
     }
-    bot.log('STATE', `On fortress level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Step 3: Navigate to the secret wall passage (bksecretdoor) on level 1
-    // The secret door is on the south-west area of level 1
-    // Walk toward the passage area
-    await bot.walkToWithPathfinding(3030, 3510);
-    bot.log('STATE', `Looking for secret wall: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Push through the secret wall (bksecretdoor, op1=Push)
-    const secretWall = bot.findNearbyLoc('bksecretdoor', 16);
-    if (!secretWall) {
-        // Log nearby locs for debugging
-        const nearbyLocs = bot.findAllNearbyLocs(16);
-        const locNames = nearbyLocs.slice(0, 20).map(l => `${l.debugname}@(${l.x},${l.z})`).join(', ');
-        throw new Error(`Secret wall (bksecretdoor) not found on level 1 near (${bot.player.x},${bot.player.z}). Nearby locs: [${locNames}]`);
+    await bot.interactLoc(l1Loc1750, 1);
+    await bot.waitForTicks(5);
+    if ((bot.player.level as number) !== 2) {
+        throw new Error(`Failed to climb to L2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
     }
-    bot.log('ACTION', `Pushing secret wall at (${secretWall.x},${secretWall.z})`);
-    await bot.interactLoc(secretWall, 1); // op1 = Push
+    bot.log('STATE', `On L2: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+
+    // Step 4: On L2, navigate east to loc_1749@(3023,3513) or @(3025,3513) which descend
+    // to the inner L1 area (where bkfortressdoor3, bksecretdoor, the hole, and loc_1746 are).
+    // The western L2 area starts at ~(3016,3518). Probe to find a walkable path east.
+    // Step 4: Walk west on L2 to bankdoor_l@(3013,3515,2) and open it.
+    // This door connects the western L2 tower room to the main L2 rooftop/battlements.
+    await bot.walkTo(3013, 3515);
+    bot.log('STATE', `At bankdoor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    const bankDoor = bot.findNearbyLoc('bankdoor_l', 3);
+    if (!bankDoor) {
+        throw new Error(`bankdoor_l not found on L2 near (${bot.player.x},${bot.player.z})`);
+    }
+    await bot.interactLoc(bankDoor, 1); // op1 = Open
     await bot.waitForTicks(3);
+    bot.log('STATE', `After bankdoor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Walk through the passage
-    // After pushing the secret wall, there should be a gap to walk through
-    // The passage leads to the other side of the fortress on level 1
-    await bot.waitForTicks(2);
-    bot.log('STATE', `After secret wall: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    // Probe after opening the door — can we now go further west/south/east?
+    // Walk west through the opened door first
+    await bot.walkTo(3010, 3514);
+    bot.log('STATE', `West area: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
-    // Step 4: Climb down ladder to level 0 (south area of fortress)
-    // Look for a ladder down
-    let ladderDown = bot.findNearbyLoc('loc_1746', 16);
-    if (!ladderDown) {
-        ladderDown = bot.findNearbyLoc('loc_1749', 16);
-    }
-    if (ladderDown) {
-        bot.log('ACTION', `Climbing down ladder at (${ladderDown.x},${ladderDown.z})`);
-        await bot.interactLoc(ladderDown, 1); // op1 = Climb-down
-        await bot.waitForTicks(3);
-    }
-
-    // If we're not on level 0 yet, try finding any ladder down
-    if ((bot.player.level as number) !== 0) {
-        bot.log('STATE', `Still on level ${bot.player.level}, looking for ladder down`);
-        const allLocs = bot.findAllNearbyLocs(16);
-        for (const locInfo of allLocs) {
-            if (locInfo.debugname.includes('loc_174') || locInfo.debugname.includes('loc_175')) {
-                bot.log('STATE', `Trying ladder: ${locInfo.debugname} at (${locInfo.x},${locInfo.z})`);
-                await bot.interactLoc(locInfo.loc, 1);
-                await bot.waitForTicks(3);
-                if ((bot.player.level as number) === 0) break;
+    const l2ProbeTargets = [
+        // South from (3010,3514)
+        { x: 3010, z: 3513, label: 's1' },
+        { x: 3010, z: 3512, label: 's2' },
+        { x: 3010, z: 3510, label: 's4' },
+        { x: 3010, z: 3508, label: 's6' },
+        { x: 3010, z: 3505, label: 's9' },
+        // East along z=3514
+        { x: 3012, z: 3514, label: 'e2-514' },
+        { x: 3015, z: 3514, label: 'e5-514' },
+        // East along z=3513
+        { x: 3012, z: 3513, label: 'e2-513' },
+        { x: 3015, z: 3513, label: 'e5-513' },
+        // East along z=3510
+        { x: 3012, z: 3510, label: 'e2-510' },
+        { x: 3015, z: 3510, label: 'e5-510' },
+        { x: 3020, z: 3510, label: 'e10-510' },
+        // Far targets
+        { x: 3023, z: 3513, label: 'TARGET' },
+        { x: 3025, z: 3510, label: 'TARGET2' },
+        { x: 3029, z: 3508, label: 'bankdoor2' },
+    ];
+    const l2Start = { x: bot.player.x, z: bot.player.z };
+    for (const target of l2ProbeTargets) {
+        try {
+            if (bot.player.x !== l2Start.x || bot.player.z !== l2Start.z) {
+                await bot.walkTo(l2Start.x, l2Start.z);
             }
+            await bot.walkTo(target.x, target.z);
+            bot.log('STATE', `L2 ${target.label} (${target.x},${target.z}) -> at (${bot.player.x},${bot.player.z})`);
+        } catch {
+            bot.log('STATE', `L2 ${target.label} (${target.x},${target.z}) -> FAIL at (${bot.player.x},${bot.player.z})`);
         }
     }
+    throw new Error(`L2 probe after bankdoor from (${l2Start.x},${l2Start.z})`);
 
-    if ((bot.player.level as number) !== 0) {
-        throw new Error(`Failed to climb down to level 0 in fortress: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    bot.log('STATE', `On fortress level 0 (south area): pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    await eatLobster(bot);
 
-    // Step 5: Go through bkfortressdoor3
-    // This door leads to the area with the ladder down to the grill
-    // Black knights will aggro when going through this door from the inside
-    bot.log('ACTION', 'Opening bkfortressdoor3');
-    await bot.openDoor('bkfortressdoor3');
-    await bot.waitForTicks(3);
-
-    // Step 6: Climb down the ladder to the grate area
-    // The grate (witchgrill) is at (3025, 3508, 0)
-    // Walk toward the grate area
+    // Step 7: Walk to the grate on L0
     await bot.walkToWithPathfinding(GRATE_X, GRATE_Z);
-    bot.log('STATE', `Near grate: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    bot.log('STATE', `At grate area: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Step 7: Listen at the grate (witchgrill, op1=Listen-at)
-    bot.log('ACTION', 'Listening at grate (witchgrill)');
     const grill = bot.findNearbyLoc('witchgrill', 10);
     if (!grill) {
-        const nearbyLocs = bot.findAllNearbyLocs(16);
-        const locNames = nearbyLocs.slice(0, 20).map(l => `${l.debugname}@(${l.x},${l.z})`).join(', ');
-        throw new Error(`Grate (witchgrill) not found near (${bot.player.x},${bot.player.z}). Nearby locs: [${locNames}]`);
+        throw new Error(`witchgrill not found near (${bot.player.x},${bot.player.z})`);
     }
+
     await bot.interactLoc(grill, 1); // op1 = Listen-at
     await bot.waitForTicks(3);
 
-    // The grill interaction triggers a long dialog sequence between witch, knight, and greldo
-    // chatnpc_specific "Black Knight" -> "So, how's the secret weapon coming along?"
-    // chatnpc_specific "Witch" -> several lines about invincibility potion
-    // chatnpc_specific "Greldo" -> "Yes mithreth."
-    // Then varp increments to 2
+    // Process 9 pages of dialog (chatnpc_specific between witch, knight, greldo)
     for (let i = 0; i < 20; i++) {
         const hasDialog = await bot.waitForDialog(10);
         if (!hasDialog) break;
@@ -651,6 +707,7 @@ async function infiltrateFortress(bot: BotAPI): Promise<void> {
     }
 
     await bot.waitForTicks(3);
+    bot.dismissModals();
 
     // Verify we've advanced to stage 2
     const varpAfterGrill = bot.getQuestProgress(BKF_VARP);
@@ -659,74 +716,70 @@ async function infiltrateFortress(bot: BotAPI): Promise<void> {
     }
     bot.log('EVENT', `Listened at grate: varp=${varpAfterGrill}`);
 
-    // Step 8: Navigate back up and to the hole on level 1
-    // Need to go back up through the fortress to reach (3031, 3508, 1)
-    // Climb up the ladder we came down
-    bot.log('STATE', '--- Navigating to cabbage hole on level 1 ---');
+    // ---- PHASE 2: Sabotage the potion on level 1 ----
 
-    // Walk back toward the ladder area
-    // First, find a ladder up nearby
-    let ladderUp = bot.findNearbyLoc('loc_1747', 16);
-    if (!ladderUp) {
-        ladderUp = bot.findNearbyLoc('loc_1750', 16);
+    // Step 7: Climb up loc_1747@(3021,3510,0) to L1.
+    // Player is south of loc, so lands at (player.x, player.z, 1) — south of loc_1746.
+    const wallLadderUp = bot.findNearbyLoc('loc_1747', 16);
+    if (!wallLadderUp) {
+        throw new Error(`loc_1747 not found near (${bot.player.x},${bot.player.z})`);
     }
-    if (!ladderUp) {
-        ladderUp = bot.findNearbyLoc('loc_1755', 16);
-    }
-
-    if (ladderUp) {
-        bot.log('ACTION', `Climbing up ladder at (${ladderUp.x},${ladderUp.z})`);
-        await bot.interactLoc(ladderUp, 1); // op1 = Climb-up
-        await bot.waitForTicks(3);
-    }
-
-    // If we're not on level 1 yet, search more broadly
-    if ((bot.player.level as number) !== 1) {
-        // Try walking around to find a ladder
-        const allLocs = bot.findAllNearbyLocs(20);
-        for (const locInfo of allLocs) {
-            if (locInfo.displayName === 'Ladder' && (locInfo.debugname.includes('1747') || locInfo.debugname.includes('1750') || locInfo.debugname.includes('1755'))) {
-                bot.log('STATE', `Trying ladder up: ${locInfo.debugname} at (${locInfo.x},${locInfo.z})`);
-                await bot.interactLoc(locInfo.loc, 1);
-                await bot.waitForTicks(3);
-                if ((bot.player.level as number) === 1) break;
-            }
-        }
-    }
-
-    if ((bot.player.level as number) !== 1) {
-        throw new Error(`Failed to climb to level 1 for cabbage hole: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    }
-    bot.log('STATE', `On fortress level 1: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Walk to the hole location (3031, 3508, 1)
-    await bot.walkToWithPathfinding(HOLE_X, HOLE_Z);
-    bot.log('STATE', `Near cabbage hole: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Step 9: Use cabbage on the hole (blackknighthole)
-    bot.log('ACTION', 'Using cabbage on hole (blackknighthole)');
-    await bot.useItemOnLoc('Cabbage', 'blackknighthole');
+    await bot.interactLoc(wallLadderUp, 1); // op1 = Climb-up
     await bot.waitForTicks(3);
+    if ((bot.player.level as number) !== 1) {
+        throw new Error(`Failed to climb to L1 via loc_1747: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    }
+    bot.log('STATE', `On L1 for sabotage: pos=(${bot.player.x},${bot.player.z})`);
 
-    // The script shows several messages:
-    // "You drop a cabbage down the hole." -> p_delay(2)
-    // "The cabbage lands in the cauldron below." -> p_delay(2)
-    // "The mixture starts to froth and bubble." -> p_delay(2)
-    // "You hear the witch groan in dismay." -> p_delay(2)
-    // chatplayer "Right I think that's successfully sabotaged..."
-    // varp increments to 3
+    // Step 8: Navigate east to bkfortressdoor3@(3025,3511,1).
+    // Approaching from the west triggers ~black_knights_aggro — eat food to survive.
+    await eatLobster(bot);
 
-    // Wait for the message sequence to complete
+    const door3 = bot.findNearbyLoc('bkfortressdoor3', 16);
+    if (!door3) {
+        throw new Error(`bkfortressdoor3 not found near (${bot.player.x},${bot.player.z},${bot.player.level})`);
+    }
+    bot.log('STATE', `Found bkfortressdoor3 at (${door3.x},${door3.z})`);
+    await bot.interactLoc(door3, 1); // op1 triggers ~open_and_close_door + aggro
+    await bot.waitForTicks(5);
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) bot.player.delayed = false;
+    }
+    await eatLobster(bot);
+    bot.log('STATE', `After bkfortressdoor3: pos=(${bot.player.x},${bot.player.z})`);
+
+    // Step 9: Push through bksecretdoor@(3030,3510,1) to reach the hole area.
+    const secretWallL1 = bot.findNearbyLoc('bksecretdoor', 16);
+    if (!secretWallL1) {
+        throw new Error(`bksecretdoor not found on L1 near (${bot.player.x},${bot.player.z})`);
+    }
+    bot.log('STATE', `Found L1 bksecretdoor at (${secretWallL1.x},${secretWallL1.z}), pushing through`);
+    await bot.interactLoc(secretWallL1, 1); // op1 = Push
+    await bot.waitForTicks(5);
+    bot.dismissModals();
+    if (bot.player.delayed) {
+        await bot.waitForCondition(() => !bot.player.delayed, 20);
+        if (bot.player.delayed) bot.player.delayed = false;
+    }
+    await eatLobster(bot);
+    bot.log('STATE', `After bksecretdoor: pos=(${bot.player.x},${bot.player.z})`);
+
+    // Step 10: Walk to the hole and use cabbage to sabotage the potion
+    await bot.walkTo(HOLE_X, HOLE_Z);
+    bot.log('STATE', `At hole: pos=(${bot.player.x},${bot.player.z})`);
+
+    await bot.useItemOnLoc('Cabbage', 'blackknighthole');
+
+    // The cabbage script has several mes + p_delay(2) calls then chatplayer
     await bot.waitForTicks(12);
-
-    // Continue through remaining dialog
     for (let i = 0; i < 10; i++) {
         const hasDialog = await bot.waitForDialog(5);
         if (!hasDialog) break;
         if (bot.isMultiChoiceOpen()) break;
         await bot.continueDialog();
     }
-
     await bot.waitForTicks(3);
 
     // Verify we've advanced to stage 3
@@ -761,9 +814,10 @@ async function completeQuest(bot: BotAPI): Promise<void> {
         }
     }
 
-    // Walk south out of the fortress and back to Falador
+    // Walk out of the fortress and back to Falador via west side of Ice Mountain
     bot.log('STATE', `Leaving fortress: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    await bot.walkToWithPathfinding(3016, 3510);
+    await bot.walkToWithPathfinding(3006, 3514);
+    await bot.walkToWithPathfinding(2998, 3507);
     await bot.walkToWithPathfinding(3008, 3475);
     await bot.walkToWithPathfinding(2985, 3430);
     await bot.walkToWithPathfinding(2970, 3370);
@@ -827,7 +881,17 @@ function prerequisiteState(
         isComplete: () => bot.getQuestProgress(questMeta.varpId!) === questMeta.varpComplete,
         run: async () => {
             bot.log('STATE', `--- Running prerequisite: ${name} ---`);
-            await questFn(bot);
+            const currentVarp = bot.getQuestProgress(questMeta.varpId!);
+            // If the quest is already in progress (e.g. from a previous failed attempt),
+            // use the state machine which handles partial progress via per-state isComplete.
+            // The raw questFn asserts varp === 0 and throws if the quest was already started.
+            if (currentVarp > 0 && currentVarp !== questMeta.varpComplete && questMeta.buildStates) {
+                bot.log('STATE', `Quest "${name}" already in progress (varp=${currentVarp}), resuming via state machine`);
+                const root = questMeta.buildStates(bot);
+                await runStateMachine(bot, { root, varpIds: [questMeta.varpId!] });
+            } else {
+                await questFn(bot);
+            }
             bot.log('EVENT', `${name} complete. QP: ${bot.getVarp(QP_VARP)}`);
         }
     };
@@ -879,9 +943,21 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
                 isComplete: () => bot.getQuestProgress(BKF_VARP) >= STAGE_SABOTAGED,
                 stuckThreshold: 3000,
                 run: async () => {
-                    // Leave castle if on upper floor
+                    // On retry, bot might be stuck on upper floors inside the fortress.
+                    // The leaveWhiteKnightsCastle function is only for White Knights' Castle.
+                    // If inside the fortress (upper floor), try to climb down first.
                     if ((bot.player.level as number) > 0) {
-                        await leaveWhiteKnightsCastle(bot);
+                        bot.log('STATE', `On level ${bot.player.level} at (${bot.player.x},${bot.player.z}), trying to descend`);
+                        // Look for any climb-down ladder
+                        const downLadder = bot.findNearbyLoc('loc_1749', 16) ?? bot.findNearbyLoc('loc_1746', 16) ?? bot.findNearbyLoc('loc_1740', 16);
+                        if (downLadder) {
+                            await bot.interactLoc(downLadder, 1);
+                            await bot.waitForTicks(3);
+                        }
+                        // If still not level 0, try White Knights' Castle descent
+                        if ((bot.player.level as number) > 0) {
+                            await leaveWhiteKnightsCastle(bot);
+                        }
                     }
                     await infiltrateFortress(bot);
                 }

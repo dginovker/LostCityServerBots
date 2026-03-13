@@ -1,8 +1,8 @@
 {
-  "test": "pirates-treasure",
+  "test": "druidic-ritual",
   "states": [
     {
-      "path": "pirates-treasure",
+      "path": "druidic-ritual",
       "snapshot": {
         "position": {
           "x": 3222,
@@ -33,8 +33,7 @@
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "80": 0
         },
         "items": [
           {
@@ -46,7 +45,7 @@
       }
     },
     {
-      "path": "pirates-treasure/earn-coins",
+      "path": "druidic-ritual/train-combat",
       "snapshot": {
         "position": {
           "x": 3222,
@@ -77,8 +76,7 @@
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "80": 0
         },
         "items": [
           {
@@ -90,18 +88,18 @@
       }
     },
     {
-      "path": "pirates-treasure/buy-apron",
+      "path": "druidic-ritual/collect-raw-bear-meat",
       "snapshot": {
         "position": {
-          "x": 3222,
-          "z": 3220,
+          "x": 3184,
+          "z": 3277,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 10,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -115,42 +113,36 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "80": 0
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 2138,
+            "name": "Raw chicken",
             "count": 1
-          },
-          {
-            "id": 995,
-            "name": "Coins",
-            "count": 200
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/start-quest",
+      "path": "druidic-ritual/collect-raw-beef",
       "snapshot": {
         "position": {
-          "x": 3205,
-          "z": 3414,
+          "x": 3175,
+          "z": 3223,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -164,47 +156,41 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 0,
-          "74": 0
+          "80": 0
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 2138,
+            "name": "Raw chicken",
             "count": 1
           },
           {
-            "id": 995,
-            "name": "Coins",
-            "count": 198
-          },
-          {
-            "id": 1005,
-            "name": "White apron",
+            "id": 2136,
+            "name": "Raw bear meat",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/smuggle-rum",
+      "path": "druidic-ritual/collect-raw-rat-meat",
       "snapshot": {
         "position": {
-          "x": 3054,
-          "z": 3251,
+          "x": 3253,
+          "z": 3264,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -218,47 +204,46 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 1,
-          "74": 0
+          "80": 0
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 2138,
+            "name": "Raw chicken",
             "count": 1
           },
           {
-            "id": 995,
-            "name": "Coins",
-            "count": 198
+            "id": 2136,
+            "name": "Raw bear meat",
+            "count": 1
           },
           {
-            "id": 1005,
-            "name": "White apron",
+            "id": 2132,
+            "name": "Raw beef",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/retrieve-rum",
+      "path": "druidic-ritual/start-quest",
       "snapshot": {
         "position": {
-          "x": 2939,
-          "z": 3154,
+          "x": 3195,
+          "z": 3198,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -272,47 +257,51 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 1,
-          "74": 2
+          "80": 0
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 2138,
+            "name": "Raw chicken",
             "count": 1
           },
           {
-            "id": 995,
-            "name": "Coins",
-            "count": 168
+            "id": 2136,
+            "name": "Raw bear meat",
+            "count": 1
           },
           {
-            "id": 1005,
-            "name": "White apron",
+            "id": 2132,
+            "name": "Raw beef",
+            "count": 1
+          },
+          {
+            "id": 2134,
+            "name": "Raw rat meat",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/get-key",
+      "path": "druidic-ritual/talk-to-sanfew",
       "snapshot": {
         "position": {
-          "x": 3010,
-          "z": 3207,
+          "x": 2926,
+          "z": 3487,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -326,47 +315,51 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 1,
-          "74": 0
+          "80": 1
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 2138,
+            "name": "Raw chicken",
             "count": 1
           },
           {
-            "id": 995,
-            "name": "Coins",
-            "count": 138
+            "id": 2136,
+            "name": "Raw bear meat",
+            "count": 1
           },
           {
-            "id": 431,
-            "name": "Karamjan rum",
+            "id": 2132,
+            "name": "Raw beef",
+            "count": 1
+          },
+          {
+            "id": 2134,
+            "name": "Raw rat meat",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/open-chest",
+      "path": "druidic-ritual/enchant-meats",
       "snapshot": {
         "position": {
-          "x": 3052,
-          "z": 3252,
+          "x": 2897,
+          "z": 3428,
           "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -380,47 +373,51 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 2,
-          "74": 0
+          "80": 2
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 2138,
+            "name": "Raw chicken",
             "count": 1
           },
           {
-            "id": 995,
-            "name": "Coins",
-            "count": 138
+            "id": 2136,
+            "name": "Raw bear meat",
+            "count": 1
           },
           {
-            "id": 432,
-            "name": "Chest key",
+            "id": 2132,
+            "name": "Raw beef",
+            "count": 1
+          },
+          {
+            "id": 2134,
+            "name": "Raw rat meat",
             "count": 1
           }
         ]
       }
     },
     {
-      "path": "pirates-treasure/dig-treasure",
+      "path": "druidic-ritual/deliver-meats",
       "snapshot": {
         "position": {
-          "x": 3219,
-          "z": 3396,
-          "level": 1
+          "x": 2884,
+          "z": 3398,
+          "level": 0
         },
         "skills": {
-          "ATTACK": 1,
+          "ATTACK": 15,
           "DEFENCE": 1,
-          "STRENGTH": 1,
-          "HITPOINTS": 10,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
@@ -434,32 +431,73 @@
           "MINING": 1,
           "HERBLORE": 1,
           "AGILITY": 1,
-          "THIEVING": 13,
+          "THIEVING": 1,
           "STAT18": 1,
           "STAT19": 1,
           "RUNECRAFT": 1
         },
         "varps": {
-          "71": 3,
-          "74": 0
+          "80": 2
         },
         "items": [
           {
-            "id": 1265,
-            "name": "Bronze pickaxe",
+            "id": 525,
+            "name": "Enchanted chicken",
             "count": 1
           },
           {
-            "id": 995,
-            "name": "Coins",
-            "count": 138
+            "id": 524,
+            "name": "Enchanted bear",
+            "count": 1
           },
           {
-            "id": 433,
-            "name": "Pirate message",
+            "id": 522,
+            "name": "Enchanted beef",
+            "count": 1
+          },
+          {
+            "id": 523,
+            "name": "Enchanted rat",
             "count": 1
           }
         ]
+      }
+    },
+    {
+      "path": "druidic-ritual/complete-quest",
+      "snapshot": {
+        "position": {
+          "x": 2897,
+          "z": 3428,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 15,
+          "DEFENCE": 1,
+          "STRENGTH": 11,
+          "HITPOINTS": 14,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "80": 3
+        },
+        "items": []
       }
     }
   ]

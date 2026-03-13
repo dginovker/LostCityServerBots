@@ -91,8 +91,8 @@
       "path": "restless-ghost/get-ghostspeak-amulet",
       "snapshot": {
         "position": {
-          "x": 3246,
-          "z": 3205,
+          "x": 3242,
+          "z": 3207,
           "level": 0
         },
         "skills": {
@@ -134,7 +134,7 @@
       "path": "restless-ghost/talk-to-ghost",
       "snapshot": {
         "position": {
-          "x": 3235,
+          "x": 3237,
           "z": 3154,
           "level": 0
         },
@@ -182,8 +182,8 @@
       "path": "restless-ghost/find-skull",
       "snapshot": {
         "position": {
-          "x": 3249,
-          "z": 3195,
+          "x": 3250,
+          "z": 3194,
           "level": 0
         },
         "skills": {

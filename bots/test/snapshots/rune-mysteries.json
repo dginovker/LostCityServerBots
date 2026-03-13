@@ -17,12 +17,12 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
           "FIREMAKING": 1,
-          "CRAFTING": 1,
+          "CRAFTING": 3,
           "SMITHING": 1,
           "MINING": 1,
           "HERBLORE": 1,
@@ -36,6 +36,36 @@
           "63": 0
         },
         "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
           {
             "id": 1265,
             "name": "Bronze pickaxe",
@@ -60,12 +90,12 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
           "FIREMAKING": 1,
-          "CRAFTING": 1,
+          "CRAFTING": 3,
           "SMITHING": 1,
           "MINING": 1,
           "HERBLORE": 1,
@@ -83,6 +113,36 @@
             "id": 1265,
             "name": "Bronze pickaxe",
             "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
           }
         ]
       }
@@ -91,8 +151,8 @@
       "path": "rune-mysteries/visit-sedridor",
       "snapshot": {
         "position": {
-          "x": 3212,
-          "z": 3220,
+          "x": 3209,
+          "z": 3221,
           "level": 1
         },
         "skills": {
@@ -103,12 +163,12 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
           "FIREMAKING": 1,
-          "CRAFTING": 1,
+          "CRAFTING": 3,
           "SMITHING": 1,
           "MINING": 1,
           "HERBLORE": 1,
@@ -128,6 +188,36 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 1438,
             "name": "Air talisman",
             "count": 1
@@ -139,8 +229,8 @@
       "path": "rune-mysteries/visit-aubury",
       "snapshot": {
         "position": {
-          "x": 3103,
-          "z": 9571,
+          "x": 3106,
+          "z": 9567,
           "level": 0
         },
         "skills": {
@@ -151,12 +241,12 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
           "FIREMAKING": 1,
-          "CRAFTING": 1,
+          "CRAFTING": 3,
           "SMITHING": 1,
           "MINING": 1,
           "HERBLORE": 1,
@@ -176,6 +266,36 @@
             "count": 1
           },
           {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
             "id": 290,
             "name": "Research package",
             "count": 1
@@ -187,8 +307,8 @@
       "path": "rune-mysteries/return-to-sedridor",
       "snapshot": {
         "position": {
-          "x": 3252,
-          "z": 3403,
+          "x": 3254,
+          "z": 3401,
           "level": 0
         },
         "skills": {
@@ -199,12 +319,12 @@
           "RANGED": 1,
           "PRAYER": 1,
           "MAGIC": 1,
-          "COOKING": 1,
+          "COOKING": 4,
           "WOODCUTTING": 1,
           "FLETCHING": 1,
           "FISHING": 1,
           "FIREMAKING": 1,
-          "CRAFTING": 1,
+          "CRAFTING": 3,
           "SMITHING": 1,
           "MINING": 1,
           "HERBLORE": 1,
@@ -218,6 +338,36 @@
           "63": 5
         },
         "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 68
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
           {
             "id": 1265,
             "name": "Bronze pickaxe",

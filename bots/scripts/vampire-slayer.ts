@@ -273,7 +273,13 @@ async function trainCombat(bot: BotAPI, targetAttackLevel: number, targetStrengt
 async function talkToMorgan(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Talking to Morgan to start quest ===');
 
-    // Walk to Morgan's house in Draynor Village
+    // Walk to Morgan's house in Draynor Village.
+    // If east of the fences (x > 3230), route south first to avoid
+    // chicken pen/farm fences blocking the pathfinder.
+    if (bot.player.x > 3230) {
+        await bot.walkToWithPathfinding(3240, 3226); // South to Lumbridge bridge area (open)
+        await bot.walkToWithPathfinding(3222, 3218); // West across bridge to Lumbridge spawn
+    }
     await bot.walkToWithPathfinding(MORGAN_HOUSE_X, MORGAN_HOUSE_Z);
 
     // Open door to Morgan's house
@@ -876,18 +882,57 @@ export function buildVampireSlayerStates(bot: BotAPI): BotState {
                 isComplete: () => bot.getQuestProgress(VAMPIRE_SLAYER_VARP) === STAGE_COMPLETE,
                 maxRetries: 5,
                 run: async () => {
-                    // Walk back to Draynor Manor from Varrock using waypoints
-                    const returnRoute = [
-                        { x: 3175, z: 3427 },
-                        { x: 3080, z: 3400 },
-                        { x: 3082, z: 3336 },
-                        { x: DRAYNOR_MANOR_ENTRANCE_X, z: DRAYNOR_MANOR_ENTRANCE_Z },
-                    ];
-                    for (const wp of returnRoute) {
-                        await bot.walkToWithPathfinding(wp.x, wp.z);
+                    // Walk to Draynor Manor. The bot may be starting from
+                    // Varrock (after get-stake-and-sword), Lumbridge (after
+                    // death respawn), or already inside the manor (retry
+                    // after a failed fight attempt).
+                    const bx = bot.player.x;
+                    const bz = bot.player.z;
+                    const insideManor = bx >= 3095 && bx <= 3125 && bz >= 3330 && bz <= 3370;
+
+                    if (insideManor) {
+                        // Already inside Draynor Manor — go straight to
+                        // the crypt stairs without re-routing through the
+                        // entrance. Walk to the east wing first then to the
+                        // stairs room (same path goToBasement uses inside).
+                        bot.log('STATE', `Already inside manor at (${bx},${bz}), heading to basement`);
+                        await bot.walkToWithPathfinding(3120, 3359);
+                        await bot.walkToWithPathfinding(3118, 3357);
+                        await bot.climbStairs('cryptstairsdown', 1);
+                        await bot.waitForTicks(3);
+                        if (bot.player.z < 9000) {
+                            throw new Error(`Failed to reach basement from inside manor: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+                        }
+                        bot.log('STATE', `In basement: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+                    } else if (bz >= 3380) {
+                        // In Varrock (north of Champions' Guild) — reverse the
+                        // shared Varrock route: west gate -> west road -> south
+                        const returnRoute = [
+                            { x: 3175, z: 3427 },
+                            { x: 3080, z: 3400 },
+                            { x: 3082, z: 3336 },
+                            { x: DRAYNOR_MANOR_ENTRANCE_X, z: DRAYNOR_MANOR_ENTRANCE_Z },
+                        ];
+                        for (const wp of returnRoute) {
+                            await bot.walkToWithPathfinding(wp.x, wp.z);
+                        }
+                        await goToBasement(bot);
+                    } else {
+                        // In Lumbridge area or south of Champions' Guild after
+                        // death respawn. Go west first (south of the guild's
+                        // brickwalls/fencing at ~3187-3193,3355-3365), then
+                        // north to the manor.
+                        const returnRoute = [
+                            { x: 3105, z: 3250 },   // West to Draynor road (well south of guild)
+                            { x: 3082, z: 3336 },   // NW along western road
+                            { x: DRAYNOR_MANOR_ENTRANCE_X, z: DRAYNOR_MANOR_ENTRANCE_Z },
+                        ];
+                        for (const wp of returnRoute) {
+                            await bot.walkToWithPathfinding(wp.x, wp.z);
+                        }
+                        await goToBasement(bot);
                     }
 
-                    await goToBasement(bot);
                     await fightCountDraynor(bot);
 
                     await bot.waitForTicks(5);
