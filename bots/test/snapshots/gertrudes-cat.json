@@ -1,0 +1,555 @@
+{
+  "test": "gertrudes-cat",
+  "states": [
+    {
+      "path": "gertrudes-cat",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/earn-coins",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/get-bucket",
+      "snapshot": {
+        "position": {
+          "x": 3225,
+          "z": 3217,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 117
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/get-milk",
+      "snapshot": {
+        "position": {
+          "x": 3209,
+          "z": 3244,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 115
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/get-sardine",
+      "snapshot": {
+        "position": {
+          "x": 3256,
+          "z": 3276,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 115
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/get-doogle-leaves",
+      "snapshot": {
+        "position": {
+          "x": 3014,
+          "z": 3226,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 105
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          },
+          {
+            "id": 327,
+            "name": "Raw sardine",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/start-quest",
+      "snapshot": {
+        "position": {
+          "x": 3152,
+          "z": 3399,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 0,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 105
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          },
+          {
+            "id": 327,
+            "name": "Raw sardine",
+            "count": 1
+          },
+          {
+            "id": 1573,
+            "name": "Doogle leaves",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/find-boys",
+      "snapshot": {
+        "position": {
+          "x": 3150,
+          "z": 3410,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 1,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 105
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          },
+          {
+            "id": 327,
+            "name": "Raw sardine",
+            "count": 1
+          },
+          {
+            "id": 1573,
+            "name": "Doogle leaves",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/find-fluffs",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3432,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 2,
+          "181": -1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 5
+          },
+          {
+            "id": 1927,
+            "name": "Bucket of milk",
+            "count": 1
+          },
+          {
+            "id": 327,
+            "name": "Raw sardine",
+            "count": 1
+          },
+          {
+            "id": 1573,
+            "name": "Doogle leaves",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "gertrudes-cat/complete-quest",
+      "snapshot": {
+        "position": {
+          "x": 3305,
+          "z": 3505,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 4,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "180": 5,
+          "181": 54037946
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 5
+          },
+          {
+            "id": 1925,
+            "name": "Bucket",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}
