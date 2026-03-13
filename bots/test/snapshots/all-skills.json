@@ -1,0 +1,1103 @@
+{
+  "test": "all-skills",
+  "states": [
+    {
+      "path": "all-skills",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/setup",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/fishing",
+      "snapshot": {
+        "position": {
+          "x": 3014,
+          "z": 3224,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 177
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/woodcutting",
+      "snapshot": {
+        "position": {
+          "x": 3087,
+          "z": 3228,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 10,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 177
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/firemaking",
+      "snapshot": {
+        "position": {
+          "x": 3214,
+          "z": 3232,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 10,
+          "FLETCHING": 1,
+          "FISHING": 10,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 177
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          },
+          {
+            "id": 1511,
+            "name": "Logs",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/cooking",
+      "snapshot": {
+        "position": {
+          "x": 3189,
+          "z": 3234,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 11,
+          "FLETCHING": 1,
+          "FISHING": 10,
+          "FIREMAKING": 10,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 177
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/mining",
+      "snapshot": {
+        "position": {
+          "x": 3112,
+          "z": 3256,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 10,
+          "WOODCUTTING": 12,
+          "FLETCHING": 1,
+          "FISHING": 13,
+          "FIREMAKING": 12,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 177
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/f2p-skills/smithing",
+      "snapshot": {
+        "position": {
+          "x": 3297,
+          "z": 3314,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 10,
+          "WOODCUTTING": 12,
+          "FLETCHING": 1,
+          "FISHING": 13,
+          "FIREMAKING": 12,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 10,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 6,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 177
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 436,
+            "name": "Copper ore",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 315,
+            "name": "Shrimps",
+            "count": 1
+          },
+          {
+            "id": 436,
+            "name": "Copper ore",
+            "count": 1
+          },
+          {
+            "id": 436,
+            "name": "Copper ore",
+            "count": 1
+          },
+          {
+            "id": 317,
+            "name": "Raw shrimps",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/rune-mysteries",
+      "snapshot": {
+        "position": {
+          "x": 3231,
+          "z": 3298,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 10,
+          "DEFENCE": 10,
+          "STRENGTH": 10,
+          "HITPOINTS": 13,
+          "RANGED": 10,
+          "PRAYER": 10,
+          "MAGIC": 10,
+          "COOKING": 10,
+          "WOODCUTTING": 10,
+          "FLETCHING": 1,
+          "FISHING": 10,
+          "FIREMAKING": 10,
+          "CRAFTING": 10,
+          "SMITHING": 10,
+          "MINING": 10,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 590,
+            "name": "Tinderbox",
+            "count": 1
+          },
+          {
+            "id": 1735,
+            "name": "Shears",
+            "count": 1
+          },
+          {
+            "id": 2347,
+            "name": "Hammer",
+            "count": 1
+          },
+          {
+            "id": 1351,
+            "name": "Bronze axe",
+            "count": 1
+          },
+          {
+            "id": 303,
+            "name": "Small fishing net",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 50
+          }
+        ]
+      }
+    },
+    {
+      "path": "all-skills/runecrafting",
+      "snapshot": {
+        "position": {
+          "x": 3253,
+          "z": 3401,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 10,
+          "DEFENCE": 10,
+          "STRENGTH": 10,
+          "HITPOINTS": 13,
+          "RANGED": 10,
+          "PRAYER": 10,
+          "MAGIC": 10,
+          "COOKING": 10,
+          "WOODCUTTING": 10,
+          "FLETCHING": 1,
+          "FISHING": 10,
+          "FIREMAKING": 10,
+          "CRAFTING": 10,
+          "SMITHING": 10,
+          "MINING": 10,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "63": 6
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 1438,
+            "name": "Air talisman",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 50
+          }
+        ]
+      }
+    }
+  ]
+}
