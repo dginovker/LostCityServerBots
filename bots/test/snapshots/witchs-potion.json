@@ -1,0 +1,477 @@
+{
+  "test": "witchs-potion",
+  "states": [
+    {
+      "path": "witchs-potion",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/earn-coins",
+      "snapshot": {
+        "position": {
+          "x": 3222,
+          "z": 3218,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/start-quest",
+      "snapshot": {
+        "position": {
+          "x": 3225,
+          "z": 3219,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 0
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 12
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/get-eye-of-newt",
+      "snapshot": {
+        "position": {
+          "x": 2968,
+          "z": 3204,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 12
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/get-burnt-meat",
+      "snapshot": {
+        "position": {
+          "x": 3013,
+          "z": 3260,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 9
+          },
+          {
+            "id": 221,
+            "name": "Eye of newt",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/get-onion",
+      "snapshot": {
+        "position": {
+          "x": 2969,
+          "z": 3210,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 8
+          },
+          {
+            "id": 221,
+            "name": "Eye of newt",
+            "count": 1
+          },
+          {
+            "id": 2146,
+            "name": "Burnt meat",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/kill-rat",
+      "snapshot": {
+        "position": {
+          "x": 3191,
+          "z": 3266,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 8
+          },
+          {
+            "id": 221,
+            "name": "Eye of newt",
+            "count": 1
+          },
+          {
+            "id": 2146,
+            "name": "Burnt meat",
+            "count": 1
+          },
+          {
+            "id": 1957,
+            "name": "Onion",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/deliver-items",
+      "snapshot": {
+        "position": {
+          "x": 3211,
+          "z": 3207,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 1
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 8
+          },
+          {
+            "id": 221,
+            "name": "Eye of newt",
+            "count": 1
+          },
+          {
+            "id": 2146,
+            "name": "Burnt meat",
+            "count": 1
+          },
+          {
+            "id": 1957,
+            "name": "Onion",
+            "count": 1
+          },
+          {
+            "id": 300,
+            "name": "Rats tail",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "path": "witchs-potion/drink-cauldron",
+      "snapshot": {
+        "position": {
+          "x": 2969,
+          "z": 3207,
+          "level": 0
+        },
+        "skills": {
+          "ATTACK": 1,
+          "DEFENCE": 1,
+          "STRENGTH": 1,
+          "HITPOINTS": 10,
+          "RANGED": 1,
+          "PRAYER": 1,
+          "MAGIC": 1,
+          "COOKING": 1,
+          "WOODCUTTING": 1,
+          "FLETCHING": 1,
+          "FISHING": 1,
+          "FIREMAKING": 1,
+          "CRAFTING": 1,
+          "SMITHING": 1,
+          "MINING": 1,
+          "HERBLORE": 1,
+          "AGILITY": 1,
+          "THIEVING": 1,
+          "STAT18": 1,
+          "STAT19": 1,
+          "RUNECRAFT": 1
+        },
+        "varps": {
+          "67": 2
+        },
+        "items": [
+          {
+            "id": 1265,
+            "name": "Bronze pickaxe",
+            "count": 1
+          },
+          {
+            "id": 995,
+            "name": "Coins",
+            "count": 8
+          }
+        ]
+      }
+    }
+  ]
+}
