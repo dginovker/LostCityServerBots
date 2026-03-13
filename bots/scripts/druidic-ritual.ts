@@ -1,4 +1,3 @@
-import path from 'path';
 import NpcType from '../../src/cache/config/NpcType.js';
 import type Npc from '../../src/engine/entity/Npc.js';
 import { BotAPI } from '../runtime/api.js';
@@ -1005,9 +1004,19 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
         name: 'druidic-ritual',
         isComplete: () => bot.getQuestProgress(DRUIDIC_RITUAL_VARP) === STAGE_COMPLETE,
         run: async () => { throw new Error('Composite state should not be called directly'); },
+        entrySnapshot: {
+            position: { x: 3222, z: 3218 },
+            varps: { [DRUIDIC_RITUAL_VARP]: 0 },
+            items: ['Bronze pickaxe'],
+        },
         children: [
             {
                 name: 'train-combat',
+                entrySnapshot: {
+                    position: { x: 3222, z: 3218 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 0 },
+                    items: ['Bronze pickaxe'],
+                },
                 isComplete: () => {
                     const atk = bot.getSkill('Attack').baseLevel;
                     const str = bot.getSkill('Strength').baseLevel;
@@ -1026,6 +1035,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             // After this, collect beef and rat meat — those fights are easier.
             {
                 name: 'collect-raw-bear-meat',
+                entrySnapshot: {
+                    position: { x: 3184, z: 3276 },
+                    skills: { ATTACK: 15, STRENGTH: 10, HITPOINTS: 14 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 0 },
+                    items: ['Raw chicken'],
+                },
                 isComplete: () => bot.findItem('Raw bear meat') !== null || bot.findItem('Enchanted bear') !== null,
                 maxRetries: 10,
                 stuckThreshold: 3000,
@@ -1036,6 +1051,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'collect-raw-beef',
+                entrySnapshot: {
+                    position: { x: 3179, z: 3222 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 14 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 0 },
+                    items: ['Raw chicken', 'Raw bear meat'],
+                },
                 isComplete: () => bot.findItem('Raw beef') !== null || bot.findItem('Enchanted beef') !== null,
                 maxRetries: 5,
                 run: async () => {
@@ -1044,6 +1065,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'collect-raw-rat-meat',
+                entrySnapshot: {
+                    position: { x: 3253, z: 3264 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 14 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 0 },
+                    items: ['Raw chicken', 'Raw bear meat', 'Raw beef'],
+                },
                 isComplete: () => bot.findItem('Raw rat meat') !== null || bot.findItem('Enchanted rat') !== null,
                 maxRetries: 5,
                 run: async () => {
@@ -1052,6 +1079,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'start-quest',
+                entrySnapshot: {
+                    position: { x: 3197, z: 3203 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 15 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 0 },
+                    items: ['Raw chicken', 'Raw bear meat', 'Raw beef', 'Raw rat meat'],
+                },
                 isComplete: () => bot.getQuestProgress(DRUIDIC_RITUAL_VARP) >= STAGE_STARTED,
                 run: async () => {
                     // If already near Taverley/druid circle (e.g. on retry), skip the long walk
@@ -1067,6 +1100,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'talk-to-sanfew',
+                entrySnapshot: {
+                    position: { x: 2925, z: 3488 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 15 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 1 },
+                    items: ['Raw chicken', 'Raw bear meat', 'Raw beef', 'Raw rat meat'],
+                },
                 isComplete: () => bot.getQuestProgress(DRUIDIC_RITUAL_VARP) >= STAGE_SPOKEN_SANFEW,
                 run: async () => {
                     await talkToSanfew(bot);
@@ -1074,6 +1113,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'enchant-meats',
+                entrySnapshot: {
+                    position: { x: 2897, z: 3428 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 15 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 2 },
+                    items: ['Raw chicken', 'Raw bear meat', 'Raw beef', 'Raw rat meat'],
+                },
                 isComplete: () => {
                     return bot.findItem('Enchanted rat') !== null &&
                            bot.findItem('Enchanted beef') !== null &&
@@ -1086,6 +1131,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'deliver-meats',
+                entrySnapshot: {
+                    position: { x: 2884, z: 3398 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 15 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 2 },
+                    items: ['Enchanted chicken', 'Enchanted bear', 'Enchanted beef', 'Enchanted rat'],
+                },
                 isComplete: () => bot.getQuestProgress(DRUIDIC_RITUAL_VARP) >= STAGE_GIVEN_INGREDIENTS,
                 run: async () => {
                     await returnToSanfewWithMeats(bot);
@@ -1093,6 +1144,12 @@ export function buildDruidicRitualStates(bot: BotAPI): BotState {
             },
             {
                 name: 'complete-quest',
+                entrySnapshot: {
+                    position: { x: 2897, z: 3428 },
+                    skills: { ATTACK: 15, STRENGTH: 11, HITPOINTS: 15 },
+                    varps: { [DRUIDIC_RITUAL_VARP]: 3 },
+                    items: [],
+                },
                 isComplete: () => bot.getQuestProgress(DRUIDIC_RITUAL_VARP) === STAGE_COMPLETE,
                 run: async () => {
                     await returnToKaqemeexComplete(bot);
@@ -1127,8 +1184,7 @@ export async function druidicRitual(bot: BotAPI): Promise<void> {
     }
 
     const root = buildDruidicRitualStates(bot);
-    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
-    await runStateMachine(bot, { root, varpIds: [DRUIDIC_RITUAL_VARP], captureSnapshots: true, snapshotDir });
+    await runStateMachine(bot, { root, varpIds: [DRUIDIC_RITUAL_VARP] });
 }
 
 export const metadata: ScriptMeta = {

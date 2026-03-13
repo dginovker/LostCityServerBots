@@ -1,4 +1,3 @@
-import path from 'path';
 import LocType from '../../src/cache/config/LocType.js';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
@@ -1062,9 +1061,19 @@ export function buildErnestTheChickenStates(bot: BotAPI): BotState {
         name: 'ernest-the-chicken',
         isComplete: () => bot.getQuestProgress(HAUNTED_VARP) === STAGE_COMPLETE,
         run: async () => { throw new Error('Composite state should not be called directly'); },
+        entrySnapshot: {
+            position: { x: 3222, z: 3218 },
+            varps: { [HAUNTED_VARP]: 0 },
+            items: ['Bronze pickaxe'],
+        },
         children: [
             {
                 name: 'talk-to-veronica',
+                entrySnapshot: {
+                    position: { x: 3222, z: 3218 },
+                    varps: { [HAUNTED_VARP]: 0 },
+                    items: ['Bronze pickaxe'],
+                },
                 isComplete: () => bot.getQuestProgress(HAUNTED_VARP) >= STAGE_STARTED,
                 run: async () => {
                     await walkToManorArea(bot);
@@ -1073,6 +1082,11 @@ export function buildErnestTheChickenStates(bot: BotAPI): BotState {
             },
             {
                 name: 'talk-to-oddenstein',
+                entrySnapshot: {
+                    position: { x: 3110, z: 3330 },
+                    varps: { [HAUNTED_VARP]: 1 },
+                    items: ['Bronze pickaxe'],
+                },
                 isComplete: () => bot.getQuestProgress(HAUNTED_VARP) >= STAGE_SPOKEN_TO_ODDENSTEIN,
                 run: async () => {
                     await enterManor(bot);
@@ -1083,6 +1097,11 @@ export function buildErnestTheChickenStates(bot: BotAPI): BotState {
             },
             {
                 name: 'get-pressure-gauge',
+                entrySnapshot: {
+                    position: { x: 3108, z: 3362 },
+                    varps: { [HAUNTED_VARP]: 2 },
+                    items: ['Bronze pickaxe'],
+                },
                 isComplete: () => bot.findItem('Pressure gauge') !== null,
                 run: async () => {
                     // Skip manor item collection if we already have what we need
@@ -1196,8 +1215,7 @@ export async function ernestTheChicken(bot: BotAPI): Promise<void> {
     }
 
     const root = buildErnestTheChickenStates(bot);
-    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
-    await runStateMachine(bot, { root, varpIds: [HAUNTED_VARP], captureSnapshots: true, snapshotDir });
+    await runStateMachine(bot, { root, varpIds: [HAUNTED_VARP] });
 }
 
 export const metadata: ScriptMeta = {

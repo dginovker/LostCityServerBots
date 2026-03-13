@@ -38,7 +38,9 @@ constraint is on the script and API code, not the test infrastructure.
 3. **Write the script** — Create `bots/scripts/<name>.ts` with a `ScriptMeta`
    export (see `bots/runtime/script-meta.ts` for the interface). This is how the
    test server auto-discovers scripts. Follow existing script patterns. Use
-   `bots/scripts/shared-routes.ts` for reusable navigation paths.
+   `bots/scripts/shared-routes.ts` for reusable navigation paths. Add an
+   `entrySnapshot` to each `BotState` so `--state=` testing works immediately
+   (see "Inline entrySnapshot" section below).
 
 4. **Write the test** — Create `bots/test/tests/<name>.test.ts` following existing
    patterns.
@@ -55,8 +57,8 @@ All testing uses the persistent server. Start it once, run tests against it:
 
 ```bash
 bun engine/bots/test/server.ts              # start once (~20s to load world)
-bun engine/bots/test/run.ts sheepshearer &   # run tests (~2s)
-bun engine/bots/test/run.ts runemysteries &
+bun engine/bots/test/run.ts sheepshearer    # default: all states in parallel (~2s)
+bun engine/bots/test/run.ts runemysteries   # same — runs concurrently with above
 ```
 
 The server hot-reloads bot scripts and runtime code automatically. After editing
@@ -66,85 +68,68 @@ restart.
 
 Omit `--timeout` — let each script's `ScriptMeta.maxTicks` handle it.
 
-## Single-state iteration with --state=
-
-Full E2E runs are expensive. Use `--state=` to test independent states in
-parallel in seconds. Snapshots are captured automatically during E2E runs, or
-you can handcraft them.
+## CLI modes
 
 ```bash
-# Run states in parallel against the persistent server:
-bun engine/bots/test/run.ts f2pskills --state="f2p-skills/smithing" &
-bun engine/bots/test/run.ts f2pskills --state="f2p-skills/woodcutting" &
-wait
-# Each process exits 0 (PASS) or 1 (FAIL) and prints a [RESULT] line.
+# Default: discover all states with entrySnapshot, run them in parallel
+bun engine/bots/test/run.ts sheepshearer
 
-# Once all states pass individually, do a full E2E:
-bun engine/bots/test/run.ts f2pskills
+# Run specific states by name (leaf name or full path)
+bun engine/bots/test/run.ts sheepshearer --states shear-sheep deliver-wool
+
+# Full sequential E2E (runs all-states first as fail-fast, then sequential)
+bun engine/bots/test/run.ts sheepshearer --e2e
 ```
 
 ## Fixing Bugs
 
 Since script tests run their individual states in parallel, you will get continuous streams of responses back.
 For failures, delegate the work to subagents to fix each failure, and when the subagent claims it's fixed,
-run the test in the background again to verify. 
+run the test in the background again to verify.
 
-### Where snapshots come from
+## Inline entrySnapshot
 
-Snapshots live in `bots/test/snapshots/<root-state-name>.json`. They are
-generated automatically during full E2E runs (saved incrementally, so partial
-runs produce snapshots for every state the bot entered). You can also write
-them by hand.
+Each `BotState` should define an `entrySnapshot` so it can be tested in isolation
+with `--state=`. This is an ergonomic format that gets resolved to a full snapshot
+at runtime — item names (not IDs), partial skill overrides, optional position.
 
-### Handcrafting snapshots
-
-The file must be named after the root state name returned by `buildStates()`
-(e.g. `sheep-shearer.json` for a root with `name: 'sheep-shearer'`). Format:
-
-```json
+```typescript
 {
-  "test": "sheep-shearer",
-  "states": [
-    {
-      "path": "sheep-shearer/deliver-wool",
-      "snapshot": {
-        "position": { "x": 3191, "z": 3273, "level": 0 },
-        "skills": {
-          "ATTACK": 1, "DEFENCE": 1, "STRENGTH": 1, "HITPOINTS": 10,
-          "RANGED": 1, "PRAYER": 1, "MAGIC": 1, "COOKING": 1,
-          "WOODCUTTING": 1, "FLETCHING": 1, "FISHING": 1, "FIREMAKING": 1,
-          "CRAFTING": 1, "SMITHING": 1, "MINING": 1, "HERBLORE": 1,
-          "AGILITY": 1, "THIEVING": 1, "STAT18": 1, "STAT19": 1,
-          "RUNECRAFT": 1
-        },
-        "varps": { "179": 1 },
-        "items": [
-          { "id": 1265, "name": "Bronze pickaxe", "count": 1 },
-          { "id": 995, "name": "Coins", "count": 5 },
-          { "id": 1735, "name": "Shears", "count": 1 }
-        ]
-      }
-    }
-  ]
+    name: 'deliver-wool',
+    entrySnapshot: {
+        position: { x: 3191, z: 3273 },           // level defaults to 0
+        varps: { 179: 1 },                         // varp id -> value
+        items: [                                    // string = name with count 1
+            'Bronze pickaxe',
+            { name: 'Coins', count: 5 },
+            'Shears',
+        ],
+        skills: { CRAFTING: 13 },                  // omitted skills = fresh account defaults
+    },
+    isComplete: () => /* ... */,
+    run: async (bot) => { /* ... */ },
 }
 ```
 
 Look up values in:
-- **Positions**: existing snapshots, scripts, or the game map
-- **Item IDs/names**: `content/pack/obj.pack`
+- **Positions**: existing scripts or the game map
+- **Item names**: `content/pack/obj.pack`
 - **Varp IDs/values**: `content/pack/varp.pack` and quest scripts in `content/scripts/`
-- **Skill names**: use the uppercase keys shown above (match `PlayerStatMap`)
+- **Skill names**: uppercase keys matching `PlayerStatMap` (e.g. `HITPOINTS`, `CRAFTING`)
+- **Disambiguating items**: use `{ name: 'Map part', count: 1, id: 1535 }` when
+  multiple items share the same display name
 
 ---
 
 # Development model
 
 - The persistent server supports concurrent bot tests.
-- `--state=` lets you iterate on one failing state without re-running the full quest.
-- Independent states can be fixed in parallel because snapshots are per-state.
+- Default mode runs all states in parallel — iterate on failing states individually
+  with `--states <state-name>`.
+- Independent states can be fixed in parallel because each has its own `entrySnapshot`.
 - Use subagents in isolated worktrees to fix independent failing states in parallel.
-  Each iterates with `--state=` against the shared persistent server. Merge fixes,
-  then one full E2E run to confirm.
+  Each iterates with `--states` against the shared persistent server. Merge fixes,
+  then one full `--e2e` run to confirm.
 - When states share dependencies (e.g., a bug in `api.ts`), fix the shared code
   first — then parallelize the rest.
 

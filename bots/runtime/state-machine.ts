@@ -2,6 +2,25 @@ import fs from 'fs';
 import path from 'path';
 import { BotAPI } from './api.js';
 import { PlayerStatMap } from '../../src/engine/entity/PlayerStat.js';
+import ObjType from '../../src/cache/config/ObjType.js';
+
+/**
+ * Ergonomic snapshot entry that scripters define inline on BotState.
+ * Item names (not IDs), partial skill overrides (omitted = fresh account defaults).
+ */
+export interface StateEntry {
+    /** Position to restore to. level defaults to 0 if omitted. */
+    position?: { x: number; z: number; level?: number };
+    /** Varp overrides — varp id -> value. Omitted varps default to 0. */
+    varps?: Record<number, number>;
+    /** Items in inventory. String = item name with count 1.
+     *  Object = {name, count} for named items, or {id, name, count} when items
+     *  share the same display name (e.g. "Map part" with IDs 1535/1536/1537). */
+    items?: Array<string | { name: string; count: number; id?: number }>;
+    /** Skill overrides — only include skills that differ from fresh account defaults.
+     *  Fresh account: all skills level 1, HITPOINTS level 10. */
+    skills?: Partial<Record<string, number>>;
+}
 
 /**
  * A single state in a hierarchical state machine.
@@ -15,8 +34,8 @@ export interface BotState {
     name: string;
     /** Optional sub-states — if present, this is a composite state */
     children?: BotState[];
-    /** Entry conditions for phase testing — snapshot during E2E */
-    entrySnapshot?: StateSnapshot;
+    /** Ergonomic inline snapshot for single-state testing. Resolved to StateSnapshot at runtime. */
+    entrySnapshot?: StateEntry;
     /** Check if this state is already complete (for resume) */
     isComplete: () => boolean;
     /** Execute this state's logic */
@@ -36,6 +55,88 @@ export interface StateSnapshot {
     skills: Record<string, number>; // skill name -> base level
     varps: Record<number, number>;  // varp id -> value
     items: Array<{ id: number; name: string; count: number }>; // items in inventory
+}
+
+/**
+ * Find an ObjType by its display name (case-insensitive).
+ * When multiple items share the same display name (e.g. "Coins" vs "fake_coins"),
+ * prefers stackable items over non-stackable ones since the canonical game item
+ * (coins, runes, arrows) is almost always the stackable version.
+ * Throws if not found.
+ */
+function resolveObjByDisplayName(displayName: string): ObjType {
+    const lower = displayName.toLowerCase();
+    let firstMatch: ObjType | null = null;
+    for (let id = 0; id < ObjType.count; id++) {
+        const obj = ObjType.get(id);
+        if (obj && obj.name?.toLowerCase() === lower) {
+            if (obj.stackable) {
+                return obj; // Prefer stackable match immediately
+            }
+            if (!firstMatch) {
+                firstMatch = obj;
+            }
+        }
+    }
+    if (firstMatch) {
+        return firstMatch;
+    }
+    throw new Error(`resolveStateEntry: unknown item display name "${displayName}" — not found in ObjType`);
+}
+
+/**
+ * Resolve a StateEntry (ergonomic scripter format) into a StateSnapshot
+ * (full format compatible with restoreFromSnapshot).
+ *
+ * - Resolves item display names to IDs (throws if not found — no fallback).
+ * - Fills missing skills with fresh-account defaults (level 1, HITPOINTS 10).
+ * - Defaults position.level to 0 if omitted.
+ */
+export function resolveStateEntry(entry: StateEntry): StateSnapshot {
+    // Position — default level to 0
+    const position = entry.position
+        ? { x: entry.position.x, z: entry.position.z, level: entry.position.level ?? 0 }
+        : { x: 3222, z: 3218, level: 0 }; // Lumbridge default
+
+    // Skills — fresh account defaults, then apply overrides
+    const skills: Record<string, number> = {};
+    for (const [name] of PlayerStatMap) {
+        skills[name] = name === 'HITPOINTS' ? 10 : 1;
+    }
+    if (entry.skills) {
+        for (const [name, level] of Object.entries(entry.skills)) {
+            if (!PlayerStatMap.has(name)) {
+                throw new Error(`resolveStateEntry: unknown skill "${name}"`);
+            }
+            skills[name] = level;
+        }
+    }
+
+    // Varps
+    const varps: Record<number, number> = entry.varps ?? {};
+
+    // Items — resolve display names to IDs (or use explicit id if provided)
+    const items: Array<{ id: number; name: string; count: number }> = [];
+    if (entry.items) {
+        for (const item of entry.items) {
+            const name = typeof item === 'string' ? item : item.name;
+            const count = typeof item === 'string' ? 1 : item.count;
+            const explicitId = typeof item === 'object' && 'id' in item ? item.id : undefined;
+            if (explicitId !== undefined) {
+                // Use explicit ID — for items that share display names (e.g. Map part 1/2/3)
+                const obj = ObjType.get(explicitId);
+                if (!obj) {
+                    throw new Error(`resolveStateEntry: invalid explicit item id ${explicitId}`);
+                }
+                items.push({ id: explicitId, name: obj.name ?? name, count });
+            } else {
+                const obj = resolveObjByDisplayName(name);
+                items.push({ id: obj.id, name: obj.name ?? name, count });
+            }
+        }
+    }
+
+    return { position, skills, varps, items };
 }
 
 /**
@@ -226,32 +327,12 @@ async function runWithStuckDetection(
     }
 }
 
-/**
- * Capture a StateSnapshot of the bot's current state.
- */
-function captureSnapshot(bot: BotAPI, varpIds: number[]): StateSnapshot {
-    const pos = bot.getPosition();
-    const skills: Record<string, number> = {};
-    for (const [name] of PlayerStatMap) {
-        skills[name] = bot.getSkill(name).baseLevel;
-    }
-    const varps: Record<number, number> = {};
-    for (const id of varpIds) {
-        varps[id] = bot.getVarp(id);
-    }
-    const items = bot.getInventory().map(i => ({ id: i.id, name: i.name, count: i.count }));
-    return { position: pos, skills, varps, items };
-}
 
 export interface StateMachineOptions {
     /** The top-level state (typically a composite with children) */
     root: BotState;
-    /** Varp IDs to capture in snapshots */
+    /** Varp IDs to track for stuck detection */
     varpIds?: number[];
-    /** If true, capture entrySnapshot at the start of each state and save to JSON */
-    captureSnapshots?: boolean;
-    /** Directory to save snapshot JSON files (default: bots/logs/) */
-    snapshotDir?: string;
     /** Start execution from this state path (e.g. "sheep-shearer/shear-sheep") */
     startFromState?: string;
 }
@@ -263,12 +344,10 @@ export interface StateMachineOptions {
  * - Skips states where isComplete() returns true
  * - On failure: checks death (waitForRespawn), checks isComplete (might have succeeded), retries up to maxRetries
  * - Logs state transitions: [STATE] Entering: root/child
- * - Captures entrySnapshot at the start of each state during E2E runs
  * - Supports runFromState to start execution from a specific named state
  */
 export async function runStateMachine(bot: BotAPI, options: StateMachineOptions): Promise<void> {
-    const { root, varpIds = [], captureSnapshots = false, snapshotDir, startFromState } = options;
-    const snapshots: Record<string, StateSnapshot> = {};
+    const { root, varpIds = [], startFromState } = options;
 
     let started = !startFromState; // if no startFromState, start immediately
 
@@ -303,14 +382,6 @@ export async function runStateMachine(bot: BotAPI, options: StateMachineOptions)
 
         bot.log('STATE', `[STATE] Entering: ${statePath}`);
         bot.currentStatePath = statePath;
-
-        // Capture snapshot if enabled — save incrementally so --state= works even if test is killed
-        if (captureSnapshots) {
-            state.entrySnapshot = captureSnapshot(bot, varpIds);
-            snapshots[statePath] = state.entrySnapshot;
-            const dir = snapshotDir ?? path.resolve(import.meta.dir, '..', 'logs');
-            saveSnapshots(dir, root.name, snapshots);
-        }
 
         // Composite state: delegate to children in order
         if (state.children) {
@@ -356,20 +427,12 @@ export async function runStateMachine(bot: BotAPI, options: StateMachineOptions)
         }
     }
 
-    try {
-        await executeState(root, '');
-    } finally {
-        // Save snapshots regardless of success/failure — critical for --state= iteration
-        if (captureSnapshots && Object.keys(snapshots).length > 0) {
-            const dir = snapshotDir ?? path.resolve(import.meta.dir, '..', 'logs');
-            saveSnapshots(dir, root.name, snapshots);
-            bot.log('STATE', `[STATE] Snapshots saved to ${dir}/${root.name}.json`);
-        }
-    }
+    await executeState(root, '');
 }
 
 /**
  * Snapshot file format — one per test, saved to engine/bots/test/snapshots/.
+ * Legacy: used for JSON snapshot files. New scripts should use inline entrySnapshot instead.
  */
 export interface SnapshotFile {
     test: string;
@@ -377,8 +440,9 @@ export interface SnapshotFile {
 }
 
 /**
- * Serialize all captured entrySnapshots to a JSON file.
- * Called after a successful E2E run.
+ * Serialize snapshots to a JSON file.
+ * @deprecated Legacy — used by scripts that pre-create JSON snapshot files (e.g. navigation-obstacles).
+ * New scripts should use inline entrySnapshot on BotState instead.
  */
 export function saveSnapshots(dir: string, testName: string, snapshots: Record<string, StateSnapshot>): void {
     if (!fs.existsSync(dir)) {
@@ -393,43 +457,58 @@ export function saveSnapshots(dir: string, testName: string, snapshots: Record<s
 }
 
 /**
- * Load a snapshot file, find a specific state's snapshot, restore the bot to that state,
- * then run only that state (and its children if composite).
+ * Restore a bot to a specific state's snapshot and run only that state.
+ *
+ * Snapshot resolution order:
+ * 1. Inline entrySnapshot on the BotState (resolved via resolveStateEntry)
+ * 2. JSON snapshot file (legacy — loaded from bots/test/snapshots/{root}.json)
+ *    Logs a deprecation warning encouraging migration to inline entrySnapshot.
  *
  * @param statePath The hierarchical state path, e.g. "sheep-shearer/deliver-wool"
- * @param snapshotFilePath Absolute path to the snapshot JSON file
  * @param bot The bot API to restore and run on
  * @param root The full state tree (needed to find the target state's run/isComplete)
  */
 export async function loadAndRunFromState(
     statePath: string,
-    snapshotFilePath: string,
     bot: BotAPI,
     root: BotState,
     varpIds: number[] = []
 ): Promise<void> {
-    if (!fs.existsSync(snapshotFilePath)) {
-        throw new Error(`No snapshot file found at ${snapshotFilePath}. Run a full E2E first.`);
-    }
-
-    const raw = fs.readFileSync(snapshotFilePath, 'utf-8');
-    const data: SnapshotFile = JSON.parse(raw);
-
-    const entry = data.states.find(s => s.path === statePath);
-    if (!entry) {
-        const available = data.states.map(s => s.path).join(', ');
-        throw new Error(`State "${statePath}" not found in snapshot file. Available states: ${available}`);
-    }
-
-    bot.log('STATE', `[STATE] Restoring snapshot for "${statePath}"`);
-    bot.restoreFromSnapshot(entry.snapshot);
-    await bot.waitForTicks(2); // Let the engine process teleport/state changes
-
     // Find the target state node in the tree
     const targetState = findStateByPath(root, statePath);
     if (!targetState) {
         throw new Error(`State "${statePath}" not found in state tree`);
     }
+
+    let snapshot: StateSnapshot;
+
+    // 1. Check for inline entrySnapshot on the BotState
+    if (targetState.entrySnapshot) {
+        bot.log('STATE', `[STATE] Resolving inline entrySnapshot for "${statePath}"`);
+        snapshot = resolveStateEntry(targetState.entrySnapshot);
+    }
+    // 2. Legacy fallback: JSON snapshot file
+    else {
+        const snapshotFilePath = path.resolve(import.meta.dir, '..', 'test', 'snapshots', `${root.name}.json`);
+        if (!fs.existsSync(snapshotFilePath)) {
+            throw new Error(`State "${statePath}" has no inline entrySnapshot and no legacy snapshot file at ${snapshotFilePath}. Add an entrySnapshot to the BotState definition.`);
+        }
+
+        const raw = fs.readFileSync(snapshotFilePath, 'utf-8');
+        const data: SnapshotFile = JSON.parse(raw);
+
+        const entry = data.states.find(s => s.path === statePath);
+        if (!entry) {
+            const available = data.states.map(s => s.path).join(', ');
+            throw new Error(`State "${statePath}" not found in legacy snapshot file. Available states: ${available}`);
+        }
+        snapshot = entry.snapshot;
+        bot.log('STATE', `[DEPRECATION] State "${statePath}" is using a legacy JSON snapshot. Migrate to inline entrySnapshot on the BotState definition.`);
+    }
+
+    bot.log('STATE', `[STATE] Restoring snapshot for "${statePath}"`);
+    bot.restoreFromSnapshot(snapshot);
+    await bot.waitForTicks(2); // Let the engine process teleport/state changes
 
     // Run only the target state (with normal retry logic)
     bot.log('STATE', `[STATE] Running single state: ${statePath}`);

@@ -1,4 +1,3 @@
-import path from 'path';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
 import { type BotState, runStateMachine } from '../runtime/state-machine.js';
@@ -138,9 +137,19 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
         name: 'dorics-quest',
         isComplete: () => bot.getQuestProgress(DORICS_QUEST_VARP) === STAGE_COMPLETE,
         run: async () => { throw new Error('Composite state should not be called directly'); },
+        entrySnapshot: {
+            position: { x: 3222, z: 3218 },
+            varps: { [DORICS_QUEST_VARP]: 0 },
+            items: ['Bronze pickaxe'],
+        },
         children: [
             {
                 name: 'start-quest',
+                entrySnapshot: {
+                    position: { x: 3222, z: 3218 },
+                    varps: { [DORICS_QUEST_VARP]: 0 },
+                    items: ['Bronze pickaxe'],
+                },
                 isComplete: () => bot.getQuestProgress(DORICS_QUEST_VARP) >= STAGE_STARTED,
                 run: async () => {
                     await walkFromLumbridgeToDoric(bot);
@@ -227,6 +236,11 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
             },
             {
                 name: 'gather-materials',
+                entrySnapshot: {
+                    position: { x: 2952, z: 3451 },
+                    varps: { [DORICS_QUEST_VARP]: 10 },
+                    items: ['Bronze pickaxe'],
+                },
                 isComplete: () => {
                     return bot.countItem('Clay') >= CLAY_NEEDED &&
                            bot.countItem('Copper ore') >= COPPER_ORE_NEEDED &&
@@ -292,6 +306,17 @@ export function buildDoricsQuestStates(bot: BotAPI): BotState {
             },
             {
                 name: 'deliver-to-doric',
+                entrySnapshot: {
+                    position: { x: 2969, z: 3239 },
+                    skills: { MINING: 15 },
+                    varps: { [DORICS_QUEST_VARP]: 10 },
+                    items: [
+                        'Bronze pickaxe',
+                        { name: 'Clay', count: 6 },
+                        { name: 'Iron ore', count: 2 },
+                        { name: 'Copper ore', count: 18 },
+                    ],
+                },
                 isComplete: () => bot.getQuestProgress(DORICS_QUEST_VARP) === STAGE_COMPLETE,
                 run: async () => {
                     await walkFromMineToDoric(bot);
@@ -394,8 +419,7 @@ export async function doricsQuest(bot: BotAPI): Promise<void> {
     }
 
     const root = buildDoricsQuestStates(bot);
-    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
-    await runStateMachine(bot, { root, varpIds: [DORICS_QUEST_VARP], captureSnapshots: true, snapshotDir });
+    await runStateMachine(bot, { root, varpIds: [DORICS_QUEST_VARP] });
 }
 
 /**

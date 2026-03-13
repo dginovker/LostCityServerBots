@@ -1,5 +1,7 @@
 import type { BotAPI } from './api.js';
-import type { BotState } from './state-machine.js';
+import type { BotState, StateEntry } from './state-machine.js';
+
+export type { StateEntry };
 
 /**
  * Metadata exported by each bot script for auto-discovery.

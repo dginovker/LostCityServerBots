@@ -1,4 +1,3 @@
-import path from 'path';
 import LocType from '../../src/cache/config/LocType.js';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
@@ -414,9 +413,19 @@ export function buildSheepShearerStates(bot: BotAPI): BotState {
         name: 'sheep-shearer',
         isComplete: () => bot.getQuestProgress(SHEEP_SHEARER_VARP) === STAGE_COMPLETE,
         run: async () => { throw new Error('Composite state should not be called directly'); },
+        entrySnapshot: {
+            position: { x: 3222, z: 3218 },
+            varps: { [SHEEP_SHEARER_VARP]: 0 },
+            items: ['Bronze pickaxe'],
+        },
         children: [
             {
                 name: 'earn-coins',
+                entrySnapshot: {
+                    position: { x: 3222, z: 3218 },
+                    varps: { [SHEEP_SHEARER_VARP]: 0 },
+                    items: ['Bronze pickaxe'],
+                },
                 stuckThreshold: 3000,
                 isComplete: () => {
                     const coins = bot.findItem('Coins');
@@ -428,6 +437,11 @@ export function buildSheepShearerStates(bot: BotAPI): BotState {
             },
             {
                 name: 'buy-shears',
+                entrySnapshot: {
+                    position: { x: 3217, z: 3219 },
+                    varps: { [SHEEP_SHEARER_VARP]: 0 },
+                    items: ['Bronze pickaxe', { name: 'Coins', count: 6 }],
+                },
                 isComplete: () => bot.findItem('Shears') !== null,
                 run: async () => {
                     await buyShears(bot);
@@ -435,6 +449,11 @@ export function buildSheepShearerStates(bot: BotAPI): BotState {
             },
             {
                 name: 'start-quest',
+                entrySnapshot: {
+                    position: { x: 3211, z: 3246 },
+                    varps: { [SHEEP_SHEARER_VARP]: 0 },
+                    items: ['Bronze pickaxe', { name: 'Coins', count: 5 }, 'Shears'],
+                },
                 isComplete: () => bot.getQuestProgress(SHEEP_SHEARER_VARP) >= STAGE_STARTED,
                 run: async () => {
                     await walkToFred(bot);
@@ -494,6 +513,18 @@ export function buildSheepShearerStates(bot: BotAPI): BotState {
             },
             {
                 name: 'deliver-wool',
+                entrySnapshot: {
+                    position: { x: 3189, z: 3273 },
+                    skills: { COOKING: 4 },
+                    varps: { [SHEEP_SHEARER_VARP]: 1 },
+                    items: [
+                        'Bronze pickaxe',
+                        'Bronze pickaxe',
+                        { name: 'Coins', count: 8 },
+                        'Bronze pickaxe',
+                        'Shears',
+                    ],
+                },
                 isComplete: () => bot.getQuestProgress(SHEEP_SHEARER_VARP) === STAGE_COMPLETE,
                 maxRetries: 5,
                 run: async () => {
@@ -657,8 +688,7 @@ export async function sheepShearer(bot: BotAPI): Promise<void> {
     }
 
     const root = buildSheepShearerStates(bot);
-    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
-    await runStateMachine(bot, { root, varpIds: [SHEEP_SHEARER_VARP], captureSnapshots: true, snapshotDir });
+    await runStateMachine(bot, { root, varpIds: [SHEEP_SHEARER_VARP] });
 }
 
 export const metadata: ScriptMeta = {

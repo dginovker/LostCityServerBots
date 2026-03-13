@@ -9,6 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { ScriptMeta } from '../runtime/script-meta.ts';
+import type { BotState, SnapshotFile } from '../runtime/state-machine.ts';
 
 // Skip worker threads — bots don't need login/friend/logger
 process.env.BOT_TEST_MODE = 'true';
@@ -246,17 +247,8 @@ function resolveTest(test: ActiveTest): void {
         // best effort — bot may already be removed
     }
 
-    // Copy snapshots from hot dir to the real snapshot location, then clean up hot dir
+    // Clean up hot dir
     if (test.hotDir) {
-        try {
-            const hotSnapshots = path.join(test.hotDir, 'test', 'snapshots');
-            if (fs.existsSync(hotSnapshots)) {
-                if (!fs.existsSync(snapshotDir)) fs.mkdirSync(snapshotDir, { recursive: true });
-                for (const f of fs.readdirSync(hotSnapshots)) {
-                    fs.copyFileSync(path.join(hotSnapshots, f), path.join(snapshotDir, f));
-                }
-            }
-        } catch { /* best effort */ }
         try {
             fs.rmSync(test.hotDir, { recursive: true, force: true });
         } catch { /* best effort */ }
@@ -422,8 +414,7 @@ async function runTest(testName: string, timeoutTicks?: number, streamWriter?: S
                 if (statePath && hotLoadAndRunFromState && meta.buildStates) {
                     // --state= mode: restore from snapshot and run single state
                     const root = meta.buildStates(bot);
-                    const snapshotFile = path.join(snapshotDir, `${root.name}.json`);
-                    await hotLoadAndRunFromState(statePath, snapshotFile, bot, root, meta.varpId !== undefined ? [meta.varpId] : []);
+                    await hotLoadAndRunFromState(statePath, bot, root, meta.varpId !== undefined ? [meta.varpId] : []);
                 } else {
                     await meta.run(bot);
                 }
@@ -442,18 +433,117 @@ async function runTest(testName: string, timeoutTicks?: number, streamWriter?: S
 // Start the tick loop (runs forever in the background)
 tickLoop();
 
+// --- State discovery helper ---
+// Walk a BotState tree and collect all leaf state paths that have snapshots
+// (either inline entrySnapshot on the BotState node, or a matching entry in the JSON snapshot file).
+
+interface DiscoveredState {
+    path: string;
+    source: 'inline' | 'json';
+}
+
+function discoverStates(testName: string, meta: ScriptMeta): DiscoveredState[] {
+    if (!meta.buildStates) {
+        return [];
+    }
+
+    // buildStates needs a BotAPI, but for discovery we only read the tree structure
+    // (name, children, entrySnapshot). We pass a proxy that throws on any method call
+    // so we catch accidental usage immediately.
+    const dummyBot = new Proxy({} as any, {
+        get(_target, prop) {
+            // Allow property access that buildStates might use to build the tree
+            // (e.g. closures that capture bot but don't call it during tree construction)
+            return () => {
+                throw new Error(`Discovery: BotAPI.${String(prop)}() called during buildStates — this is a bug`);
+            };
+        }
+    });
+
+    let root: BotState;
+    try {
+        root = meta.buildStates(dummyBot);
+    } catch (err) {
+        throw new Error(`Failed to build state tree for "${testName}": ${(err as Error).message}`);
+    }
+
+    // Load JSON snapshot file if it exists
+    const snapshotFile = path.join(snapshotDir, `${root.name}.json`);
+    const jsonPaths = new Set<string>();
+    if (fs.existsSync(snapshotFile)) {
+        const raw = fs.readFileSync(snapshotFile, 'utf-8');
+        const data: SnapshotFile = JSON.parse(raw);
+        for (const entry of data.states) {
+            jsonPaths.add(entry.path);
+        }
+    }
+
+    // Walk the tree and collect leaf states with snapshots
+    const result: DiscoveredState[] = [];
+
+    function walk(state: BotState, parentPath: string): void {
+        const statePath = parentPath ? `${parentPath}/${state.name}` : state.name;
+
+        if (state.children) {
+            for (const child of state.children) {
+                walk(child, statePath);
+            }
+            return;
+        }
+
+        // Leaf state — check for snapshot availability
+        if (state.entrySnapshot) {
+            result.push({ path: statePath, source: 'inline' });
+        } else if (jsonPaths.has(statePath)) {
+            result.push({ path: statePath, source: 'json' });
+        }
+    }
+
+    walk(root, '');
+    return result;
+}
+
 // HTTP server
 const _server = Bun.serve({
     port: PORT,
     idleTimeout: 255, // seconds — max Bun allows
     async fetch(req) {
         const url = new URL(req.url);
-        const testName = url.pathname.slice(1); // "/sheepshearer" -> "sheepshearer"
+        const pathname = url.pathname.slice(1); // strip leading "/"
 
-        if (!testName || testName === 'health') {
+        if (!pathname || pathname === 'health') {
             return Response.json({ status: 'ok', tests: Object.keys(scriptRegistry) });
         }
 
+        // --- /discover/{testName} endpoint ---
+        if (pathname.startsWith('discover/')) {
+            const testName = pathname.slice('discover/'.length);
+            const meta = scriptRegistry[testName];
+            if (!meta) {
+                const available = Object.keys(scriptRegistry).join(', ');
+                return Response.json(
+                    { error: `Unknown test: ${testName}. Available: ${available}` },
+                    { status: 404 }
+                );
+            }
+            if (!meta.buildStates) {
+                return Response.json(
+                    { error: `Script "${testName}" does not export buildStates — no states to discover` },
+                    { status: 400 }
+                );
+            }
+            try {
+                const states = discoverStates(testName, meta);
+                return Response.json({ test: testName, states });
+            } catch (err) {
+                return Response.json(
+                    { error: (err as Error).message },
+                    { status: 500 }
+                );
+            }
+        }
+
+        const testName = pathname;
         const timeoutParam = url.searchParams.get('timeout');
         const timeoutTicks = timeoutParam ? Math.ceil(parseInt(timeoutParam) * 1000 / 600) : undefined;
         const scriptDir = url.searchParams.get('scriptDir') ?? undefined;
@@ -485,4 +575,4 @@ const _server = Bun.serve({
 
 console.log(`\nTest server ready on http://localhost:${PORT}`);
 console.log(`Available tests: ${Object.keys(scriptRegistry).join(', ')}`);
-console.log('\nUsage: bun engine/bots/test/run.ts <testname> [--timeout=<seconds>]');
+console.log('\nUsage: bun engine/bots/test/run.ts <testname> [--states s1 s2 ...] [--all-states] [--e2e]');
