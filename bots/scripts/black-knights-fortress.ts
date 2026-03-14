@@ -1,7 +1,6 @@
-import path from 'path';
 import { BotAPI } from '../runtime/api.js';
 import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
+import { type BotState, type StateEntry, runStateMachine } from '../runtime/state-machine.js';
 import type { ScriptMeta } from '../runtime/script-meta.js';
 import { cooksAssistant, metadata as cooksAssistantMeta } from './cooks-assistant.js';
 import { sheepShearer, metadata as sheepShearerMeta } from './sheep-shearer.js';
@@ -59,8 +58,8 @@ const SIR_AMIK_Z = 3338;
 
 // Inside fortress:
 // Grate at (3025, 3507, 0) — witchgrill loc
-const GRATE_X = 3025;
-const GRATE_Z = 3507;
+const _GRATE_X = 3025;
+const _GRATE_Z = 3507;
 
 // Hole at (3031, 3507, 1) — from loc dump: blackknighthole@(3031,3507)
 const HOLE_X = 3031;
@@ -77,7 +76,7 @@ const FALADOR_TO_FORTRESS = [
     { x: 3008, z: 3475, name: 'North-east toward Ice Mountain' },
     { x: 2998, z: 3507, name: 'West side of cliff' },
     { x: 3006, z: 3514, name: 'North around cliff' },
-    { x: 3016, z: 3514, name: 'At fortress entrance door' },
+    { x: 3016, z: 3513, name: 'South of fortress entrance door' },
 ];
 
 // ---- Utility functions ----
@@ -89,20 +88,20 @@ async function earnGp(bot: BotAPI, targetGp: number): Promise<void> {
     bot.log('STATE', `=== Earning ${targetGp}gp by pickpocketing men ===`);
 
     // Walk to Lumbridge spawn area where men roam
-    await bot.walkToWithPathfinding(LUMBRIDGE_X, LUMBRIDGE_Z);
+    await bot.walking.walkToWithPathfinding(LUMBRIDGE_X, LUMBRIDGE_Z);
 
     let attempts = 0;
     const MAX_ATTEMPTS = 800;
 
     while (attempts < MAX_ATTEMPTS) {
-        const coins = bot.findItem('Coins');
+        const coins = bot.inventory.find('Coins');
         const currentGp = coins ? coins.count : 0;
         if (currentGp >= targetGp) {
             bot.log('EVENT', `Earned ${currentGp}gp (target: ${targetGp}gp) in ${attempts} pickpocket attempts`);
             return;
         }
 
-        bot.dismissModals();
+        bot.dialog.dismissModals();
 
         const stunnedUntil = bot.getVarp(VARP_STUNNED);
         const actionDelayUntil = bot.getVarp(VARP_ACTION_DELAY);
@@ -118,24 +117,24 @@ async function earnGp(bot: BotAPI, targetGp: number): Promise<void> {
             await bot.waitForCondition(() => !bot.player.delayed, 20);
         }
 
-        let man = bot.findNearbyNpc('Man');
+        let man = bot.interaction.findNpc('Man');
         if (!man) {
-            await bot.walkTo(LUMBRIDGE_X, LUMBRIDGE_Z);
+            await bot.walking.walkTo(LUMBRIDGE_X, LUMBRIDGE_Z);
             await bot.waitForTicks(2);
-            man = bot.findNearbyNpc('Man');
+            man = bot.interaction.findNpc('Man');
             if (!man) {
                 throw new Error(`No Man NPC found near (${LUMBRIDGE_X},${LUMBRIDGE_Z})`);
             }
         }
 
         attempts++;
-        await bot.interactNpc(man, 3); // op3 = Pickpocket
+        await bot.interaction.npc(man, 3); // op3 = Pickpocket
         await bot.waitForTicks(5);
         await bot.waitForTicks(1);
-        bot.dismissModals();
+        bot.dialog.dismissModals();
     }
 
-    const finalCoins = bot.findItem('Coins');
+    const finalCoins = bot.inventory.find('Coins');
     throw new Error(`Failed to earn ${targetGp}gp after ${MAX_ATTEMPTS} attempts. Current gp: ${finalCoins ? finalCoins.count : 0}`);
 }
 
@@ -145,7 +144,7 @@ async function earnGp(bot: BotAPI, targetGp: number): Promise<void> {
 async function walkRoute(bot: BotAPI, waypoints: { x: number; z: number; name: string }[]): Promise<void> {
     for (const wp of waypoints) {
         bot.log('STATE', `Walking to ${wp.name} (${wp.x},${wp.z})`);
-        await bot.walkToWithPathfinding(wp.x, wp.z);
+        await bot.walking.walkToWithPathfinding(wp.x, wp.z);
     }
 }
 
@@ -215,85 +214,85 @@ async function acquireEquipment(bot: BotAPI): Promise<void> {
     await ensureWestOfTollGate(bot);
 
     // Check how much GP we have
-    const coins = bot.findItem('Coins');
+    const coins = bot.inventory.find('Coins');
     const currentGp = coins ? coins.count : 0;
     bot.log('STATE', `Current GP: ${currentGp}`);
 
     // Need at least 500gp (400 for equipment + safety margin)
     if (currentGp < 500) {
         // Walk to Lumbridge to pickpocket
-        await bot.walkToWithPathfinding(LUMBRIDGE_X, LUMBRIDGE_Z);
+        await bot.walking.walkToWithPathfinding(LUMBRIDGE_X, LUMBRIDGE_Z);
         await earnGp(bot, 500);
     }
 
     // Step 1: Buy bronze med helm from Peksa if not already owned
-    if (!bot.findItem('Bronze med helm')) {
+    if (!bot.inventory.find('Bronze med helm')) {
         bot.log('STATE', '--- Buying bronze med helm from Peksa ---');
         // Navigate to Barbarian Village avoiding the diagonal fencing,
         // then walk into Peksa's shop through the door at (3076,3427).
-        await bot.walkToWithPathfinding(3082, 3336); // South of fence
-        await bot.walkToWithPathfinding(PEKSA_X, PEKSA_Z); // Near shop
+        await bot.walking.walkToWithPathfinding(3082, 3336); // South of fence
+        await bot.walking.walkToWithPathfinding(PEKSA_X, PEKSA_Z); // Near shop
         // Open the shop door and walk inside
-        await bot.openDoor('inaccastledoubledoorropen');
-        await bot.walkToWithPathfinding(3075, 3429); // Inside shop
+        await bot.interaction.openDoor('inaccastledoubledoorropen');
+        await bot.walking.walkToWithPathfinding(3075, 3429); // Inside shop
 
         // Use op3=Trade to directly open shop (like other working scripts)
-        const peksa = bot.findNearbyNpc('Peksa');
+        const peksa = bot.interaction.findNpc('Peksa');
         if (!peksa) {
             throw new Error(`Peksa not found near (${bot.player.x},${bot.player.z})`);
         }
         bot.log('ACTION', `Trading with Peksa at (${peksa.x},${peksa.z})`);
-        await bot.interactNpc(peksa, 3); // op3 = Trade
+        await bot.interaction.npc(peksa, 3); // op3 = Trade
         await bot.waitForTicks(5);
-        await bot.buyFromShop('Bronze med helm', 1);
-        bot.dismissModals();
+        await bot.shop.buy('Bronze med helm', 1);
+        bot.dialog.dismissModals();
 
-        if (!bot.findItem('Bronze med helm')) {
+        if (!bot.inventory.find('Bronze med helm')) {
             throw new Error('Failed to buy Bronze med helm from Peksa');
         }
         bot.log('EVENT', 'Bought Bronze med helm');
     }
 
     // Step 2: Buy iron chainbody from Wayne if not already owned
-    if (!bot.findItem('Iron chainbody')) {
+    if (!bot.inventory.find('Iron chainbody')) {
         bot.log('STATE', '--- Buying iron chainbody from Wayne ---');
         // Navigate south from Barbarian Village (avoid fencing and Draynor Manor),
         // then west to Falador and Wayne's shop
-        await bot.walkToWithPathfinding(3082, 3250); // South below all fences/buildings
-        await bot.walkToWithPathfinding(2970, 3310); // West to Falador
-        await bot.walkToWithPathfinding(WAYNE_X, WAYNE_Z);
+        await bot.walking.walkToWithPathfinding(3082, 3250); // South below all fences/buildings
+        await bot.walking.walkToWithPathfinding(2970, 3310); // West to Falador
+        await bot.walking.walkToWithPathfinding(WAYNE_X, WAYNE_Z);
 
         // Use op3=Trade to directly open shop
-        const wayne = bot.findNearbyNpc('Wayne');
+        const wayne = bot.interaction.findNpc('Wayne');
         if (!wayne) {
             throw new Error(`Wayne not found near (${bot.player.x},${bot.player.z})`);
         }
         bot.log('ACTION', `Trading with Wayne at (${wayne.x},${wayne.z})`);
-        await bot.interactNpc(wayne, 3); // op3 = Trade
+        await bot.interaction.npc(wayne, 3); // op3 = Trade
         await bot.waitForTicks(5);
-        await bot.buyFromShop('Iron chainbody', 1);
-        bot.dismissModals();
+        await bot.shop.buy('Iron chainbody', 1);
+        bot.dialog.dismissModals();
 
-        if (!bot.findItem('Iron chainbody')) {
+        if (!bot.inventory.find('Iron chainbody')) {
             throw new Error('Failed to buy Iron chainbody from Wayne');
         }
         bot.log('EVENT', 'Bought Iron chainbody');
     }
 
     // Step 3: Pick a cabbage if not already owned
-    if (!bot.findItem('Cabbage')) {
+    if (!bot.inventory.find('Cabbage')) {
         bot.log('STATE', '--- Picking cabbage from field ---');
-        await bot.walkToWithPathfinding(CABBAGE_FIELD_X, CABBAGE_FIELD_Z);
+        await bot.walking.walkToWithPathfinding(CABBAGE_FIELD_X, CABBAGE_FIELD_Z);
 
         // Look for a cabbage loc nearby and pick it (op2=Pick)
         for (let attempt = 0; attempt < 5; attempt++) {
-            const cabbageLoc = bot.findNearbyLoc('cabbage', 10);
+            const cabbageLoc = bot.interaction.findLoc('cabbage', 10);
             if (cabbageLoc) {
                 bot.log('ACTION', `Found cabbage loc at (${cabbageLoc.x},${cabbageLoc.z})`);
-                await bot.interactLoc(cabbageLoc, 2); // op2 = Pick
+                await bot.interaction.loc(cabbageLoc, 2); // op2 = Pick
                 await bot.waitForTicks(5);
 
-                const cabbage = bot.findItem('Cabbage');
+                const cabbage = bot.inventory.find('Cabbage');
                 if (cabbage) {
                     bot.log('EVENT', 'Picked a cabbage');
                     break;
@@ -309,11 +308,11 @@ async function acquireEquipment(bot: BotAPI): Promise<void> {
                 { x: 3056, z: 3296 },
             ];
             const offset = offsets[attempt % offsets.length]!;
-            await bot.walkToWithPathfinding(offset.x, offset.z);
+            await bot.walking.walkToWithPathfinding(offset.x, offset.z);
             await bot.waitForTicks(3);
         }
 
-        const cabbage = bot.findItem('Cabbage');
+        const cabbage = bot.inventory.find('Cabbage');
         if (!cabbage) {
             throw new Error('Failed to pick a cabbage from the field south of Falador');
         }
@@ -333,15 +332,15 @@ async function walkToSirAmik(bot: BotAPI): Promise<void> {
 
     if (currentLevel === 0) {
         // Walk to the castle entrance (Falador center area)
-        await bot.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
+        await bot.walking.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
         bot.log('STATE', `At castle entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
         // Walk inside toward the stairwell on the west side
-        await bot.walkToWithPathfinding(2960, 3339);
+        await bot.walking.walkToWithPathfinding(2960, 3339);
         bot.log('STATE', `Near castle stairs: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
         // Climb up from level 0 to level 1 (loc_1738 at (2954,3338))
-        await bot.climbStairs('loc_1738', 1); // op1=Climb-up
+        await bot.interaction.climbStairs('loc_1738', 1); // op1=Climb-up
         await bot.waitForTicks(3);
 
         if ((bot.player.level as number) !== 1) {
@@ -352,14 +351,14 @@ async function walkToSirAmik(bot: BotAPI): Promise<void> {
 
     if ((bot.player.level as number) === 1) {
         // Find the staircase on level 1 to climb to level 2
-        const l1Locs = bot.findAllNearbyLocs(20);
+        const l1Locs = bot.interaction.findAllLocs(20);
         const l1Stairs = l1Locs.filter(l => l.displayName === 'Staircase');
         bot.log('STATE', `Level 1 staircases: ${l1Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ') || 'NONE'}`);
 
         // Try loc_1739 (mid-level, op2=Climb-up), then any staircase with Climb-up
-        let stairsUp = bot.findNearbyLoc('loc_1739', 20);
-        if (!stairsUp) stairsUp = bot.findNearbyLoc('loc_1738', 20);
-        if (!stairsUp) stairsUp = bot.findNearbyLoc('loc_1742', 20);
+        let stairsUp = bot.interaction.findLoc('loc_1739', 20);
+        if (!stairsUp) stairsUp = bot.interaction.findLoc('loc_1738', 20);
+        if (!stairsUp) stairsUp = bot.interaction.findLoc('loc_1742', 20);
         if (!stairsUp && l1Stairs.length > 0) {
             // Use the first staircase found
             stairsUp = l1Stairs[0]!.loc;
@@ -374,7 +373,7 @@ async function walkToSirAmik(bot: BotAPI): Promise<void> {
         const stairDebugName = stairInfo ? stairInfo.debugname : 'unknown';
         // loc_1739 uses op2=Climb-up; loc_1738/loc_1742 use op1=Climb-up
         const climbUpOp = stairDebugName.includes('1739') ? 2 : 1;
-        await bot.climbStairs(stairDebugName, climbUpOp);
+        await bot.interaction.climbStairs(stairDebugName, climbUpOp);
         await bot.waitForTicks(3);
 
         if ((bot.player.level as number) !== 2) {
@@ -384,7 +383,7 @@ async function walkToSirAmik(bot: BotAPI): Promise<void> {
     }
 
     // Walk to Sir Amik Varze's area (use walkTo on upper floors — no pathfinding data)
-    await bot.walkTo(SIR_AMIK_X, SIR_AMIK_Z);
+    await bot.walking.walkTo(SIR_AMIK_X, SIR_AMIK_Z);
     bot.log('STATE', `Near Sir Amik Varze: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 }
 
@@ -397,20 +396,20 @@ async function leaveWhiteKnightsCastle(bot: BotAPI): Promise<void> {
     // Climb down from level 2 to level 1
     if ((bot.player.level as number) === 2) {
         // Find any Climb-down staircase on level 2
-        const l2Locs = bot.findAllNearbyLocs(20);
+        const l2Locs = bot.interaction.findAllLocs(20);
         const l2Stairs = l2Locs.filter(l => l.displayName === 'Staircase');
         bot.log('STATE', `Level 2 staircases: ${l2Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ') || 'NONE'}`);
 
         // loc_1739 has op3=Climb-down; loc_1740/loc_1736 have op1=Climb-down
-        let downStairs = bot.findNearbyLoc('loc_1739', 20);
+        let downStairs = bot.interaction.findLoc('loc_1739', 20);
         if (downStairs) {
-            await bot.climbStairs('loc_1739', 3); // op3=Climb-down
+            await bot.interaction.climbStairs('loc_1739', 3); // op3=Climb-down
         } else {
-            downStairs = bot.findNearbyLoc('loc_1740', 20) ?? bot.findNearbyLoc('loc_1736', 20);
+            downStairs = bot.interaction.findLoc('loc_1740', 20) ?? bot.interaction.findLoc('loc_1736', 20);
             if (!downStairs) {
                 throw new Error(`No Climb-down staircase on level 2 near (${bot.player.x},${bot.player.z})`);
             }
-            await bot.interactLoc(downStairs, 1); // op1=Climb-down
+            await bot.interaction.loc(downStairs, 1); // op1=Climb-down
         }
         await bot.waitForTicks(5);
 
@@ -422,20 +421,20 @@ async function leaveWhiteKnightsCastle(bot: BotAPI): Promise<void> {
 
     // Climb down from level 1 to level 0
     if ((bot.player.level as number) === 1) {
-        const l1Locs = bot.findAllNearbyLocs(20);
+        const l1Locs = bot.interaction.findAllLocs(20);
         const l1Stairs = l1Locs.filter(l => l.displayName === 'Staircase');
         bot.log('STATE', `Level 1 staircases: ${l1Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ') || 'NONE'}`);
 
-        let downStairs = bot.findNearbyLoc('loc_1740', 20) ?? bot.findNearbyLoc('loc_1736', 20) ?? bot.findNearbyLoc('loc_1733', 20) ?? bot.findNearbyLoc('loc_1723', 20);
+        let downStairs = bot.interaction.findLoc('loc_1740', 20) ?? bot.interaction.findLoc('loc_1736', 20) ?? bot.interaction.findLoc('loc_1733', 20) ?? bot.interaction.findLoc('loc_1723', 20);
         if (downStairs) {
-            await bot.interactLoc(downStairs, 1); // op1=Climb-down
+            await bot.interaction.loc(downStairs, 1); // op1=Climb-down
         } else {
             // Try loc_1739 with op3=Climb-down
-            downStairs = bot.findNearbyLoc('loc_1739', 20);
+            downStairs = bot.interaction.findLoc('loc_1739', 20);
             if (!downStairs) {
                 throw new Error(`No Climb-down staircase on level 1 near (${bot.player.x},${bot.player.z}). Staircases: ${l1Stairs.map(s => `${s.debugname}@(${s.x},${s.z})`).join(', ')}`);
             }
-            await bot.climbStairs('loc_1739', 3);
+            await bot.interaction.climbStairs('loc_1739', 3);
         }
         await bot.waitForTicks(5);
 
@@ -445,7 +444,7 @@ async function leaveWhiteKnightsCastle(bot: BotAPI): Promise<void> {
     }
 
     // Walk out of the castle
-    await bot.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
+    await bot.walking.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
     bot.log('STATE', `Outside castle: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 }
 
@@ -464,68 +463,68 @@ async function leaveWhiteKnightsCastle(bot: BotAPI): Promise<void> {
 async function startQuest(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Starting Black Knights\' Fortress quest ===');
 
-    await bot.talkToNpc('Sir Amik Varze');
+    await bot.interaction.talkToNpc('Sir Amik Varze');
 
     // chatnpc "I am the leader of the White Knights..."
-    await bot.waitForDialog(15);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(15);
+    await bot.dialog.continue();
 
     // p_choice2: "I seek a quest!" (1), "I don't..." (2)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "I seek a quest!"
+    await bot.dialog.waitFor(10);
+    await bot.dialog.selectOption(1); // "I seek a quest!"
 
     // chatplayer "I seek a quest."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "Well, I need some spy work doing..."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // p_choice2: "I laugh in the face of danger!" (1), "I go and cower..." (2)
-    await bot.waitForDialog(10);
-    await bot.selectDialogOption(1); // "I laugh in the face of danger!"
+    await bot.dialog.waitFor(10);
+    await bot.dialog.selectOption(1); // "I laugh in the face of danger!"
 
     // chatplayer "I laugh in the face of danger."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "Well that's good. Don't get too overconfident though."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // @black_knights_fortress_sir_amik_come_along_at_the_right_time
     // chatnpc "You've come along just right actually..."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "Subtlety isn't exactly our strong point."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatplayer "So what needs doing?"
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "Well the Black Knights have started making strange threats..."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "Now normally this wouldn't be a problem."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "But they claim to have a powerful new secret weapon."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "What I want you to do is get inside their fortress..."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatplayer "Ok, I'll give it a try." -> varp set to 1
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     await bot.waitForTicks(3);
 
@@ -543,10 +542,10 @@ async function startQuest(bot: BotAPI): Promise<void> {
 async function eatLobster(bot: BotAPI): Promise<void> {
     const health = bot.getHealth();
     if (health.current >= health.max) return;
-    const lobster = bot.findItem('Lobster');
+    const lobster = bot.inventory.find('Lobster');
     if (!lobster) return;
     bot.log('ACTION', `Eating Lobster (HP=${health.current}/${health.max})`);
-    await bot.useItemOp1('Lobster');
+    await bot.interaction.useItemOp1('Lobster');
     await bot.waitForTicks(2);
 }
 
@@ -554,216 +553,238 @@ async function eatLobster(bot: BotAPI): Promise<void> {
  * Navigate through the Black Knights' Fortress to the grate,
  * listen to the witch's conversation, then sabotage the potion.
  *
- * Fortress layout:
- * - Entrance: bkfortressdoor1 on level 0, requires disguise (bronze med helm + iron chainbody)
- * - bkfortressdoor2: east wing door, guard dialog, triggers ~black_knights_aggro
- * - witchgrill (grate): at (3025, 3507, 0), op1=Listen-at, requires varp 1
- * - loc_1750/loc_1749: ladders at (3022, 3518), loc_1749 triggers aggro on L1
- * - bksecretdoor: secret wall on L1 at (3030, 3510), passable from either side
- * - blackknighthole: at (3031, 3507, 1), use cabbage to sabotage, requires varp 2
+ * Fortress layout (RS2 dev comments: 3025 3508 0=Grate L0, 3031 3508 1=Hole L1):
+ * - bkfortressdoor1: main entrance (north wall ~z=3513), disguise required
+ * - bkfortressdoor2: banquet-hall north-wing door — guard dialog before entry
+ * - loc_1750@(3022,3518,L1): ladder up to L1 (in banquet hall)
+ * - bkfortressdoor3@L1: going west triggers guard aggro; has "ladder down to grill" nearby
+ * - witchgrill@(3025,3507,L0): WALLDECOR_STRAIGHT_OFFSET angle=EAST — approach from (3026,3507)
+ *   Accessible from L0 via the ladder down near door3.
+ * - bksecretdoor@(~3030,3510,L1): secret wall → hole room
+ * - blackknighthole@(3031,3507,L1): use cabbage here (varp 2→3)
  *
  * Route:
- * 1. Enter through bkfortressdoor1 wearing disguise
- * 2. Go through bkfortressdoor2 (triggers ~black_knights_aggro)
- * 3. Climb up loc_1750 to L1 (escape aggro), then back down loc_1749 to L0
- *    - Climbing down loc_1749@(3022,3518,1) re-triggers aggro, but lands at
- *      (3022,3517,0) from which the grate IS walkable (unlike the bkfortressdoor2
- *      landing position which is walled off from the grate corridor)
- * 4. Eat food to tank Black Knight hits, walk to grate, listen (~25 tick dialog)
- * 5. After grate dialog (varp 1->2), climb up loc_1750 to L1
- * 6. Push through bksecretdoor on L1 to reach hole area
- * 7. Use cabbage on blackknighthole (varp 2->3)
+ * 1. Equip disguise, walk to fortress (z=3514 area)
+ * 2. Ghost-path through door1 → west corridor (L0)
+ * 3. Walk back north → find door2 → guard dialog → banquet hall (L0)
+ * 4. Climb loc_1750 → L1
+ * 5. Open door3 (guard aggro)
+ * 6. Descend ladder → L0 kitchen; PHASE 1: listen at witchgrill (varp 1→2)
+ * 7. Ascend back to L1
+ * 8. Push bksecretdoor; PHASE 2: use cabbage on hole (varp 2→3)
  */
 async function infiltrateFortress(bot: BotAPI): Promise<void> {
     bot.log('STATE', '=== Infiltrating Black Knights\' Fortress ===');
 
-    // Equip the disguise
-    if (bot.findItem('Bronze med helm')) await bot.equipItem('Bronze med helm');
-    if (bot.findItem('Iron chainbody')) await bot.equipItem('Iron chainbody');
+    // Equip the disguise (needed for bkfortressdoor1)
+    const helmBefore = bot.inventory.find('Bronze med helm');
+    const chainBefore = bot.inventory.find('Iron chainbody');
+    bot.log('STATE', `Pre-equip: helm=${helmBefore ? `slot${helmBefore.slot}` : 'NOT FOUND'} chain=${chainBefore ? `slot${chainBefore.slot}` : 'NOT FOUND'} protect=${bot.player.protect} delayed=${bot.player.delayed} defence=${bot.player.baseLevels[1]}`);
+    if (helmBefore) await bot.interaction.equipItem('Bronze med helm');
+    if (chainBefore) await bot.interaction.equipItem('Iron chainbody');
     await bot.waitForTicks(2);
-
-    // Walk to the fortress entrance via the west side of Ice Mountain
-    await walkRoute(bot, FALADOR_TO_FORTRESS);
-    bot.log('STATE', `At fortress entrance: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    // Step 1: Enter through the main door (bkfortressdoor1) — requires disguise
-    const fortressDoor = bot.findNearbyLoc('bkfortressdoor1', 5);
-    if (!fortressDoor) {
-        throw new Error(`bkfortressdoor1 not found near (${bot.player.x},${bot.player.z})`);
-    }
-    await bot.interactLoc(fortressDoor, 1);
-    await bot.waitForTicks(3);
-    if (bot.player.z <= 3514) {
-        throw new Error(`Failed to enter fortress: pos=(${bot.player.x},${bot.player.z}). Is disguise equipped?`);
-    }
-    bot.log('STATE', `Inside fortress: pos=(${bot.player.x},${bot.player.z})`);
-
-    // Test: walk from fortress entrance SOUTH to grate at (3025,3507,0)
-    // The grate might be accessible from outside the fortress walls
-    bot.log('STATE', `Testing external approach from inside fortress (${bot.player.x},${bot.player.z},${bot.player.level})`);
-
-    const extProbes = [
-        { x: 3016, z: 3512, label: 'south-12' },
-        { x: 3016, z: 3510, label: 'south-10' },
-        { x: 3016, z: 3508, label: 'south-08' },
-        { x: 3020, z: 3515, label: 'east-20' },
-        { x: 3020, z: 3512, label: 'se-12' },
-        { x: 3020, z: 3510, label: 'se-10' },
-        { x: 3020, z: 3508, label: 'se-08' },
-        { x: 3025, z: 3508, label: 'grate-area' },
-        { x: 3021, z: 3510, label: 'ladder-area' },
-    ];
-    for (const target of extProbes) {
-        try {
-            // Reset to start position
-            if (Math.abs(bot.player.x - 3016) > 3 || Math.abs(bot.player.z - 3515) > 3) {
-                await bot.walkTo(3016, 3515);
+    const helmAfter = bot.inventory.find('Bronze med helm');
+    const chainAfter = bot.inventory.find('Iron chainbody');
+    // Dump all player inventory states for diagnosis
+    {
+        const invMap = (bot.player as any).invs as Map<number, any>;
+        let invDump = '';
+        for (const [key, inv] of invMap.entries()) {
+            const items: string[] = [];
+            for (let s = 0; s < inv.capacity; s++) {
+                if (inv.items[s]) items.push(`s${s}:id${inv.items[s].id}`);
             }
-            await bot.walkTo(target.x, target.z);
-            bot.log('STATE', `Ext ${target.label} -> at (${bot.player.x},${bot.player.z})`);
-        } catch {
-            bot.log('STATE', `Ext ${target.label} -> FAIL at (${bot.player.x},${bot.player.z})`);
+            if (items.length > 0) invDump += `inv${key}[${items.join(',')}] `;
         }
+        bot.log('STATE', `Inv dump: ${invDump || '(empty)'}`);
     }
+    bot.log('STATE', `Post-equip: helm=${helmAfter ? `still_in_inv_slot${helmAfter.slot}` : 'EQUIPPED'} chain=${chainAfter ? `still_in_inv_slot${chainAfter.slot}` : 'EQUIPPED'}`);
 
-    // Try ghost pathfinding from inside fortress to grate
-    await bot.walkTo(3016, 3515);
-    bot.log('STATE', `Ghost pathfind to grate from (${bot.player.x},${bot.player.z})`);
-    try {
-        await bot.walkToWithPathfinding(3025, 3508);
-        bot.log('STATE', `Ghost to grate: SUCCESS at (${bot.player.x},${bot.player.z})`);
-    } catch (e: any) {
-        bot.log('STATE', `Ghost to grate: FAIL at (${bot.player.x},${bot.player.z}) - ${e.message?.substring(0, 100)}`);
-    }
-
-    // Try from outside the fortress entirely - walk from approach route
-    await bot.walkTo(3016, 3515);
-    // Exit through front door
-    const exitDoor = bot.findNearbyLoc('bkfortressdoor1', 5);
-    if (exitDoor) {
-        await bot.interactLoc(exitDoor, 1);
-        await bot.waitForTicks(3);
-    }
-    bot.log('STATE', `Outside fortress: pos=(${bot.player.x},${bot.player.z})`);
-
-    // Walk east along south side
-    const outsideProbes = [
-        { x: 3020, z: 3513, label: 'outside-east-20' },
-        { x: 3025, z: 3513, label: 'outside-east-25' },
-        { x: 3025, z: 3510, label: 'outside-se-25' },
-        { x: 3025, z: 3508, label: 'outside-grate' },
-        { x: 3030, z: 3508, label: 'outside-far-east' },
-    ];
-    for (const target of outsideProbes) {
-        try {
-            await bot.walkTo(target.x, target.z);
-            bot.log('STATE', `Out ${target.label} -> at (${bot.player.x},${bot.player.z})`);
-        } catch {
-            bot.log('STATE', `Out ${target.label} -> FAIL at (${bot.player.x},${bot.player.z})`);
-        }
-    }
-
-    // Ghost pathfind to grate from outside
-    try {
-        await bot.walkToWithPathfinding(3025, 3508);
-        bot.log('STATE', `Ghost outside to grate: SUCCESS at (${bot.player.x},${bot.player.z})`);
-    } catch (e: any) {
-        bot.log('STATE', `Ghost outside to grate: FAIL at (${bot.player.x},${bot.player.z}) - ${e.message?.substring(0, 100)}`);
-    }
-
-    throw new Error('External grate probe done');
+    // Walk to the fortress entrance exterior
+    await walkRoute(bot, FALADOR_TO_FORTRESS);
+    bot.log('STATE', `At fortress entrance exterior: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
 
     await eatLobster(bot);
 
-    // Step 7: Walk to the grate on L0
-    await bot.walkToWithPathfinding(GRATE_X, GRATE_Z);
-    bot.log('STATE', `At grate area: pos=(${bot.player.x},${bot.player.z})`);
+    // ---- Diagnose door1 reach ----
+    {
+        const d = bot.interaction.findLoc('bkfortressdoor1', 5);
+        if (d) {
+            bot.log('STATE', `door1 at (${d.x},${d.z},L${d.level}) shape=${d.shape} angle=${d.angle} type=${d.type}`);
+            bot.debugLocReach(d);
+        } else {
+            bot.log('STATE', 'door1 NOT FOUND near fortress entrance');
+        }
+    }
+    // ---- Enter fortress via door1 and reach staircase to L1 ----
+    // bkfortressdoor1 at (3016,3514). The staircase (loc_1750) to L1 is at (3015,3519).
+    // Approach is from south (3015,3518) which must be entered from east (3016,3518).
+    // Walk to (3016,3518) inside the corridor; interactLoc will route west to (3015,3518).
+    bot.log('STATE', `Before fortress entry: pos=(${bot.player.x},${bot.player.z},L${bot.player.level})`);
+    await bot.walking.walkToWithPathfinding(3016, 3518);
+    bot.log('STATE', `Inside fortress near staircase: pos=(${bot.player.x},${bot.player.z},L${bot.player.level})`);
+    if ((bot.player.z as number) < 3515) {
+        throw new Error(`Failed to enter fortress: pos=(${bot.player.x},${bot.player.z})`);
+    }
+    await eatLobster(bot);
 
-    const grill = bot.findNearbyLoc('witchgrill', 10);
+    // ---- Climb loc_1750@(3015,3519) to L1 ----
+    {
+        const ladder = bot.interaction.findLoc('loc_1750', 10);
+        if (ladder) {
+            bot.log('STATE', `loc_1750 at (${ladder.x},${ladder.z},L${ladder.level}) shape=${ladder.shape} angle=${ladder.angle} fa=${ladder.type}`);
+            bot.debugLocReach(ladder);
+        } else {
+            bot.log('STATE', `loc_1750 NOT FOUND near (${bot.player.x},${bot.player.z})`);
+        }
+    }
+    await bot.interaction.climbStairs('loc_1750', 1);
+    if ((bot.player.level as number) !== 1) {
+        throw new Error(`Failed to reach L1 via loc_1750: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    }
+    bot.log('STATE', `On L1: pos=(${bot.player.x},${bot.player.z})`);
+
+    await eatLobster(bot);
+
+    // ---- Navigate to and open bkfortressdoor3 on L1 ----
+    let door3 = bot.interaction.findLoc('bkfortressdoor3', 15);
+    if (!door3) {
+        bot.player.queueWaypoint(3028, 3517);
+        for (let i = 0; i < 20; i++) {
+            await bot.waitForTick();
+            if (Math.abs(bot.player.x - 3028) <= 2) break;
+        }
+        door3 = bot.interaction.findLoc('bkfortressdoor3', 10);
+    }
+    if (!door3) {
+        const allL1 = bot.interaction.findAllLocs(15);
+        throw new Error(`bkfortressdoor3 not found. L1 locs: ${allL1.map(l => `${l.debugname}@(${l.x},${l.z})`).join(', ')}`);
+    }
+    bot.log('STATE', `Found bkfortressdoor3 at (${door3.x},${door3.z})`);
+    await bot.interaction.loc(door3, 1);
+    await bot.waitForTicks(5);
+    await bot.dialog.clearPendingState();
+    bot.log('STATE', `After bkfortressdoor3: pos=(${bot.player.x},${bot.player.z},L${bot.player.level})`);
+
+    await eatLobster(bot);
+
+    // ---- Descend ladder to L0 kitchen (near bkfortressdoor3) ----
+    // The RS2 dev comment on door3 says "ladder down to the grill" is nearby.
+    // Try standard ladder-down loc types (loc_1749, loc_1746).
+    let ladderDown = bot.interaction.findLoc('loc_1749', 12) ?? bot.interaction.findLoc('loc_1746', 12);
+    if (!ladderDown) {
+        // Walk toward grill area on L1 and search again
+        bot.player.queueWaypoint(3028, 3511);
+        for (let i = 0; i < 15; i++) {
+            await bot.waitForTick();
+            if (Math.abs(bot.player.z - 3511) <= 2) break;
+        }
+        ladderDown = bot.interaction.findLoc('loc_1749', 10) ?? bot.interaction.findLoc('loc_1746', 10);
+    }
+    if (!ladderDown) {
+        const allLocs = bot.interaction.findAllLocs(15).map(l => `${l.debugname}@(${l.x},${l.z})`).join(', ');
+        throw new Error(`Ladder down to grill not found near (${bot.player.x},${bot.player.z},L1) after door3. Nearby locs: ${allLocs}`);
+    }
+    bot.log('STATE', `Found ladder down: type=${ladderDown.type} shape=${ladderDown.shape} at (${ladderDown.x},${ladderDown.z})`);
+    await bot.interaction.loc(ladderDown, 1);
+    await bot.waitForTicks(3);
+    if ((bot.player.level as number) !== 0) {
+        // Some ladders use op2 for Climb-down
+        await bot.interaction.loc(ladderDown, 2);
+        await bot.waitForTicks(3);
+    }
+    if ((bot.player.level as number) !== 0) {
+        throw new Error(`Failed to descend to L0 from ladder: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    }
+    bot.log('STATE', `Descended to L0 kitchen: pos=(${bot.player.x},${bot.player.z})`);
+
+    await eatLobster(bot);
+
+    // ---- PHASE 1: Listen at witchgrill ----
+    // witchgrill at (3025,3507), shape=5 WALLDECOR_STRAIGHT_OFFSET, angle=EAST=2.
+    // Approach from east: (3026,3507) — accessible from the L0 kitchen.
+    const grill = bot.interaction.findLoc('witchgrill', 10);
     if (!grill) {
-        throw new Error(`witchgrill not found near (${bot.player.x},${bot.player.z})`);
+        const allLocs = bot.interaction.findAllLocs(15).map(l => `${l.debugname}@(${l.x},${l.z})`).join(', ');
+        throw new Error(`witchgrill not found near (${bot.player.x},${bot.player.z},L0). Nearby locs: ${allLocs}`);
     }
+    bot.log('STATE', `witchgrill: shape=${grill.shape} angle=${grill.angle} at (${grill.x},${grill.z})`);
 
-    await bot.interactLoc(grill, 1); // op1 = Listen-at
-    await bot.waitForTicks(3);
-
-    // Process 9 pages of dialog (chatnpc_specific between witch, knight, greldo)
-    for (let i = 0; i < 20; i++) {
-        const hasDialog = await bot.waitForDialog(10);
+    await bot.interaction.loc(grill, 1);
+    // Handle 9 chatnpc_specific dialogs (witch's conversation about the secret weapon)
+    for (let j = 0; j < 15; j++) {
+        const hasDialog = await bot.dialog.waitFor(5);
         if (!hasDialog) break;
-        if (bot.isMultiChoiceOpen()) break;
-        await bot.continueDialog();
+        if (bot.dialog.isMultiChoiceOpen()) break;
+        await bot.dialog.continue();
     }
-
     await bot.waitForTicks(3);
-    bot.dismissModals();
+    bot.dialog.dismissModals();
+    bot.log('STATE', `After grill: pos=(${bot.player.x},${bot.player.z}), varp=${bot.getQuestProgress(BKF_VARP)}`);
 
-    // Verify we've advanced to stage 2
     const varpAfterGrill = bot.getQuestProgress(BKF_VARP);
     if (varpAfterGrill !== STAGE_LISTENED) {
-        throw new Error(`Quest varp after listening at grate is ${varpAfterGrill}, expected ${STAGE_LISTENED}`);
+        throw new Error(`Quest varp after grill is ${varpAfterGrill}, expected ${STAGE_LISTENED}. Bot at (${bot.player.x},${bot.player.z},L${bot.player.level})`);
     }
     bot.log('EVENT', `Listened at grate: varp=${varpAfterGrill}`);
 
-    // ---- PHASE 2: Sabotage the potion on level 1 ----
-
-    // Step 7: Climb up loc_1747@(3021,3510,0) to L1.
-    // Player is south of loc, so lands at (player.x, player.z, 1) — south of loc_1746.
-    const wallLadderUp = bot.findNearbyLoc('loc_1747', 16);
-    if (!wallLadderUp) {
-        throw new Error(`loc_1747 not found near (${bot.player.x},${bot.player.z})`);
+    // ---- Ascend back to L1 ----
+    // The same ladder (or a nearby one) takes the bot back to L1.
+    const ladderUp2 = bot.interaction.findLoc('loc_1749', 10) ?? bot.interaction.findLoc('loc_1746', 10) ?? bot.interaction.findLoc('loc_1750', 10);
+    if (!ladderUp2) {
+        const allLocs = bot.interaction.findAllLocs(12).map(l => `${l.debugname}@(${l.x},${l.z})`).join(', ');
+        throw new Error(`Ladder up not found near (${bot.player.x},${bot.player.z},L0) after grill. Nearby: ${allLocs}`);
     }
-    await bot.interactLoc(wallLadderUp, 1); // op1 = Climb-up
+    bot.log('STATE', `Found ladder up: type=${ladderUp2.type} shape=${ladderUp2.shape} at (${ladderUp2.x},${ladderUp2.z})`);
+    await bot.interaction.loc(ladderUp2, 1);
     await bot.waitForTicks(3);
     if ((bot.player.level as number) !== 1) {
-        throw new Error(`Failed to climb to L1 via loc_1747: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+        await bot.interaction.loc(ladderUp2, 2);
+        await bot.waitForTicks(3);
     }
-    bot.log('STATE', `On L1 for sabotage: pos=(${bot.player.x},${bot.player.z})`);
+    if ((bot.player.level as number) !== 1) {
+        throw new Error(`Failed to ascend to L1 after grill: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
+    }
+    bot.log('STATE', `Back on L1: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Step 8: Navigate east to bkfortressdoor3@(3025,3511,1).
-    // Approaching from the west triggers ~black_knights_aggro — eat food to survive.
     await eatLobster(bot);
 
-    const door3 = bot.findNearbyLoc('bkfortressdoor3', 16);
-    if (!door3) {
-        throw new Error(`bkfortressdoor3 not found near (${bot.player.x},${bot.player.z},${bot.player.level})`);
+    // ---- PHASE 2: Push bksecretdoor → hole ----
+    bot.player.queueWaypoint(3030, 3511);
+    for (let i = 0; i < 20; i++) {
+        await bot.waitForTick();
+        if (Math.abs(bot.player.x - 3030) <= 2 && Math.abs(bot.player.z - 3511) <= 2) break;
     }
-    bot.log('STATE', `Found bkfortressdoor3 at (${door3.x},${door3.z})`);
-    await bot.interactLoc(door3, 1); // op1 triggers ~open_and_close_door + aggro
+    const secretWall = bot.interaction.findLoc('bksecretdoor', 4);
+    if (!secretWall) throw new Error(`bksecretdoor not found near (${bot.player.x},${bot.player.z})`);
+    await bot.interaction.loc(secretWall, 1);
     await bot.waitForTicks(5);
-    await bot.clearPendingState();
-    await eatLobster(bot);
-    bot.log('STATE', `After bkfortressdoor3: pos=(${bot.player.x},${bot.player.z})`);
-
-    // Step 9: Push through bksecretdoor@(3030,3510,1) to reach the hole area.
-    const secretWallL1 = bot.findNearbyLoc('bksecretdoor', 16);
-    if (!secretWallL1) {
-        throw new Error(`bksecretdoor not found on L1 near (${bot.player.x},${bot.player.z})`);
-    }
-    bot.log('STATE', `Found L1 bksecretdoor at (${secretWallL1.x},${secretWallL1.z}), pushing through`);
-    await bot.interactLoc(secretWallL1, 1); // op1 = Push
-    await bot.waitForTicks(5);
-    await bot.clearPendingState();
-    await eatLobster(bot);
+    await bot.dialog.clearPendingState();
     bot.log('STATE', `After bksecretdoor: pos=(${bot.player.x},${bot.player.z})`);
 
-    // Step 10: Walk to the hole and use cabbage to sabotage the potion
-    await bot.walkTo(HOLE_X, HOLE_Z);
+    await eatLobster(bot);
+
+    // Walk to blackknighthole@(3031,3507,1) and use cabbage
+    bot.player.queueWaypoint(HOLE_X, HOLE_Z);
+    for (let i = 0; i < 20; i++) {
+        await bot.waitForTick();
+        if (Math.abs(bot.player.x - HOLE_X) <= 2 && Math.abs(bot.player.z - HOLE_Z) <= 2) break;
+    }
     bot.log('STATE', `At hole: pos=(${bot.player.x},${bot.player.z})`);
 
-    await bot.useItemOnLoc('Cabbage', 'blackknighthole');
+    await bot.interaction.useItemOnLoc('Cabbage', 'blackknighthole');
 
-    // The cabbage script has several mes + p_delay(2) calls then chatplayer
+    // mes × 4 (each with p_delay(2)), then chatplayer
     await bot.waitForTicks(12);
     for (let i = 0; i < 10; i++) {
-        const hasDialog = await bot.waitForDialog(5);
+        const hasDialog = await bot.dialog.waitFor(5);
         if (!hasDialog) break;
-        if (bot.isMultiChoiceOpen()) break;
-        await bot.continueDialog();
+        if (bot.dialog.isMultiChoiceOpen()) break;
+        await bot.dialog.continue();
     }
     await bot.waitForTicks(3);
+    bot.dialog.dismissModals();
 
-    // Verify we've advanced to stage 3
     const varpAfterSabotage = bot.getQuestProgress(BKF_VARP);
     if (varpAfterSabotage !== STAGE_SABOTAGED) {
         throw new Error(`Quest varp after sabotage is ${varpAfterSabotage}, expected ${STAGE_SABOTAGED}`);
@@ -788,51 +809,55 @@ async function completeQuest(bot: BotAPI): Promise<void> {
     // Need to navigate back out. Start by getting to ground floor.
     if ((bot.player.level as number) !== 0) {
         // Find a ladder down
-        const ladderDown = bot.findNearbyLoc('loc_1746', 16) ?? bot.findNearbyLoc('loc_1749', 16);
+        const ladderDown = bot.interaction.findLoc('loc_1746', 16) ?? bot.interaction.findLoc('loc_1749', 16);
         if (ladderDown) {
-            await bot.interactLoc(ladderDown, 1);
+            await bot.interaction.loc(ladderDown, 1);
             await bot.waitForTicks(3);
         }
     }
 
     // Walk out of the fortress and back to Falador via west side of Ice Mountain
     bot.log('STATE', `Leaving fortress: pos=(${bot.player.x},${bot.player.z},${bot.player.level})`);
-    await bot.walkToWithPathfinding(3006, 3514);
-    await bot.walkToWithPathfinding(2998, 3507);
-    await bot.walkToWithPathfinding(3008, 3475);
-    await bot.walkToWithPathfinding(2985, 3430);
-    await bot.walkToWithPathfinding(2970, 3370);
-    await bot.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
+    // Route notes:
+    // - Going west from (3016,3514) to (3006,3514) is blocked by the fortress north-face wall.
+    // - Going (2998,3507)->(3008,3475)->(2985,3430) fails: (3008,3475)->(2985,3430) cuts
+    //   through Ice Mountain terrain southbound (even though the northbound reverse works).
+    // - Stay on the west side of Ice Mountain (x<3000) when going south.
+    await bot.walking.walkToWithPathfinding(2998, 3507);  // West of cliff (proven from 3016,3514)
+    await bot.walking.walkToWithPathfinding(2990, 3475);  // South-west, west of Ice Mountain
+    await bot.walking.walkToWithPathfinding(2985, 3430);  // South to Falador road
+    await bot.walking.walkToWithPathfinding(2970, 3370);  // Falador
+    await bot.walking.walkToWithPathfinding(FALADOR_CASTLE_ENTRANCE_X, FALADOR_CASTLE_ENTRANCE_Z);
 
     // Navigate to Sir Amik Varze on level 2
     await walkToSirAmik(bot);
 
     // Talk to Sir Amik to turn in the quest
-    await bot.talkToNpc('Sir Amik Varze');
+    await bot.interaction.talkToNpc('Sir Amik Varze');
 
     // chatplayer "I have ruined the Black Knight's invincibility potion..."
-    await bot.waitForDialog(15);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(15);
+    await bot.dialog.continue();
 
     // chatnpc "Yes we have just received a message from the Black Knights..."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatplayer "You said you were going to pay me."
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // chatnpc "Yes, that's right."
     // -> varp becomes 4 (complete)
     // -> queue(black_knights_fortress_quest_complete)
-    await bot.waitForDialog(10);
-    await bot.continueDialog();
+    await bot.dialog.waitFor(10);
+    await bot.dialog.continue();
 
     // Wait for the queued script to fire (gives 2500gp + quest complete)
     await bot.waitForTicks(5);
 
     // Dismiss quest complete interface
-    bot.dismissModals();
+    bot.dialog.dismissModals();
 
     // Verify quest completion
     const finalVarp = bot.getQuestProgress(BKF_VARP);
@@ -855,10 +880,12 @@ function prerequisiteState(
     name: string,
     bot: BotAPI,
     questMeta: ScriptMeta,
-    questFn: (bot: BotAPI) => Promise<void>
+    questFn: (bot: BotAPI) => Promise<void>,
+    entrySnapshot?: StateEntry
 ): BotState {
     return {
         name,
+        entrySnapshot,
         isComplete: () => bot.getQuestProgress(questMeta.varpId!) === questMeta.varpComplete,
         run: async () => {
             bot.log('STATE', `--- Running prerequisite: ${name} ---`);
@@ -885,12 +912,47 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
         run: async () => { throw new Error('Composite state should not be called directly'); },
         children: [
             // Prerequisite quests (each checks varp to skip if already done)
-            prerequisiteState('prereq/cooks-assistant', bot, cooksAssistantMeta, cooksAssistant),
-            prerequisiteState('prereq/sheep-shearer', bot, sheepShearerMeta, sheepShearer),
-            prerequisiteState('prereq/romeo-and-juliet', bot, romeoMeta, romeoAndJuliet),
-            prerequisiteState('prereq/rune-mysteries', bot, runeMystMeta, runeMysteries),
-            prerequisiteState('prereq/imp-catcher', bot, impCatcherMeta, impCatcher),
-            prerequisiteState('prereq/prince-ali-rescue', bot, princeAliMeta, princeAliRescue),
+            prerequisiteState('prereq/cooks-assistant', bot, cooksAssistantMeta, cooksAssistant, {
+                position: { x: 3222, z: 3218, level: 0 },
+                varps: { 101: 0, [BKF_VARP]: 0 },
+                items: ['Bronze pickaxe'],
+            }),
+            prerequisiteState('prereq/sheep-shearer', bot, sheepShearerMeta, sheepShearer, {
+                position: { x: 3208, z: 3211, level: 0 },
+                varps: { 101: 1, [BKF_VARP]: 0 },
+                items: [{ name: 'Bronze pickaxe', count: 2 }, { name: 'Coins', count: 9 }],
+                skills: { COOKING: 4 },
+            }),
+            prerequisiteState('prereq/romeo-and-juliet', bot, romeoMeta, romeoAndJuliet, {
+                position: { x: 3191, z: 3277, level: 0 },
+                varps: { 101: 2, [BKF_VARP]: 0 },
+                items: [{ name: 'Bronze pickaxe', count: 3 }, { name: 'Coins', count: 68 }, 'Shears'],
+                skills: { COOKING: 4, CRAFTING: 3 },
+            }),
+            prerequisiteState('prereq/rune-mysteries', bot, runeMystMeta, runeMysteries, {
+                position: { x: 3212, z: 3425, level: 0 },
+                varps: { 101: 7, [BKF_VARP]: 0 },
+                items: [{ name: 'Bronze pickaxe', count: 4 }, { name: 'Coins', count: 68 }, 'Shears'],
+                skills: { COOKING: 4, CRAFTING: 3 },
+            }),
+            prerequisiteState('prereq/imp-catcher', bot, impCatcherMeta, impCatcher, {
+                position: { x: 3102, z: 9569, level: 0 },
+                varps: { 101: 8, [BKF_VARP]: 0 },
+                items: [{ name: 'Bronze pickaxe', count: 5 }, { name: 'Coins', count: 68 }, 'Shears', 'Air talisman'],
+                skills: { COOKING: 4, CRAFTING: 3 },
+            }),
+            prerequisiteState('prereq/prince-ali-rescue', bot, princeAliMeta, princeAliRescue, {
+                position: { x: 3107, z: 3162, level: 2 },
+                varps: { 101: 9, [BKF_VARP]: 0 },
+                items: [
+                    'Amulet of accuracy',
+                    { name: 'Bronze pickaxe', count: 4 },
+                    { name: 'Coins', count: 68 },
+                    'Shears',
+                    'Air talisman',
+                ],
+                skills: { ATTACK: 20, HITPOINTS: 15, MAGIC: 8, COOKING: 4, CRAFTING: 3 },
+            }),
             {
                 name: 'verify-qp',
                 isComplete: () => bot.getVarp(QP_VARP) >= REQUIRED_QP,
@@ -902,11 +964,25 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
             {
                 name: 'acquire-equipment',
                 isComplete: () => {
-                    return bot.findItem('Bronze med helm') !== null &&
-                           bot.findItem('Iron chainbody') !== null &&
-                           bot.findItem('Cabbage') !== null;
+                    return bot.inventory.find('Bronze med helm') !== null &&
+                           bot.inventory.find('Iron chainbody') !== null &&
+                           bot.inventory.find('Cabbage') !== null;
                 },
                 stuckThreshold: 3000,
+                entrySnapshot: {
+                    position: { x: 3302, z: 3160, level: 0 },
+                    varps: { 101: 12, [BKF_VARP]: STAGE_NOT_STARTED },
+                    skills: { ATTACK: 20, HITPOINTS: 15, MAGIC: 8, COOKING: 4, CRAFTING: 3, THIEVING: 3 },
+                    items: [
+                        'Amulet of accuracy',
+                        { name: 'Bronze pickaxe', count: 2 },
+                        { name: 'Coins', count: 762 },
+                        'Shears',
+                        'Air talisman',
+                        'Tinderbox',
+                        'Bronze axe',
+                    ],
+                },
                 run: async () => {
                     await acquireEquipment(bot);
                 }
@@ -914,6 +990,23 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
             {
                 name: 'start-quest',
                 isComplete: () => bot.getQuestProgress(BKF_VARP) >= STAGE_STARTED,
+                entrySnapshot: {
+                    position: { x: 3054, z: 3287, level: 0 },
+                    varps: { 101: 12, [BKF_VARP]: STAGE_NOT_STARTED },
+                    skills: { ATTACK: 20, HITPOINTS: 15, MAGIC: 8, COOKING: 4, CRAFTING: 3, THIEVING: 3 },
+                    items: [
+                        'Amulet of accuracy',
+                        { name: 'Bronze pickaxe', count: 2 },
+                        { name: 'Coins', count: 528 },
+                        'Shears',
+                        'Air talisman',
+                        'Bronze med helm',
+                        'Iron chainbody',
+                        'Cabbage',
+                        'Tinderbox',
+                        'Bronze axe',
+                    ],
+                },
                 run: async () => {
                     await walkToSirAmik(bot);
                     await startQuest(bot);
@@ -923,6 +1016,24 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
                 name: 'infiltrate-and-sabotage',
                 isComplete: () => bot.getQuestProgress(BKF_VARP) >= STAGE_SABOTAGED,
                 stuckThreshold: 3000,
+                entrySnapshot: {
+                    position: { x: 2963, z: 3338, level: 2 },
+                    varps: { 101: 12, [BKF_VARP]: STAGE_STARTED },
+                    skills: { ATTACK: 20, DEFENCE: 1, STRENGTH: 1, MAGIC: 8, HITPOINTS: 15, COOKING: 4, CRAFTING: 3, THIEVING: 3 },
+                    items: [
+                        { name: 'Amulet of accuracy', count: 1 },
+                        { name: 'Bronze pickaxe', count: 1 },
+                        { name: 'Coins', count: 528 },
+                        { name: 'Shears', count: 1 },
+                        { name: 'Air talisman', count: 1 },
+                        { name: 'Bronze med helm', count: 1 },
+                        { name: 'Iron chainbody', count: 1 },
+                        { name: 'Cabbage', count: 1 },
+                        { name: 'Lobster', count: 5 },
+                        { name: 'Tinderbox', count: 1 },
+                        { name: 'Bronze axe', count: 1 },
+                    ],
+                },
                 run: async () => {
                     // On retry, bot might be stuck on upper floors inside the fortress.
                     // The leaveWhiteKnightsCastle function is only for White Knights' Castle.
@@ -930,9 +1041,9 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
                     if ((bot.player.level as number) > 0) {
                         bot.log('STATE', `On level ${bot.player.level} at (${bot.player.x},${bot.player.z}), trying to descend`);
                         // Look for any climb-down ladder
-                        const downLadder = bot.findNearbyLoc('loc_1749', 16) ?? bot.findNearbyLoc('loc_1746', 16) ?? bot.findNearbyLoc('loc_1740', 16);
+                        const downLadder = bot.interaction.findLoc('loc_1749', 16) ?? bot.interaction.findLoc('loc_1746', 16) ?? bot.interaction.findLoc('loc_1740', 16);
                         if (downLadder) {
-                            await bot.interactLoc(downLadder, 1);
+                            await bot.interaction.loc(downLadder, 1);
                             await bot.waitForTicks(3);
                         }
                         // If still not level 0, try White Knights' Castle descent
@@ -946,6 +1057,23 @@ export function buildBlackKnightsFortressStates(bot: BotAPI): BotState {
             {
                 name: 'complete-quest',
                 isComplete: () => bot.getQuestProgress(BKF_VARP) === STAGE_COMPLETE,
+                entrySnapshot: {
+                    position: { x: 3016, z: 3514, level: 0 },
+                    varps: { 101: 12, [BKF_VARP]: STAGE_SABOTAGED },
+                    skills: { ATTACK: 20, HITPOINTS: 15, MAGIC: 8, COOKING: 4, CRAFTING: 3, THIEVING: 3 },
+                    items: [
+                        'Amulet of accuracy',
+                        { name: 'Bronze pickaxe', count: 1 },
+                        { name: 'Coins', count: 528 },
+                        'Shears',
+                        'Air talisman',
+                        'Bronze med helm',
+                        'Iron chainbody',
+                        { name: 'Lobster', count: 3 },
+                        'Tinderbox',
+                        'Bronze axe',
+                    ],
+                },
                 run: async () => {
                     await completeQuest(bot);
                     bot.log('SUCCESS', `Black Knights' Fortress quest complete! Final varp=${bot.getQuestProgress(BKF_VARP)}`);
@@ -971,8 +1099,7 @@ export async function blackKnightsFortress(bot: BotAPI): Promise<void> {
     }
 
     const root = buildBlackKnightsFortressStates(bot);
-    const snapshotDir = path.resolve(import.meta.dir, '..', 'test', 'snapshots');
-    await runStateMachine(bot, { root, varpIds: [BKF_VARP, QP_VARP], captureSnapshots: true, snapshotDir });
+    await runStateMachine(bot, { root, varpIds: [BKF_VARP, QP_VARP] });
 }
 
 export const metadata: ScriptMeta = {

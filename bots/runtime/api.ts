@@ -5,7 +5,8 @@ import LocType from '../../src/cache/config/LocType.js';
 import NpcType from '../../src/cache/config/NpcType.js';
 import ObjType from '../../src/cache/config/ObjType.js';
 import VarPlayerType from '../../src/cache/config/VarPlayerType.js';
-import { changeLocCollision, changeNpcCollision } from '../../src/engine/GameMap.js';
+import { changeLocCollision, changeNpcCollision, isFlagged, reachedLoc } from '../../src/engine/GameMap.js';
+import { CollisionFlag } from '@2004scape/rsmod-pathfinder';
 import World from '../../src/engine/World.js';
 import { Interaction } from '../../src/engine/entity/Interaction.js';
 import type Loc from '../../src/engine/entity/Loc.js';
@@ -52,6 +53,58 @@ export class BotAPI {
         this.controller = controller;
         this.logger = logger;
     }
+
+    // --- Namespace sub-objects (convenience wrappers) ---
+
+    readonly inventory = {
+        find: (name: string) => this.findItem(name),
+        count: (name: string) => this.countItem(name),
+        freeSlots: () => this.freeSlots(),
+        getAll: () => this.getInventory(),
+    };
+
+    readonly walking = {
+        walkToWithPathfinding: (x: number, z: number) => this.walkToWithPathfinding(x, z),
+        walkTo: (x: number, z: number) => this.walkTo(x, z),
+        walkToIgnoringNpcs: (x: number, z: number) => this.walkToIgnoringNpcs(x, z),
+    };
+
+    readonly dialog = {
+        dismissModals: () => this.dismissModals(),
+        waitFor: (timeoutTicks?: number) => this.waitForDialog(timeoutTicks),
+        selectOption: (index: number) => this.selectDialogOption(index),
+        continue: () => this.continueDialog(),
+        continueRemaining: (maxPages?: number) => this.continueRemainingDialogs(maxPages),
+        continueUntilChoice: (maxPages?: number) => this.continueDialogsUntilChoice(maxPages),
+        isOpen: () => this.isDialogOpen(),
+        isMultiChoiceOpen: () => this.isMultiChoiceOpen(),
+        clearPendingState: () => this.clearPendingState(),
+    };
+
+    readonly interaction = {
+        findNpc: (name: string, maxDist?: number) => this.findNearbyNpc(name, maxDist),
+        npc: (npc: Npc, op: number) => this.interactNpc(npc, op),
+        findLoc: (name: string, maxDist?: number) => this.findNearbyLoc(name, maxDist),
+        findAllLocs: (maxDist?: number) => this.findAllNearbyLocs(maxDist),
+        loc: (loc: Loc, op: number) => this.interactLoc(loc, op),
+        dropItem: (name: string) => this.dropItem(name),
+        useItemOnLoc: (itemName: string, locDebugname: string) => this.useItemOnLoc(itemName, locDebugname),
+        useItemOnItem: (itemA: string, itemB: string) => this.useItemOnItem(itemA, itemB),
+        useItemOnNpc: (itemName: string, npcName: string) => this.useItemOnNpc(itemName, npcName),
+        useItemOnNpcDirect: (itemName: string, npc: Npc) => this.useItemOnNpcDirect(itemName, npc),
+        openDoor: (doorDebugname: string) => this.openDoor(doorDebugname),
+        climbStairs: (stairsDebugname: string, op: number) => this.climbStairs(stairsDebugname, op),
+        talkToNpc: (name: string) => this.talkToNpc(name),
+        equipItem: (name: string) => this.equipItem(name),
+        takeGroundItem: (name: string, x: number, z: number) => this.takeGroundItem(name, x, z),
+        findGroundItem: (name: string, maxDist?: number) => this.findNearbyGroundItem(name, maxDist),
+        describeNearbyLocs: (x: number, z: number, level: number, maxDist: number) => this.describeNearbyLocs(x, z, level, maxDist),
+        useItemOp1: (itemName: string) => this.useItemOp1(itemName),
+    };
+
+    readonly shop = {
+        buy: (itemName: string, quantity: number) => this.buyFromShop(itemName, quantity),
+    };
 
     getPosition(): { x: number; z: number; level: number } {
         return { x: this.player.x, z: this.player.z, level: this.player.level };
@@ -584,13 +637,16 @@ export class BotAPI {
         if (!success) {
             throw new Error(`setInteraction APLOCU failed for Loc ${locType.debugname} at (${loc.x},${loc.z}) loc.isActive=${loc.isActive}`);
         }
+        this.log('STATE', `useItemOnLoc after setInteraction: target=${this.player.target ? 'set' : 'null'} loc.isActive=${loc.isActive} loc.level=${loc.level} player.level=${this.player.level} targetSubjectType=${(this.player as any).targetSubject?.type} loc.type=${loc.type}`);
 
         // Wait for interaction to complete
         for (let i = 0; i < 30; i++) {
             await this.waitForTick();
             if (this.player.target === null) {
+                this.log('STATE', `useItemOnLoc: target became null after tick ${i}`);
                 return;
             }
+            this.log('DEBUG', `useItemOnLoc tick ${i}: target=${this.player.target ? 'set' : 'null'} pos=(${this.player.x},${this.player.z}) delayed=${this.player.delayed} stepsTaken=${this.player.stepsTaken}`);
         }
     }
 
@@ -624,7 +680,7 @@ export class BotAPI {
      * Gather debug info about all locs within `maxDist` tiles of a coordinate.
      * Returns a formatted string listing each loc's debugname, coords, and ops.
      */
-    private describeNearbyLocs(centerX: number, centerZ: number, level: number, maxDist: number): string {
+    describeNearbyLocs(centerX: number, centerZ: number, level: number, maxDist: number): string {
         const locs: { debugname: string; x: number; z: number; ops: string }[] = [];
 
         const zoneRadius = Math.ceil(maxDist / 8) + 1;
@@ -947,7 +1003,8 @@ export class BotAPI {
             Component.getId('multi2'),
             Component.getId('multi3'),
             Component.getId('multi4'),
-            Component.getId('multi5')
+            Component.getId('multi5'),
+            Component.getId('multiobj3'),
         ];
         return multiIds.includes(this.player.modalChat);
     }
@@ -1036,11 +1093,14 @@ export class BotAPI {
 
         // Determine the current multi-choice interface from modalChat and derive
         // the correct button component ID. This avoids issues with stale resumeButtons.
-        const multiInterfaces: { root: number; prefix: string; maxOptions: number }[] = [
-            { root: Component.getId('multi2'), prefix: 'multi2', maxOptions: 2 },
-            { root: Component.getId('multi3'), prefix: 'multi3', maxOptions: 3 },
-            { root: Component.getId('multi4'), prefix: 'multi4', maxOptions: 4 },
-            { root: Component.getId('multi5'), prefix: 'multi5', maxOptions: 5 }
+        // buttonStart: the com_N index for option 1 (multi* uses 1, multiobj3 uses 5).
+        const multiInterfaces: { root: number; prefix: string; maxOptions: number; buttonStart: number }[] = [
+            { root: Component.getId('multi2'), prefix: 'multi2', maxOptions: 2, buttonStart: 1 },
+            { root: Component.getId('multi3'), prefix: 'multi3', maxOptions: 3, buttonStart: 1 },
+            { root: Component.getId('multi4'), prefix: 'multi4', maxOptions: 4, buttonStart: 1 },
+            { root: Component.getId('multi5'), prefix: 'multi5', maxOptions: 5, buttonStart: 1 },
+            // multiobj3: object-choice dialog (e.g. pottery wheel). Buttons are com_5/6/7 for options 1/2/3.
+            { root: Component.getId('multiobj3'), prefix: 'multiobj3', maxOptions: 3, buttonStart: 5 },
         ];
 
         const currentMulti = multiInterfaces.find(m => m.root === this.player.modalChat);
@@ -1052,9 +1112,10 @@ export class BotAPI {
             throw new Error(`selectDialogOption: index ${index} out of range for ${currentMulti.prefix} (max ${currentMulti.maxOptions})`);
         }
 
-        const comId = Component.getId(`${currentMulti.prefix}:com_${index}`);
+        const comName = `${currentMulti.prefix}:com_${index + currentMulti.buttonStart - 1}`;
+        const comId = Component.getId(comName);
         if (comId === -1) {
-            throw new Error(`selectDialogOption: component ${currentMulti.prefix}:com_${index} not found`);
+            throw new Error(`selectDialogOption: component ${comName} not found`);
         }
 
         this.player.lastCom = comId;
@@ -1156,6 +1217,35 @@ export class BotAPI {
         // If we're still at the same position, the stair interaction didn't teleport us.
         // This can happen if the script has a dialog choice (like loc_1739 op1).
         this.log('STATE', `After stairs (no teleport detected): pos=(${this.player.x},${this.player.z},${this.player.level})`);
+    }
+
+    /**
+     * Diagnostic: print reachedLoc results for all 4 adjacent tiles of a loc.
+     * Also prints collision flags (WALL_SOUTH=32, WALL_NORTH=2) on the key tiles.
+     */
+    debugLocReach(loc: Loc): void {
+        const locType = LocType.get(loc.type);
+        const level = this.player.level;
+        const tests = [
+            { label: 'N (player z+1)', px: loc.x, pz: loc.z + 1 },
+            { label: 'S (player z-1)', px: loc.x, pz: loc.z - 1 },
+            { label: 'E (player x+1)', px: loc.x + 1, pz: loc.z },
+            { label: 'W (player x-1)', px: loc.x - 1, pz: loc.z },
+        ];
+        const flagDefs: [number, string][] = [
+            [CollisionFlag.WALL_NORTH, 'WALL_N'],
+            [CollisionFlag.WALL_EAST, 'WALL_E'],
+            [CollisionFlag.WALL_SOUTH, 'WALL_S'],
+            [CollisionFlag.WALL_WEST, 'WALL_W'],
+            [CollisionFlag.WALK_BLOCKED, 'BLOCKED'],
+        ];
+        const getFlags = (x: number, z: number) => flagDefs.filter(([f]) => isFlagged(x, z, level, f)).map(([, n]) => n).join('|') || 'none';
+        this.log('STATE', `debugLocReach: ${locType.debugname ?? loc.type} at (${loc.x},${loc.z}) shape=${loc.shape} angle=${loc.angle} forceapproach=${locType.forceapproach}`);
+        for (const t of tests) {
+            const reached = reachedLoc(level, t.px, t.pz, loc.x, loc.z, loc.width, loc.length, this.player.width, loc.angle, loc.shape, locType.forceapproach);
+            this.log('STATE', `  ${t.label} (${t.px},${t.pz}): reached=${reached} flags=${getFlags(t.px, t.pz)}`);
+        }
+        this.log('STATE', `  loc tile (${loc.x},${loc.z}): flags=${getFlags(loc.x, loc.z)}`);
     }
 
     /**

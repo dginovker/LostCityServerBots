@@ -59,19 +59,19 @@ export interface StateSnapshot {
 
 /**
  * Find an ObjType by its display name (case-insensitive).
- * When multiple items share the same display name (e.g. "Coins" vs "fake_coins"),
- * prefers stackable items over non-stackable ones since the canonical game item
- * (coins, runes, arrows) is almost always the stackable version.
- * Throws if not found.
+ * Skips cert (noted) items (certtemplate !== -1) since they are stackable and share
+ * the same display name as the base item, causing wrong IDs to be resolved.
+ * Among non-cert items, prefers stackable matches (coins, runes, arrows) over
+ * non-stackable ones. Throws if not found.
  */
 function resolveObjByDisplayName(displayName: string): ObjType {
     const lower = displayName.toLowerCase();
     let firstMatch: ObjType | null = null;
     for (let id = 0; id < ObjType.count; id++) {
         const obj = ObjType.get(id);
-        if (obj && obj.name?.toLowerCase() === lower) {
+        if (obj && obj.name?.toLowerCase() === lower && obj.certtemplate === -1) {
             if (obj.stackable) {
-                return obj; // Prefer stackable match immediately
+                return obj; // Prefer stackable non-cert match immediately
             }
             if (!firstMatch) {
                 firstMatch = obj;
