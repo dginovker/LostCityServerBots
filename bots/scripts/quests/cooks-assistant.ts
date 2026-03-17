@@ -1,8 +1,8 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 
 // Varp ID for Cook's Assistant quest progress (from content/pack/varp.pack: 29=cookquest)
 const COOK_QUEST_VARP = 29;

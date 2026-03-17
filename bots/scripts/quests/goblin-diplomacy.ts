@@ -1,10 +1,10 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import { findPathSegment } from '../runtime/pathfinding.js';
-import { ensureWestOfTollGate } from './shared-routes.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import { findPathSegment } from '../../runtime/pathfinding.js';
+import { ensureWestOfTollGate } from '../shared-routes.js';
 
 // Varp ID for Goblin Diplomacy quest progress (from content/pack/varp.pack: 62=goblinquest)
 export const GOBLIN_QUEST_VARP = 62;
@@ -165,7 +165,7 @@ async function tryWalkTo(bot: BotAPI, x: number, z: number): Promise<boolean> {
  * Attack a goblin and wait for it to die.
  * Returns the coordinates where it died (for loot pickup), or null if it escaped.
  */
-async function attackGoblinAndWait(bot: BotAPI, goblin: import('../../src/engine/entity/Npc.js').default): Promise<{ x: number; z: number } | null> {
+async function attackGoblinAndWait(bot: BotAPI, goblin: import('../../../src/engine/entity/Npc.js').default): Promise<{ x: number; z: number } | null> {
     bot.log('ACTION', `Attacking goblin at (${goblin.x},${goblin.z}), bot at (${bot.player.x},${bot.player.z})`);
 
     if (!bot.player.run && bot.player.runenergy >= 500) {
@@ -257,7 +257,7 @@ async function pickUpGoblinArmour(bot: BotAPI, deathX: number, deathZ: number): 
  * because walls between adjacent tiles (e.g. low fences near goblin spawns)
  * may block the pathfinder but not actual combat interactions.
  */
-function isNpcReachable(bot: BotAPI, npc: import('../../src/engine/entity/Npc.js').default): boolean {
+function isNpcReachable(bot: BotAPI, npc: import('../../../src/engine/entity/Npc.js').default): boolean {
     const dist = Math.max(Math.abs(bot.player.x - npc.x), Math.abs(bot.player.z - npc.z));
 
     // For nearby NPCs (within findNearbyNpc search radius), skip the strict
@@ -285,7 +285,7 @@ function isNpcReachable(bot: BotAPI, npc: import('../../src/engine/entity/Npc.js
  * Patrol for goblins near Lumbridge. Returns first reachable goblin found.
  * Checks pathfinding reachability to avoid attacking goblins behind fences.
  */
-async function patrolForGoblins(bot: BotAPI): Promise<import('../../src/engine/entity/Npc.js').default | null> {
+async function patrolForGoblins(bot: BotAPI): Promise<import('../../../src/engine/entity/Npc.js').default | null> {
     for (const point of GOBLIN_PATROL_ROUTE) {
         const nearbyGoblin = bot.findNearbyNpc('Goblin', 10);
         if (nearbyGoblin && isNpcReachable(bot, nearbyGoblin)) {

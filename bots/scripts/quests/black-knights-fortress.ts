@@ -1,14 +1,14 @@
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, type StateEntry, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, type StateEntry, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 import { cooksAssistant, metadata as cooksAssistantMeta } from './cooks-assistant.js';
 import { sheepShearer, metadata as sheepShearerMeta } from './sheep-shearer.js';
 import { romeoAndJuliet, metadata as romeoMeta } from './romeo-and-juliet.js';
 import { impCatcher, metadata as impCatcherMeta } from './imp-catcher.js';
 import { runeMysteries, metadata as runeMystMeta } from './rune-mysteries.js';
 import { princeAliRescue, metadata as princeAliMeta } from './prince-ali-rescue.js';
-import { ensureWestOfTollGate } from './shared-routes.js';
+import { ensureWestOfTollGate } from '../shared-routes.js';
 
 // Varp IDs (from content/pack/varp.pack: 130=spy)
 const BKF_VARP = 130;

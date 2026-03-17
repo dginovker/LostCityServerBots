@@ -1,9 +1,9 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import { CoordGrid } from '../../src/engine/CoordGrid.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import { CoordGrid } from '../../../src/engine/CoordGrid.js';
 
 // Quest varp IDs (from content/pack/varp.pack: 180=fluffs, 181=fluffs_crate)
 const FLUFFS_VARP = 180;

@@ -1,10 +1,10 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import { skipTutorial } from './skip-tutorial.js';
-import NpcType from '../../src/cache/config/NpcType.js';
-import type Npc from '../../src/engine/entity/Npc.js';
+import { BotAPI } from '../../runtime/api.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import NpcType from '../../../src/cache/config/NpcType.js';
+import type Npc from '../../../src/engine/entity/Npc.js';
 
 // ---- Varp IDs ----
 const VARP_ACTION_DELAY = 58;

@@ -1,8 +1,8 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import { skipTutorial } from './skip-tutorial.js';
+import { BotAPI } from '../../runtime/api.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import { skipTutorial } from '../skip-tutorial.js';
 import { buildF2pSkillsStates } from './f2p-skills.js';
 import { buildRuneMysteriesStates } from './rune-mysteries.js';
 

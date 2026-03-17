@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import v8 from 'node:v8';
 
 import { Visibility } from '@2004scape/rsbuf';
@@ -39,7 +37,7 @@ import { printDebug } from '#/util/Logger.js';
 import { tryParseInt } from '#/util/TryParse.js';
 
 import BotManager from '../../../../../bots/runtime/manager.js';
-import { getScriptFn, listScriptNames } from '../../../../../bots/runtime/registry.js';
+import { getScriptFn, listScriptNames, reloadRegistry, getRunHumanFight } from '../../../../../bots/runtime/registry.js';
 import { skipTutorial } from '../../../../../bots/scripts/skip-tutorial.js';
 // VALID_STRATEGIES is hardcoded here so ::pvpfight validation works without importing the bot script.
 // runHumanFight is hot-imported at runtime (see ::pvpfight handler) so bot script changes
@@ -51,7 +49,7 @@ import {
     DRAGON_DAGGER_ID, DRAGON_BATTLEAXE_ID, DRAGON_MACE_ID, MAGIC_SHORTBOW_ID,
     RUNE_ARROW_ID, PRAYER_RESTORE4_ID, SUPER_DEFENCE4_ID, SUPER_ATTACK4_ID,
     SUPER_STRENGTH4_ID, RANGING_POTION4_ID, CHOCOLATE_BOMB_ID, BLACK_DHIDE_VAMBS_ID, SHARK_ID, FIGHT_X, FIGHT_Z,
-} from '../../../../../bots/scripts/pvp-shared.js';
+} from '../../../../../bots/scripts/pvp/pvp-shared.js';
 
 export default class ClientCheatHandler extends ClientGameMessageHandler<ClientCheat> {
     handle(message: ClientCheat, player: Player): boolean {
@@ -715,32 +713,27 @@ export default class ClientCheatHandler extends ClientGameMessageHandler<ClientC
                     BotManager.spawnBot(botUsername, async (bot) => {
                         await bot.waitForTick();
 
-                        // Hot-import bot scripts from disk so changes take effect without server restart.
-                        // Copies bots/ to a temp dir (unique path busts the module cache).
-                        const engineDir = path.resolve(import.meta.dir, '..', '..', '..', '..', '..');
-                        const botsDir = path.resolve(engineDir, 'bots');
-                        const hotDir = path.resolve(engineDir, '.hot_pvp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
-                        fs.mkdirSync(hotDir + '/runtime', { recursive: true });
-                        fs.mkdirSync(hotDir + '/scripts', { recursive: true });
-                        for (const dir of ['runtime', 'scripts']) {
-                            for (const f of fs.readdirSync(path.join(botsDir, dir))) {
-                                const src = path.join(botsDir, dir, f);
-                                if (fs.statSync(src).isFile()) {
-                                    fs.copyFileSync(src, path.join(hotDir, dir, f));
-                                }
-                            }
-                        }
-
-                        const { runHumanFight } = await import(hotDir + '/scripts/pvp-human-fight.ts');
+                        const runHumanFight = await getRunHumanFight();
                         await runHumanFight(bot, player.username, strategy as any);
-
-                        try { fs.rmSync(hotDir, { recursive: true, force: true }); } catch { /* cleanup best-effort */ }
                     });
                     player.messageGame(`PvP bot "${strategy}" spawned! Gear equipped — attack when ready.`);
                     player.messageGame('The bot will attack you once you are nearby.');
                 } catch (err) {
                     player.messageGame(`Failed to spawn bot: ${(err as Error).message}`);
                 }
+            } else if (cmd === 'botreload') {
+                // ::botreload — hot-reload changed bot scripts from disk
+                player.messageGame('Scanning for changed bot scripts...');
+                reloadRegistry().then(names => {
+                    if (names.length === 0) {
+                        player.messageGame('No changes detected.');
+                    } else {
+                        player.messageGame(`Reloaded ${names.length}: ${names.join(', ')}`);
+                    }
+                }).catch(err => {
+                    console.error('::botreload failed:', err);
+                    player.messageGame(`Bot reload failed: ${(err as Error).message}`);
+                });
             }
         }
 

@@ -1,8 +1,8 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 
 // Varp ID for Imp Catcher quest progress (from content/pack/varp.pack: 160=imp)
 const IMP_CATCHER_VARP = 160;
@@ -79,7 +79,7 @@ function hasAllBeads(bot: BotAPI): boolean {
  * Returns the coordinates where the imp died (for loot pickup),
  * or null if the imp escaped/disappeared.
  */
-async function attackImpAndWait(bot: BotAPI, imp: import('../../src/engine/entity/Npc.ts').default): Promise<{ x: number; z: number } | null> {
+async function attackImpAndWait(bot: BotAPI, imp: import('../../../src/engine/entity/Npc.ts').default): Promise<{ x: number; z: number } | null> {
     const dist = Math.max(Math.abs(imp.x - bot.player.x), Math.abs(imp.z - bot.player.z));
     bot.log('ACTION', `Attacking imp at (${imp.x},${imp.z}), bot at (${bot.player.x},${bot.player.z}), dist=${dist}`);
 
@@ -257,7 +257,7 @@ async function tryWalkTo(bot: BotAPI, x: number, z: number): Promise<boolean> {
  * Patrol the route looking for imps. Walks to each patrol point
  * and checks for imps nearby. Returns the first imp found, or null.
  */
-async function patrolForImps(bot: BotAPI): Promise<import('../../src/engine/entity/Npc.ts').default | null> {
+async function patrolForImps(bot: BotAPI): Promise<import('../../../src/engine/entity/Npc.ts').default | null> {
     for (const point of IMP_PATROL_ROUTE) {
         // Check if there's already an imp nearby before walking (wide search radius)
         const nearbyImp = bot.findNearbyNpc('Imp', 20);

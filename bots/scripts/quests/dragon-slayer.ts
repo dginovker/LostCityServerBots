@@ -1,12 +1,12 @@
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import ObjType from '../../src/cache/config/ObjType.js';
-import CategoryType from '../../src/cache/config/CategoryType.js';
-import ScriptProvider from '../../src/engine/script/ScriptProvider.js';
-import ScriptRunner from '../../src/engine/script/ScriptRunner.js';
-import ServerTriggerType from '../../src/engine/script/ServerTriggerType.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import ObjType from '../../../src/cache/config/ObjType.js';
+import CategoryType from '../../../src/cache/config/CategoryType.js';
+import ScriptProvider from '../../../src/engine/script/ScriptProvider.js';
+import ScriptRunner from '../../../src/engine/script/ScriptRunner.js';
+import ServerTriggerType from '../../../src/engine/script/ServerTriggerType.js';
 
 // Varp IDs (from content/pack/varp.pack)
 const DRAGON_QUEST_VARP = 176;     // dragonquest - main quest stage

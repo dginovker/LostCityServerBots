@@ -1,7 +1,7 @@
-import type { BotAPI } from '../runtime/api.js';
-import type Player from '../../src/engine/entity/Player.js';
-import type { StateSnapshot } from '../runtime/state-machine.js';
-import InvType from '../../src/cache/config/InvType.js';
+import type { BotAPI } from '../../runtime/api.js';
+import type Player from '../../../src/engine/entity/Player.js';
+import type { StateSnapshot } from '../../runtime/state-machine.js';
+import InvType from '../../../src/cache/config/InvType.js';
 
 // ---- Item IDs (from content/pack/obj.pack) ----
 

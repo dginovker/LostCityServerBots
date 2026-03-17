@@ -1,7 +1,7 @@
-import { BotAPI } from '../runtime/api.js';
-import type { StateSnapshot } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import BotManager from '../runtime/manager.js';
+import { BotAPI } from '../../runtime/api.js';
+import type { StateSnapshot } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import BotManager from '../../runtime/manager.js';
 
 // ---- Locations ----
 

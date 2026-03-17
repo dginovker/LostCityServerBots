@@ -1,10 +1,10 @@
 import path from 'path';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { walkLumbridgeToVarrock } from './shared-routes.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import BotManager from '../runtime/manager.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { walkLumbridgeToVarrock } from '../shared-routes.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import BotManager from '../../runtime/manager.js';
 
 // Varp IDs (from content/pack/varp.pack: 145=blackarmgang, 146=phoenixgang)
 const PHOENIX_VARP = 146;

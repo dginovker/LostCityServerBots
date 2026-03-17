@@ -1,5 +1,5 @@
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
 
 const MEN_X = 3222;
 const MEN_Z = 3218;

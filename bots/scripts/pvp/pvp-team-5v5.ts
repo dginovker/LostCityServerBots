@@ -1,7 +1,7 @@
-import { BotAPI } from '../runtime/api.js';
-import type { StateSnapshot } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import BotManager from '../runtime/manager.js';
+import { BotAPI } from '../../runtime/api.js';
+import type { StateSnapshot } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import BotManager from '../../runtime/manager.js';
 
 // ---- Fight location ----
 // Chunk 0_50_56 in multiway.csv: x=3200-3263, z=3584-3647 — confirmed multi-combat.

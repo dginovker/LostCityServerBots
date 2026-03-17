@@ -1,4 +1,4 @@
-import type { BotAPI } from '../runtime/api.js';
+import type { BotAPI } from '../../runtime/api.js';
 import {
     RUNE_SCIMITAR,
     SHARK,

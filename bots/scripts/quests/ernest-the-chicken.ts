@@ -1,9 +1,9 @@
-import LocType from '../../src/cache/config/LocType.js';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import type _Loc from '../../src/engine/entity/Loc.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import LocType from '../../../src/cache/config/LocType.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import type _Loc from '../../../src/engine/entity/Loc.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 
 // Varp IDs (from content/pack/varp.pack)
 export const HAUNTED_VARP = 32;

@@ -1,10 +1,10 @@
-import LocType from '../../src/cache/config/LocType.js';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { reachedEntity } from '../../src/engine/GameMap.js';
-import type Npc from '../../src/engine/entity/Npc.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import LocType from '../../../src/cache/config/LocType.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { reachedEntity } from '../../../src/engine/GameMap.js';
+import type Npc from '../../../src/engine/entity/Npc.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 
 // Varp ID for Sheep Shearer quest progress (from content/pack/varp.pack: 179=sheep)
 export const SHEEP_SHEARER_VARP = 179;

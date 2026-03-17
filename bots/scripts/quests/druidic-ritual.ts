@@ -1,9 +1,9 @@
-import NpcType from '../../src/cache/config/NpcType.js';
-import type Npc from '../../src/engine/entity/Npc.js';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import NpcType from '../../../src/cache/config/NpcType.js';
+import type Npc from '../../../src/engine/entity/Npc.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 // Combat verification uses XP gain checks — no external pathfinding imports needed
 
 // Varp ID for Druidic Ritual quest progress (from content/pack/varp.pack: 80=druidquest)

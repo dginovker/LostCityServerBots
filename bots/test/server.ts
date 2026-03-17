@@ -27,10 +27,27 @@ const botsDir = path.resolve(engineDir, 'bots');
 function copyDirSync(src: string, dst: string) {
     for (const f of fs.readdirSync(src)) {
         const srcPath = path.join(src, f);
-        if (fs.statSync(srcPath).isFile()) {
-            fs.copyFileSync(srcPath, path.join(dst, f));
+        const dstPath = path.join(dst, f);
+        if (fs.statSync(srcPath).isDirectory()) {
+            fs.mkdirSync(dstPath, { recursive: true });
+            copyDirSync(srcPath, dstPath);
+        } else if (fs.statSync(srcPath).isFile()) {
+            fs.copyFileSync(srcPath, dstPath);
         }
     }
+}
+
+function collectTsFiles(dir: string): string[] {
+    const results: string[] = [];
+    for (const entry of fs.readdirSync(dir)) {
+        const full = path.join(dir, entry);
+        if (fs.statSync(full).isDirectory()) {
+            results.push(...collectTsFiles(full));
+        } else if (entry.endsWith('.ts')) {
+            results.push(full);
+        }
+    }
+    return results;
 }
 
 interface HotLoadResult {
@@ -56,11 +73,11 @@ async function hotLoad(testName: string, sourceBotsDir?: string): Promise<HotLoa
     const hotManagerMod = await import(hotDir + '/runtime/manager.ts');
     const hotBotManager = hotManagerMod.default;
 
-    // Find the requested script's metadata
-    const scriptFiles = fs.readdirSync(hotDir + '/scripts').filter((f: string) => f.endsWith('.ts'));
+    // Find the requested script's metadata (recursive scan for subdirs)
+    const scriptFiles = collectTsFiles(hotDir + '/scripts');
     let meta: ScriptMeta | null = null;
     for (const file of scriptFiles) {
-        const mod = await import(hotDir + '/scripts/' + file);
+        const mod = await import(file);
         for (const key of Object.keys(mod)) {
             const val = mod[key];
             if (val && typeof val === 'object' && val.name === testName && typeof val.run === 'function') {
@@ -93,12 +110,11 @@ try {
 
 // --- Auto-discover scripts with metadata exports ---
 const scriptsDir = path.resolve(import.meta.dir, '..', 'scripts');
-const scriptFiles = fs.readdirSync(scriptsDir).filter(f => f.endsWith('.ts'));
+const discoveredFiles = collectTsFiles(scriptsDir);
 
 const scriptRegistry: Record<string, ScriptMeta> = {};
 
-for (const file of scriptFiles) {
-    const modulePath = path.join(scriptsDir, file);
+for (const modulePath of discoveredFiles) {
     const mod = await import(modulePath);
     // Register all exported ScriptMeta objects (supports multiple tests per file)
     for (const key of Object.keys(mod)) {

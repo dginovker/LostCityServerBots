@@ -1,8 +1,8 @@
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
-import { walkLumbridgeToVarrock } from './shared-routes.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
+import { walkLumbridgeToVarrock } from '../shared-routes.js';
 
 // Varp ID for The Knight's Sword (from content/pack/varp.pack: 122=squire)
 const KNIGHTS_SWORD_VARP = 122;

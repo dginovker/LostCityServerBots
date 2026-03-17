@@ -1,9 +1,9 @@
 import path from 'path';
-import LocType from '../../src/cache/config/LocType.js';
-import { BotAPI } from '../runtime/api.js';
-import { skipTutorial } from './skip-tutorial.js';
-import { type BotState, runStateMachine } from '../runtime/state-machine.js';
-import type { ScriptMeta } from '../runtime/script-meta.js';
+import LocType from '../../../src/cache/config/LocType.js';
+import { BotAPI } from '../../runtime/api.js';
+import { skipTutorial } from '../skip-tutorial.js';
+import { type BotState, runStateMachine } from '../../runtime/state-machine.js';
+import type { ScriptMeta } from '../../runtime/script-meta.js';
 
 // Varp IDs (from content/pack/varp.pack)
 const PRINCEQUEST_VARP = 273;
