@@ -3,7 +3,7 @@ import { BotPlayer } from '../integration/bot-player.js';
 
 export class BotController {
     readonly player: BotPlayer;
-    private tickResolver: (() => void) | null = null;
+    private tickResolvers: (() => void)[] = [];
 
     constructor(player: BotPlayer) {
         this.player = player;
@@ -26,11 +26,9 @@ export class BotController {
         // Bots can't handle random events, so prevent them from firing.
         this.player.afkEventReady = false;
 
-        if (this.tickResolver) {
-            const resolve = this.tickResolver;
-            this.tickResolver = null;
-            resolve();
-        }
+        const resolvers = this.tickResolvers;
+        this.tickResolvers = [];
+        for (const resolve of resolvers) resolve();
     }
 
     /**
@@ -38,7 +36,7 @@ export class BotController {
      */
     waitForTick(): Promise<void> {
         return new Promise<void>((resolve) => {
-            this.tickResolver = resolve;
+            this.tickResolvers.push(resolve);
         });
     }
 

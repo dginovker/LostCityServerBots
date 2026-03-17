@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import v8 from 'node:v8';
 
 import { Visibility } from '@2004scape/rsbuf';
@@ -39,6 +41,17 @@ import { tryParseInt } from '#/util/TryParse.js';
 import BotManager from '../../../../../bots/runtime/manager.js';
 import { getScriptFn, listScriptNames } from '../../../../../bots/runtime/registry.js';
 import { skipTutorial } from '../../../../../bots/scripts/skip-tutorial.js';
+// VALID_STRATEGIES is hardcoded here so ::pvpfight validation works without importing the bot script.
+// runHumanFight is hot-imported at runtime (see ::pvpfight handler) so bot script changes
+// take effect without restarting the server.
+const VALID_STRATEGIES = ['alpha', 'echo'] as const;
+import {
+    RUNE_FULL_HELM_ID, BLACK_DHIDE_BODY_ID, RUNE_PLATELEGS_ID, RUNE_SCIMITAR_ID,
+    CLIMBING_BOOTS_ID, CAPE_OF_LEGENDS_ID, RING_OF_RECOIL_ID, AMULET_OF_GLORY4_ID,
+    DRAGON_DAGGER_ID, DRAGON_BATTLEAXE_ID, DRAGON_MACE_ID, MAGIC_SHORTBOW_ID,
+    RUNE_ARROW_ID, PRAYER_RESTORE4_ID, SUPER_DEFENCE4_ID, SUPER_ATTACK4_ID,
+    SUPER_STRENGTH4_ID, RANGING_POTION4_ID, CHOCOLATE_BOMB_ID, BLACK_DHIDE_VAMBS_ID, SHARK_ID, FIGHT_X, FIGHT_Z,
+} from '../../../../../bots/scripts/pvp-shared.js';
 
 export default class ClientCheatHandler extends ClientGameMessageHandler<ClientCheat> {
     handle(message: ClientCheat, player: Player): boolean {
@@ -605,6 +618,128 @@ export default class ClientCheatHandler extends ClientGameMessageHandler<ClientC
                     }
                 } else {
                     player.messageGame('Usage: ::bot spawn|list|stop');
+                }
+            } else if (cmd === 'pvpfight') {
+                // ::pvpfight <strategy>
+                // Sets 99 combat stats, gives full PvP tournament gear, teleports to
+                // wilderness, and spawns a bot that fights you.
+                const strategy = args.shift();
+                if (!strategy || !VALID_STRATEGIES.includes(strategy as any)) {
+                    player.messageGame(`Usage: ::pvpfight <${VALID_STRATEGIES.join('|')}>`);
+                    return false;
+                }
+
+                // Set 99 in all combat stats
+                const combatStats = ['ATTACK', 'DEFENCE', 'STRENGTH', 'HITPOINTS', 'RANGED', 'PRAYER', 'MAGIC'];
+                for (const statName of combatStats) {
+                    const stat = PlayerStatMap.get(statName);
+                    if (typeof stat !== 'undefined') {
+                        player.setLevel(stat, 99);
+                    }
+                }
+                player.combatLevel = player.getCombatLevel();
+
+                // Set quest varps for gear requirements
+                player.vars[147] = 6;   // Lost City complete
+                player.vars[188] = 15;  // Heroes Quest complete
+                player.vars[314] = 80;  // Death Plateau complete
+
+                // Clear inventory and worn equipment
+                player.invClear(InvType.INV);
+                player.invClear(InvType.WORN);
+
+                // Give tournament loadout (same as makeTournamentSnapshot)
+                // Add arrows FIRST so they get slot 0, then everything else shifts by 1
+                player.invAdd(InvType.INV, RUNE_ARROW_ID, 200, false);  // slot 0
+                const items = [
+                    // slot 1-7: armor to equip
+                    RUNE_FULL_HELM_ID, BLACK_DHIDE_BODY_ID, RUNE_PLATELEGS_ID,
+                    CLIMBING_BOOTS_ID, CAPE_OF_LEGENDS_ID, RING_OF_RECOIL_ID,
+                    BLACK_DHIDE_VAMBS_ID,
+                    // slot 8-9: weapons to equip
+                    MAGIC_SHORTBOW_ID, AMULET_OF_GLORY4_ID,
+                    // slot 10-13: weapons in inventory
+                    RUNE_SCIMITAR_ID, DRAGON_DAGGER_ID, DRAGON_BATTLEAXE_ID, DRAGON_MACE_ID,
+                    // slot 14-19: potions
+                    PRAYER_RESTORE4_ID, PRAYER_RESTORE4_ID,
+                    SUPER_DEFENCE4_ID, SUPER_ATTACK4_ID, SUPER_STRENGTH4_ID, RANGING_POTION4_ID,
+                    // slot 20-23: chocolate bombs
+                    CHOCOLATE_BOMB_ID, CHOCOLATE_BOMB_ID, CHOCOLATE_BOMB_ID, CHOCOLATE_BOMB_ID,
+                    // slot 24: spare ring
+                    RING_OF_RECOIL_ID,
+                    // slot 25-27: sharks (lost 1 shark to make room for vambs)
+                    SHARK_ID, SHARK_ID, SHARK_ID,
+                ];
+                for (const itemId of items) {
+                    player.invAdd(InvType.INV, itemId, 1, false);
+                }
+
+                // Auto-equip gear from INV to WORN
+                // slot 0=Rune arrows, 1=Rune full helm, 2=Black d'hide body, 3=Rune platelegs,
+                // 4=Climbing boots, 5=Cape of legends, 6=Ring of recoil,
+                // 7=Black d'hide vambs, 8=Magic shortbow, 9=Amulet of glory(4)
+                const equipMap: [number, number][] = [
+                    [0, 13],  // Rune arrows → quiver
+                    [1, 0],   // Rune full helm → hat
+                    [5, 1],   // Cape of legends → back
+                    [9, 2],   // Amulet of glory(4) → front (amulet)
+                    [8, 3],   // Magic shortbow → rhand
+                    [2, 4],   // Black d'hide body → torso
+                    [3, 7],   // Rune platelegs → legs
+                    [7, 9],   // Black d'hide vambs → hands
+                    [4, 10],  // Climbing boots → feet
+                    [6, 12],  // Ring of recoil → ring
+                ];
+                for (const [invSlot, wornSlot] of equipMap) {
+                    player.invMoveToSlot(InvType.INV, InvType.WORN, invSlot, wornSlot);
+                }
+
+                // Reset spec bar AFTER all equipping (earlier set can get cleared)
+                player.vars[300] = 1000;
+
+                // Trigger appearance update so the player's gear + combat level visually refresh
+                player.buildAppearance(InvType.WORN);
+
+                // Teleport to wilderness fight location
+                player.closeModal();
+                player.clearInteraction();
+                player.unsetMapFlag();
+                player.teleJump(FIGHT_X, FIGHT_Z, 0);
+
+                // Spawn the bot
+                const botUsername = `pvp-${strategy}`;
+                try {
+                    // Force-cleanup any existing bot with the same name (handles dead/stale bots)
+                    BotManager.forceCleanup(botUsername);
+
+                    BotManager.spawnBot(botUsername, async (bot) => {
+                        await bot.waitForTick();
+
+                        // Hot-import bot scripts from disk so changes take effect without server restart.
+                        // Copies bots/ to a temp dir (unique path busts the module cache).
+                        const engineDir = path.resolve(import.meta.dir, '..', '..', '..', '..', '..');
+                        const botsDir = path.resolve(engineDir, 'bots');
+                        const hotDir = path.resolve(engineDir, '.hot_pvp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
+                        fs.mkdirSync(hotDir + '/runtime', { recursive: true });
+                        fs.mkdirSync(hotDir + '/scripts', { recursive: true });
+                        for (const dir of ['runtime', 'scripts']) {
+                            for (const f of fs.readdirSync(path.join(botsDir, dir))) {
+                                const src = path.join(botsDir, dir, f);
+                                if (fs.statSync(src).isFile()) {
+                                    fs.copyFileSync(src, path.join(hotDir, dir, f));
+                                }
+                            }
+                        }
+
+                        const { runHumanFight } = await import(hotDir + '/scripts/pvp-human-fight.ts');
+                        await runHumanFight(bot, player.username, strategy as any);
+
+                        try { fs.rmSync(hotDir, { recursive: true, force: true }); } catch { /* cleanup best-effort */ }
+                    });
+                    player.messageGame(`PvP bot "${strategy}" spawned! Gear equipped — attack when ready.`);
+                    player.messageGame('The bot will attack you once you are nearby.');
+                } catch (err) {
+                    player.messageGame(`Failed to spawn bot: ${(err as Error).message}`);
                 }
             }
         }

@@ -130,6 +130,19 @@ class BotManager {
                 World.removePlayer(player);
             }
         }
+
+        // Clear pending logout request — removePlayer calls flushPlayer which adds
+        // to logoutRequests. processLogins rejects new logins while a logoutRequest
+        // is pending for the same username. Bot players don't need save persistence,
+        // so we can safely clear this immediately.
+        World.logoutRequests.delete(username);
+
+        // Also remove from newPlayers in case login hasn't been processed yet
+        for (const player of World.newPlayers) {
+            if (player.username === username) {
+                World.newPlayers.delete(player);
+            }
+        }
     }
 }
 

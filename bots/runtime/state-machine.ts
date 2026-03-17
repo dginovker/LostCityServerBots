@@ -55,6 +55,7 @@ export interface StateSnapshot {
     skills: Record<string, number>; // skill name -> base level
     varps: Record<number, number>;  // varp id -> value
     items: Array<{ id: number; name: string; count: number }>; // items in inventory
+    wornItems?: Array<{ id: number; name: string; count: number; slot: number }>; // items in worn equipment
 }
 
 /**

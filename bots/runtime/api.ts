@@ -5,12 +5,13 @@ import LocType from '../../src/cache/config/LocType.js';
 import NpcType from '../../src/cache/config/NpcType.js';
 import ObjType from '../../src/cache/config/ObjType.js';
 import VarPlayerType from '../../src/cache/config/VarPlayerType.js';
+import { CoordGrid } from '../../src/engine/CoordGrid.js';
 import { changeLocCollision, changeNpcCollision, isFlagged, reachedLoc } from '../../src/engine/GameMap.js';
 import { CollisionFlag } from '@2004scape/rsmod-pathfinder';
 import World from '../../src/engine/World.js';
 import { Interaction } from '../../src/engine/entity/Interaction.js';
 import type Loc from '../../src/engine/entity/Loc.js';
-import type Npc from '../../src/engine/entity/Npc.js';
+import Npc from '../../src/engine/entity/Npc.js';
 import type Obj from '../../src/engine/entity/Obj.js';
 import { PlayerStatMap } from '../../src/engine/entity/PlayerStat.js';
 import Player, { getExpByLevel } from '../../src/engine/entity/Player.js';
@@ -1131,6 +1132,10 @@ export class BotAPI {
      * componentName is the interface:component name, e.g. 'controls:com_3'.
      */
     async pressButton(componentName: string): Promise<void> {
+        // Protection prayers are banned in PvP tournaments
+        if (componentName.startsWith('prayer:prayer_protectfrom')) {
+            throw new Error(`FORFEIT: ${this.player.username} used a protection prayer (${componentName}). Protection prayers are banned.`);
+        }
         const comId = Component.getId(componentName);
         if (comId === -1) {
             throw new Error(`pressButton: component '${componentName}' not found`);
@@ -1708,6 +1713,11 @@ export class BotAPI {
 
         const objType = ObjType.get(item.id);
 
+        // Wait for player delay to clear — protected scripts are rejected when delayed
+        for (let i = 0; i < 10 && this.player.delayed; i++) {
+            await this.waitForTick();
+        }
+
         // Set lastItem and lastSlot (same as OpHeldHandler)
         this.player.lastItem = item.id;
         this.player.lastSlot = item.slot;
@@ -1722,6 +1732,66 @@ export class BotAPI {
         this.log('ACTION', `equipItem: ${itemName} (id=${item.id}, slot=${item.slot})`);
         this.player.executeScript(ScriptRunner.init(script, this.player), true);
         await this.waitForTick();
+
+        // Verify the item was actually equipped
+        const wearpos = objType.wearpos;
+        if (wearpos >= 0) {
+            const worn = this.player.invGetSlot(InvType.WORN, wearpos);
+            if ((!worn || worn.id !== item.id) && this.findItem(itemName) !== null) {
+                throw new Error(`equipItem: FAILED to equip "${itemName}" (id=${item.id}) — item still in inventory after opheld2. Likely missing quest or level requirement.`);
+            }
+        }
+    }
+
+    /**
+     * Equip item AND arm special attack in the same tick.
+     *
+     * The equip script's [proc,unequip_conflicts] resets sa_attack=0.
+     * If we use regular equipItem(), it awaits a tick after the equip script,
+     * and processPlayers() fires the first attack BEFORE the bot can re-arm spec.
+     * Result: first DDS hit is a normal "poke" instead of a spec.
+     *
+     * This method sets vars[301]=1 AFTER the equip script but BEFORE the tick
+     * processes, so processPlayers() sees spec=true on the very first attack.
+     */
+    async equipItemWithSpec(itemName: string): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`equipItemWithSpec: "${itemName}" not found in inventory`);
+        }
+
+        const objType = ObjType.get(item.id);
+
+        // Wait for player delay to clear — protected scripts are rejected when delayed
+        for (let i = 0; i < 10 && this.player.delayed; i++) {
+            await this.waitForTick();
+        }
+
+        this.player.lastItem = item.id;
+        this.player.lastSlot = item.slot;
+
+        const trigger = ServerTriggerType.OPHELD2;
+        const script = ScriptProvider.getByTrigger(trigger, objType.id, objType.category);
+        if (!script) {
+            throw new Error(`equipItemWithSpec: no [opheld2] script for "${itemName}" (${objType.debugname})`);
+        }
+
+        this.log('ACTION', `equipItemWithSpec: ${itemName} (id=${item.id}, slot=${item.slot})`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+
+        // Arm spec AFTER equip script (which cleared sa_attack) but BEFORE tick processes
+        this.player.vars[301] = 1;
+        this.log('ACTION', 'equipItemWithSpec: spec armed before tick (sa_attack=1)');
+
+        await this.waitForTick();
+
+        const wearpos = objType.wearpos;
+        if (wearpos >= 0) {
+            const worn = this.player.invGetSlot(InvType.WORN, wearpos);
+            if ((!worn || worn.id !== item.id) && this.findItem(itemName) !== null) {
+                throw new Error(`equipItemWithSpec: FAILED to equip "${itemName}" (id=${item.id})`);
+            }
+        }
     }
 
     /**
@@ -1930,6 +2000,112 @@ export class BotAPI {
         this.log('ACTION', `setCombatStyle: ${style}`);
     }
 
+    /**
+     * Enable or disable the special attack bar.
+     * Equivalent to clicking the special attack orb/bar in the combat interface.
+     * Varp 301 (sa_attack): 0 = off, 1 = on.
+     */
+    enableSpecialAttack(enabled: boolean): void {
+        this.player.vars[301] = enabled ? 1 : 0;
+        const weaponSlot = this.player.invGetSlot(InvType.WORN, 3);
+        const weaponName = weaponSlot ? ObjType.get(weaponSlot.id).name : 'none';
+        const energy = this.player.vars[300] ?? 0;
+        this.log('ACTION', `enableSpecialAttack: ${enabled}, equipped_weapon=${weaponName}, energy=${energy}`);
+    }
+
+    /**
+     * Read the current special attack energy (0-1000).
+     * Varp 300 (sa_energy). 1000 = 100%, 0 = 0%.
+     */
+    getSpecialEnergy(): number {
+        return this.player.vars[300] ?? 0;
+    }
+
+    /**
+     * Clear the bot's current combat target.
+     * This stops the engine from auto-pathing toward the target each tick,
+     * allowing manual waypoint movement (e.g. kiting in PvP).
+     */
+    clearCombatTarget(): void {
+        this.player.clearInteraction();
+        this.log('ACTION', 'clearCombatTarget: cleared interaction/target');
+    }
+
+    /**
+     * Re-engage a player target without blocking.
+     * Unlike attackPlayer(), this returns immediately after setting the interaction.
+     * Used for kiting: clear target → walk away → re-engage without 15-tick wait.
+     */
+    reEngagePlayer(targetPlayer: Player): boolean {
+        const success = this.player.setInteraction(Interaction.SCRIPT, targetPlayer, ServerTriggerType.APPLAYER2);
+        if (success) {
+            this.log('ACTION', `reEngagePlayer: re-engaged ${targetPlayer.username}`);
+        } else {
+            this.log('ACTION', `reEngagePlayer: setInteraction failed for ${targetPlayer.username}`);
+        }
+        return success;
+    }
+
+    /**
+     * Check if a coordinate is in a multi-combat zone.
+     */
+    isMultiCombat(x: number, z: number, level: number = 0): boolean {
+        return World.gameMap.isMulti(CoordGrid.packCoord(level, x, z));
+    }
+
+    /**
+     * Make the bot say a message in public chat (overhead text).
+     */
+    say(message: string): void {
+        this.player.say(message);
+    }
+
+    /**
+     * Get the name of the currently equipped weapon (worn slot 3 = right hand).
+     * Returns 'none' if no weapon is equipped.
+     */
+    getEquippedWeaponName(): string {
+        const weaponSlot = this.player.invGetSlot(InvType.WORN, 3);
+        return weaponSlot ? ObjType.get(weaponSlot.id).name : 'none';
+    }
+
+    /**
+     * Log a structured combat state line for the current tick.
+     * Includes equipped weapon, target info, HP, spec energy, spec enabled, and food count.
+     * No detection logic — just raw data for analysis.
+     */
+    logCombatState(tick: number): void {
+        // Equipped weapon (worn slot 3 = right hand)
+        const weaponSlot = this.player.invGetSlot(InvType.WORN, 3);
+        const equippedWeapon = weaponSlot ? ObjType.get(weaponSlot.id).name : 'none';
+
+        // Target info
+        let targetName = 'none';
+        let targetType = 'none';
+        const target = this.player.target;
+        if (target instanceof Player) {
+            targetName = target.username;
+            targetType = 'player';
+        } else if (target instanceof Npc) {
+            targetName = NpcType.get(target.type).name;
+            targetType = 'npc';
+        }
+
+        // HP
+        const hpStatId = PlayerStatMap.get('HITPOINTS')!;
+        const currentHp = this.player.levels[hpStatId]!;
+        const maxHp = this.player.baseLevels[hpStatId]!;
+
+        // Spec energy and enabled
+        const specEnergy = this.player.vars[300] ?? 0;
+        const specEnabled = (this.player.vars[301] ?? 0) === 1;
+
+        // Food count (sharks + chocolate bombs in inventory)
+        const foodCount = this.countItem('Shark') + this.countItem('Chocolate bomb');
+
+        this.log('STATE', `COMBAT_STATE tick=${tick}: equipped_weapon=${equippedWeapon} target=${targetName} target_type=${targetType} hp=${currentHp}/${maxHp} spec_energy=${specEnergy} spec_enabled=${specEnabled} food_count=${foodCount}`);
+    }
+
     // --- Item action methods ---
 
     /**
@@ -1979,6 +2155,65 @@ export class BotAPI {
         }
 
         this.log('ACTION', `dropItem: ${itemName} (id=${item.id}, slot=${item.slot})`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Use an inventory item's op 4 (e.g. "Rub" on enchanted jewellery). Triggers [opheld4,_].
+     */
+    async useItemOp4(itemName: string): Promise<void> {
+        const item = this.findItem(itemName);
+        if (!item) {
+            throw new Error(`useItemOp4: "${itemName}" not found in inventory`);
+        }
+
+        const objType = ObjType.get(item.id);
+
+        this.player.lastItem = item.id;
+        this.player.lastSlot = item.slot;
+
+        const trigger = ServerTriggerType.OPHELD4;
+        const script = ScriptProvider.getByTrigger(trigger, objType.id, objType.category);
+        if (!script) {
+            throw new Error(`useItemOp4: no [opheld4] script found for "${itemName}" (${objType.debugname})`);
+        }
+
+        this.log('ACTION', `useItemOp4: ${itemName} (id=${item.id}, slot=${item.slot})`);
+        this.player.executeScript(ScriptRunner.init(script, this.player), true);
+        await this.waitForTick();
+    }
+
+    /**
+     * Remove an item from the worn equipment tab by triggering [inv_button1,wornitems:wear].
+     * @param wearSlot The equipment slot index (0=hat, 1=back, 2=front/amulet, 3=rhand, etc.)
+     */
+    async unequipWornItem(wearSlot: number): Promise<void> {
+        const comId = Component.getId('wornitems:wear');
+        const wornInv = this.player.getInventory(InvType.WORN);
+        if (!wornInv) {
+            throw new Error('unequipWornItem: no worn inventory found');
+        }
+
+        const item = wornInv.items[wearSlot];
+        if (!item) {
+            throw new Error(`unequipWornItem: no item in wear slot ${wearSlot}`);
+        }
+
+        // Wait for player delay to clear — protected scripts are rejected when delayed
+        for (let i = 0; i < 10 && this.player.delayed; i++) {
+            await this.waitForTick();
+        }
+
+        this.player.lastItem = item.id;
+        this.player.lastSlot = wearSlot;
+
+        const script = ScriptProvider.getByTrigger(ServerTriggerType.INV_BUTTON1, comId, -1);
+        if (!script) {
+            throw new Error('unequipWornItem: no [inv_button1,wornitems:wear] script found');
+        }
+
+        this.log('ACTION', `unequipWornItem: slot=${wearSlot} (item id=${item.id})`);
         this.player.executeScript(ScriptRunner.init(script, this.player), true);
         await this.waitForTick();
     }
@@ -2456,6 +2691,7 @@ export class BotAPI {
             player.levels[statId] = baseLevel;
             player.stats[statId] = getExpByLevel(baseLevel);
         }
+        player.combatLevel = player.getCombatLevel();
 
         // Restore varps
         for (const [idStr, value] of Object.entries(snapshot.varps)) {
@@ -2468,7 +2704,19 @@ export class BotAPI {
         for (const item of snapshot.items) {
             player.invAdd(InvType.INV, item.id, item.count);
         }
-        this.log('STATE', `restoreFromSnapshot: restored ${snapshot.items.length} items, ${Object.keys(snapshot.skills).length} skills, ${Object.keys(snapshot.varps).length} varps`);
+
+        // Restore worn equipment if specified
+        if (snapshot.wornItems && snapshot.wornItems.length > 0) {
+            player.invClear(InvType.WORN);
+            for (const item of snapshot.wornItems) {
+                player.invSet(InvType.WORN, item.id, item.count, item.slot);
+            }
+            // Trigger appearance update so other players see the equipped gear + combat level
+            player.buildAppearance(InvType.WORN);
+            this.log('STATE', `restoreFromSnapshot: restored ${snapshot.items.length} inv items + ${snapshot.wornItems.length} worn items, ${Object.keys(snapshot.skills).length} skills, ${Object.keys(snapshot.varps).length} varps`);
+        } else {
+            this.log('STATE', `restoreFromSnapshot: restored ${snapshot.items.length} items, ${Object.keys(snapshot.skills).length} skills, ${Object.keys(snapshot.varps).length} varps`);
+        }
     }
 
 }
